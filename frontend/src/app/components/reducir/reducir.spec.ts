@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Reducir } from './reducir';
+import { ReducirComponent } from './reducir';
 
-describe('Reducir', () => {
-  let component: Reducir;
-  let fixture: ComponentFixture<Reducir>;
+describe('ReducirComponent', () => {
+  let component: ReducirComponent;
+  let fixture: ComponentFixture<ReducirComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Reducir]
+      imports: [ReducirComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Reducir);
+    fixture = TestBed.createComponent(ReducirComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

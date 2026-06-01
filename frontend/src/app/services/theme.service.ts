@@ -19,7 +19,9 @@ export class ThemeService {
 
     private initializeTheme() {
         const savedTheme = localStorage.getItem(this.THEME_KEY);
-        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const systemPrefersDark = (typeof window !== 'undefined' && typeof window.matchMedia === 'function')
+            ? window.matchMedia('(prefers-color-scheme: dark)').matches
+            : false;
 
         const shouldBeDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark);
 

@@ -1,18 +1,38 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { DashboardComponent } from './dashboard';
+import { provideRouter } from '@angular/router';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
+import { AuthService } from '../../services/auth';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 
-import { Dashboard } from './dashboard';
+import { signal } from '@angular/core';
 
-describe('Dashboard', () => {
-  let component: Dashboard;
-  let fixture: ComponentFixture<Dashboard>;
+describe('DashboardComponent', () => {
+  let component: DashboardComponent;
+  let fixture: ComponentFixture<DashboardComponent>;
 
   beforeEach(async () => {
+    const authMock = {
+      logout: () => {},
+      currentUser: signal({ name: 'Test User' }),
+      currentContext: signal({ role: 'user', label: 'ECONOVA', type: 'company' }),
+      availableContexts: signal([])
+    };
+
     await TestBed.configureTestingModule({
-      imports: [Dashboard]
+      imports: [
+        DashboardComponent,
+        HttpClientTestingModule,
+        NoopAnimationsModule
+      ],
+      providers: [
+        provideRouter([]),
+        { provide: AuthService, useValue: authMock }
+      ]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Dashboard);
+    fixture = TestBed.createComponent(DashboardComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

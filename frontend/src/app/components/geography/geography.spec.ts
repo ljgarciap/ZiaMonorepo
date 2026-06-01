@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Geography } from './geography';
+import { GeographyComponent } from './geography';
 
-describe('Geography', () => {
-  let component: Geography;
-  let fixture: ComponentFixture<Geography>;
+describe('GeographyComponent', () => {
+  let component: GeographyComponent;
+  let fixture: ComponentFixture<GeographyComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Geography]
+      imports: [GeographyComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Geography);
+    fixture = TestBed.createComponent(GeographyComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

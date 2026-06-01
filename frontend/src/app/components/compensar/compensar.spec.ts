@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Compensar } from './compensar';
+import { CompensarComponent } from './compensar';
 
-describe('Compensar', () => {
-  let component: Compensar;
-  let fixture: ComponentFixture<Compensar>;
+describe('CompensarComponent', () => {
+  let component: CompensarComponent;
+  let fixture: ComponentFixture<CompensarComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Compensar]
+      imports: [CompensarComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Compensar);
+    fixture = TestBed.createComponent(CompensarComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Pie } from './pie';
+import { PieComponent } from './pie';
 
-describe('Pie', () => {
-  let component: Pie;
-  let fixture: ComponentFixture<Pie>;
+describe('PieComponent', () => {
+  let component: PieComponent;
+  let fixture: ComponentFixture<PieComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Pie]
+      imports: [PieComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Pie);
+    fixture = TestBed.createComponent(PieComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

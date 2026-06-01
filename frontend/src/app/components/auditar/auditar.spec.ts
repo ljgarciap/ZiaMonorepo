@@ -1,18 +1,18 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 
-import { Auditar } from './auditar';
+import { AuditarComponent } from './auditar';
 
-describe('Auditar', () => {
-  let component: Auditar;
-  let fixture: ComponentFixture<Auditar>;
+describe('AuditarComponent', () => {
+  let component: AuditarComponent;
+  let fixture: ComponentFixture<AuditarComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Auditar]
+      imports: [AuditarComponent]
     })
     .compileComponents();
 
-    fixture = TestBed.createComponent(Auditar);
+    fixture = TestBed.createComponent(AuditarComponent);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });
