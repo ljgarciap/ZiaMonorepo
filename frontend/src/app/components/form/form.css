@@ -1,0 +1,341 @@
+:host {
+    --primary-400: var(--table-header-bg);
+    --blue-accent-700: var(--prestige-primary);
+    --grey-100: var(--prestige-text);
+    --background-default: var(--prestige-bg);
+}
+
+.form-container {
+    padding: 15px;
+    /* Reduced padding */
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: var(--background-default);
+    min-height: 100vh;
+}
+
+.header {
+    margin-bottom: 20px;
+}
+
+.header h1 {
+    font-size: 20px;
+    /* Reduced from 24px */
+    font-weight: 700;
+    margin: 0;
+    color: var(--prestige-text);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.subtitle {
+    color: var(--prestige-text-muted);
+    margin: 5px 0 0;
+    font-size: 13px;
+    /* Reduced from 14px */
+}
+
+.main-inputs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    background-color: var(--prestige-card-bg);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--prestige-border);
+    box-shadow: var(--glass-shadow);
+}
+
+.main-inputs mat-form-field {
+    width: 50%;
+    font-size: 13px;
+    /* Smaller inputs */
+}
+
+/* Fix for placeholder/label cutoff */
+::ng-deep .mat-mdc-form-field-label {
+    font-size: 13px !important;
+    top: 22px !important;
+    /* Adjust vertical position if needed */
+}
+
+::ng-deep .mat-mdc-text-field-wrapper {
+    height: 48px !important;
+    /* Fixed height for consistency */
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+::ng-deep .mat-mdc-form-field-flex {
+    height: 100% !important;
+    align-items: center !important;
+}
+
+/* Ensure outline gap is calculated correctly (sometimes tricky with overrides) */
+::ng-deep .mat-mdc-notched-outline__notch {
+    border-top: none !important;
+    /* Simplification if label floating is weird, but standard is better. Let's try font size first */
+}
+
+/* Better approach: Just target the label font size directly without messing with height too much mostly */
+mat-label {
+    font-size: 12px;
+}
+
+
+.divider {
+    border-bottom: 1px solid var(--prestige-border);
+    margin: 20px 0 15px;
+    padding-bottom: 5px;
+}
+
+.divider span {
+    font-size: 16px;
+    /* Reduced from 18px */
+    color: var(--prestige-text);
+    font-weight: 600;
+}
+
+.scope-section {
+    margin-bottom: 30px;
+}
+
+.scope-panel {
+    background-color: var(--table-header-bg) !important;
+    margin-bottom: 10px;
+    border-radius: 8px !important;
+    border: 1px solid var(--prestige-border);
+}
+
+.sub-panel,
+.input-panel {
+    margin-top: 10px;
+    background-color: var(--prestige-card-bg) !important;
+    border: 1px solid var(--prestige-border);
+}
+
+/* Reduce panel header size */
+mat-expansion-panel-header {
+    height: 48px !important;
+    /* Compact header */
+}
+
+mat-panel-title {
+    font-size: 14px !important;
+    font-weight: 500;
+}
+
+.description {
+    color: var(--prestige-text-muted);
+    font-size: 13px;
+    /* Reduced from 14px */
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+body.dark-theme .description {
+    color: var(--prestige-text);
+}
+
+.sub-section-title {
+    font-weight: 600;
+    color: var(--prestige-text);
+    margin: 15px 0 8px;
+    border-bottom: 2px solid var(--blue-accent-700);
+    display: inline-block;
+    padding-bottom: 2px;
+    font-size: 14px;
+}
+
+.input-row {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 10px;
+    align-items: center;
+}
+
+/* Smaller form fields in rows */
+.input-row mat-form-field {
+    font-size: 13px;
+}
+
+.factor-input {
+    flex: 2;
+    /* Takes up ~66% of space */
+}
+
+.quantity-input {
+    flex: 1;
+    /* Takes up ~33% of space */
+    max-width: 150px;
+    /* Cap width as requested */
+}
+
+.full-width {
+    width: 100%;
+}
+
+.action-row {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+}
+
+/* Custom Button Styling */
+button[mat-raised-button].mat-primary {
+    background-color: var(--blue-accent-700) !important;
+    color: #fff !important;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    font-size: 13px;
+    line-height: 30px;
+}
+
+button[mat-raised-button].mat-accent {
+    background-color: var(--blue-accent-700) !important;
+    color: #fff !important;
+    font-size: 15px;
+    /* Reduced from 16px/18px */
+    padding: 0 25px;
+    height: 45px !important;
+}
+
+.debug-section {
+    margin-top: 30px;
+    padding: 15px;
+    background: #1F2A40;
+    color: #fff;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+}
+
+.formula-display {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    margin: 10px 0;
+    background: var(--status-info-bg);
+    border-left: 3px solid var(--prestige-primary);
+    border-radius: 6px;
+    font-size: 12px;
+    /* Reduced from 13px */
+}
+
+.formula-display mat-icon {
+    color: var(--prestige-primary);
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    margin-top: 1px;
+}
+
+.formula-display .formula-text {
+    color: var(--status-info-text);
+    line-height: 1.5;
+}
+
+.formula-display strong {
+    color: var(--prestige-primary);
+    font-weight: 600;
+}
+
+/* 2-Column Layout */
+.scope-content-grid {
+    display: grid;
+    grid-template-columns: 55% 43%;
+    /* Adjusted split: Inputs smaller, Table bigger */
+    gap: 2%;
+    align-items: start;
+    margin-top: 15px;
+}
+
+.left-column {
+    /* Inputs area */
+}
+
+.right-column {
+    /* Table area */
+    position: sticky;
+    top: 15px;
+}
+
+.staged-data-container {
+    margin-top: 0;
+    /* max-height removed to allow pagination to control height */
+}
+
+@media (max-width: 900px) {
+    .scope-content-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .right-column {
+        position: static;
+        margin-bottom: 25px;
+        order: -1;
+    }
+}
+
+.staged-data-header {
+    background: var(--primary-400);
+    padding: 8px 12px;
+    font-weight: 600;
+    color: var(--prestige-text);
+    border-bottom: 1px solid var(--prestige-border);
+    font-size: 13px;
+}
+
+.staged-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.staged-table th,
+.staged-table td {
+    padding: 8px 12px;
+    /* Reduced padding */
+    text-align: left;
+    border-bottom: 1px solid var(--prestige-border);
+    color: var(--prestige-text);
+    font-size: 12px;
+    /* Set table font size */
+}
+
+.staged-table th {
+    background-color: rgba(0, 0, 0, 0.05);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.staged-table tr:last-child td {
+    border-bottom: none;
+}
+
+.delete-btn {
+    color: #ef4444;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background 0.2s;
+}
+
+.delete-btn mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.delete-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Fix for matSuffix (Units) visibility */
+[matSuffix] {
+    color: var(--prestige-text-muted);
+    padding-left: 5px;
+}

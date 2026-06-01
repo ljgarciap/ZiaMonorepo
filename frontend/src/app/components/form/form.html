@@ -1,0 +1,248 @@
+<div class="form-container">
+    <div class="header">
+        <h1>Huella de Carbono</h1>
+        <p class="subtitle">Formulario de Registro</p>
+    </div>
+
+    <div class="main-inputs">
+        <mat-form-field appearance="outline">
+            <mat-label>Empresa</mat-label>
+            <mat-select [(ngModel)]="selectedCompany" (selectionChange)="onCompanyChange($event.value)"
+                [compareWith]="compareObjects" [disabled]="hasData">
+                <mat-option *ngFor="let company of companies" [value]="company">
+                    {{ company.name }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+            <mat-label>Periodo (Año)</mat-label>
+            <mat-select [(ngModel)]="selectedPeriod" [compareWith]="compareObjects" [disabled]="hasData">
+                <mat-option *ngFor="let period of periods" [value]="period">
+                    {{ period.year }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+            <mat-label>Nombre de huella (Oficina/Planta/Unidad operativa)</mat-label>
+            <input matInput [(ngModel)]="huella" placeholder="Ej: Planta Principal">
+        </mat-form-field>
+    </div>
+
+    <!-- Dynamic Scopes Section -->
+    <mat-accordion multi="false">
+        <div *ngFor="let scope of scopes" class="scope-section">
+            <mat-expansion-panel class="scope-panel">
+                <mat-expansion-panel-header>
+                    <mat-panel-title>{{ scope.name }}</mat-panel-title>
+                </mat-expansion-panel-header>
+
+                <p class="description">{{ scope.documentation_text }}</p>
+
+                <div class="scope-content-grid">
+                    <!-- Left Column: Inputs -->
+                    <div class="left-column">
+                        <!-- Recursive Category Rendering -->
+                        <mat-accordion multi="false">
+                            <ng-container *ngFor="let category of scope.categories">
+
+                                <!-- Case 1: Category with Children (Sub-group) -->
+                                <ng-container *ngIf="category.children && category.children.length > 0">
+
+                                    <!-- Sub-Group Panel -->
+                                    <mat-expansion-panel class="sub-panel">
+                                        <mat-expansion-panel-header>
+                                            <mat-panel-title>{{ category.name }}</mat-panel-title>
+                                        </mat-expansion-panel-header>
+                                        <p class="description" *ngIf="category.description">{{ category.description }}
+                                        </p>
+
+                                        <!-- Iterate Children (Leaf Categories) -->
+                                        <mat-accordion multi="false">
+                                            <mat-expansion-panel *ngFor="let subcat of category.children"
+                                                class="input-panel">
+                                                <mat-expansion-panel-header>
+                                                    <mat-panel-title>{{ subcat.name }}</mat-panel-title>
+                                                </mat-expansion-panel-header>
+
+                                                <div class="input-row">
+                                                    <mat-form-field appearance="outline" class="factor-input">
+                                                        <mat-label>Tipo / Factor</mat-label>
+                                                        <mat-select [(ngModel)]="subcat.selectedFactor"
+                                                            [compareWith]="compareObjects">
+                                                            <mat-option *ngFor="let f of subcat.factors" [value]="f">
+                                                                {{ f.name }}
+                                                            </mat-option>
+                                                        </mat-select>
+                                                    </mat-form-field>
+
+                                                    <mat-form-field appearance="outline" class="quantity-input">
+                                                        <mat-label>Consumo / Cantidad</mat-label>
+                                                        <input matInput type="number" [(ngModel)]="subcat.inputAmount">
+                                                        <span matSuffix>
+                                                            {{ subcat.selectedFactor?.unit?.symbol ||
+                                                            subcat.selectedFactor?.unit?.name || '' }}
+                                                        </span>
+                                                    </mat-form-field>
+                                                </div>
+
+                                                <div *ngIf="subcat.selectedFactor" class="formula-display">
+                                                    <mat-icon>functions</mat-icon>
+                                                    <span class="formula-text">
+                                                        <strong>Fórmula:</strong> {{ subcat.selectedFactor.formula?.name
+                                                        ||
+                                                        'Multiplicación Directa' }}
+                                                        <br>
+                                                        <strong>Factor CO₂e:</strong> {{
+                                                        subcat.selectedFactor.factor_total_co2e
+                                                        }}
+                                                    </span>
+                                                </div>
+
+                                                <div class="action-row">
+                                                    <button mat-raised-button color="primary"
+                                                        (click)="addEmission(subcat, scope.id, category.name)">
+                                                        Cargar
+                                                    </button>
+                                                </div>
+                                            </mat-expansion-panel>
+                                        </mat-accordion>
+                                    </mat-expansion-panel>
+
+                                    <br>
+                                </ng-container>
+
+                                <!-- Case 2: Category without Children (Direct Inputs) -->
+                                <ng-container *ngIf="!category.children || category.children.length === 0">
+
+                                    <!-- Direct Input Panel -->
+                                    <mat-expansion-panel class="sub-panel">
+                                        <mat-expansion-panel-header>
+                                            <mat-panel-title>{{ category.name }}</mat-panel-title>
+                                        </mat-expansion-panel-header>
+
+                                        <div class="input-row">
+                                            <mat-form-field appearance="outline" class="factor-input">
+                                                <mat-label>Factor</mat-label>
+                                                <mat-select [(ngModel)]="category.selectedFactor"
+                                                    [compareWith]="compareObjects">
+                                                    <mat-option *ngFor="let f of category.factors" [value]="f">
+                                                        {{ f.name }}
+                                                    </mat-option>
+                                                </mat-select>
+                                            </mat-form-field>
+
+                                            <mat-form-field appearance="outline" class="quantity-input">
+                                                <mat-label>Consumo</mat-label>
+                                                <input matInput type="number" [(ngModel)]="category.inputAmount">
+                                                <span matSuffix>
+                                                    {{ category.selectedFactor?.unit?.symbol ||
+                                                    category.selectedFactor?.unit?.name || '' }}
+                                                </span>
+                                            </mat-form-field>
+                                        </div>
+
+                                        <div *ngIf="category.selectedFactor" class="formula-display">
+                                            <mat-icon>functions</mat-icon>
+                                            <span class="formula-text">
+                                                <strong>Fórmula:</strong> {{ category.selectedFactor.formula?.name ||
+                                                'Multiplicación Directa' }}
+                                                <br>
+                                                <strong>Factor CO₂e:</strong> {{
+                                                category.selectedFactor.factor_total_co2e }}
+                                            </span>
+                                        </div>
+
+                                        <div class="action-row">
+                                            <button mat-raised-button color="primary"
+                                                (click)="addEmission(category, scope.id)">
+                                                Cargar
+                                            </button>
+                                        </div>
+                                    </mat-expansion-panel>
+
+                                    <br>
+                                </ng-container>
+
+                            </ng-container>
+                        </mat-accordion>
+                    </div>
+
+                    <!-- Right Column: Staged Data -->
+                    <div class="right-column">
+                        <ng-container *ngIf="dataSources[scope.id] && dataSources[scope.id].data.length > 0">
+                            <div class="staged-data-container glass-card">
+                                <div class="staged-data-header">Items Agregados</div>
+
+                                <table mat-table [dataSource]="dataSources[scope.id]" class="staged-table">
+                                    <!-- Source Column -->
+                                    <ng-container matColumnDef="source">
+                                        <th mat-header-cell *matHeaderCellDef> Fuente </th>
+                                        <td mat-cell *matCellDef="let item">
+                                            <strong>{{ item.type }}</strong><br>
+                                            <small>{{ item.subtype }}</small>
+                                        </td>
+                                    </ng-container>
+
+                                    <!-- Quantity Column -->
+                                    <ng-container matColumnDef="quantity">
+                                        <th mat-header-cell *matHeaderCellDef> Cantidad </th>
+                                        <td mat-cell *matCellDef="let item"> {{ item.quantity }} {{ item.unit }}
+                                        </td>
+                                    </ng-container>
+
+                                    <!-- CO2e Column -->
+                                    <ng-container matColumnDef="totalCO2e">
+                                        <th mat-header-cell *matHeaderCellDef> tCO₂e </th>
+                                        <td mat-cell *matCellDef="let item"> {{ item.totalCO2e | number:'1.2-4' }}
+                                        </td>
+                                    </ng-container>
+
+                                    <!-- Actions Column -->
+                                    <ng-container matColumnDef="actions">
+                                        <th mat-header-cell *matHeaderCellDef> </th>
+                                        <td mat-cell *matCellDef="let item">
+                                            <button class="delete-btn" (click)="removeEmission(item, scope.id)"
+                                                title="Eliminar">
+                                                <mat-icon>delete</mat-icon>
+                                            </button>
+                                        </td>
+                                    </ng-container>
+
+                                    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                                    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                                </table>
+                                <mat-paginator [pageSize]="5" [pageSizeOptions]="[5, 10, 20]" showFirstLastButtons
+                                    aria-label="Select page"></mat-paginator>
+                            </div>
+                        </ng-container>
+                    </div>
+                </div>
+
+            </mat-expansion-panel>
+        </div>
+    </mat-accordion>
+
+    <br>
+    <div class="action-row">
+        <button mat-raised-button color="accent" style="width: 100%; height: 50px; font-size: 18px;"
+            (click)="onSubmit()">CALCULAR HUELLA DE CARBONO</button>
+    </div>
+
+    <!-- Add button to check data -->
+    <div style="margin-top: 20px;">
+        <button mat-button (click)="showDebug = !showDebug" color="accent">
+            <mat-icon>{{ showDebug ? 'visibility_off' : 'visibility' }}</mat-icon>
+            {{ showDebug ? 'Ocultar JSON' : 'Ver JSON (Debug)' }}
+        </button>
+    </div>
+
+    <div class="debug-section" *ngIf="showDebug && hasData">
+        <h3>Datos Cargados:</h3>
+        <div *ngFor="let key of debugKeys">
+            <pre
+                *ngIf="(dataSources[key]?.data?.length || 0) > 0">Scope {{key}}: {{ dataSources[key]?.data | json }}</pre>
+        </div>
+    </div>
+</div>

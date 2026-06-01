@@ -1,0 +1,116 @@
+<mat-sidenav-container class="sidenav-container" [hasBackdrop]="false">
+    <mat-sidenav #sidenav mode="side" opened class="sidenav">
+        <mat-toolbar>ZIA</mat-toolbar>
+        <mat-nav-list>
+            <a mat-list-item routerLink="/dashboard" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>dashboard</mat-icon>
+                <div matListItemTitle>Dashboard</div>
+            </a>
+            <a mat-list-item routerLink="/form" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>assignment</mat-icon>
+                <div matListItemTitle>Huella de Carbono</div>
+            </a>
+            <a *ngIf="authService.currentContext()?.role === 'user'" mat-list-item routerLink="/history"
+                routerLinkActive="active-link">
+                <mat-icon matListItemIcon>history</mat-icon>
+                <div matListItemTitle>Historial</div>
+            </a>
+
+            <!-- Admin Section -->
+            <ng-container *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')">
+                <mat-divider></mat-divider>
+                <div mat-subheader class="admin-header">Administración</div>
+
+                <a mat-list-item routerLink="/admin/companies" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>business</mat-icon>
+                    <div matListItemTitle>Empresas</div>
+                </a>
+                <a mat-list-item routerLink="/admin/sectors" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>account_tree</mat-icon>
+                    <div matListItemTitle>Sectores</div>
+                </a>
+                <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>people_outline</mat-icon>
+                    <div matListItemTitle>Usuarios</div>
+                </a>
+
+                <a *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')" mat-list-item
+                    routerLink="/admin/metadata" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>settings_suggest</mat-icon>
+                    <div matListItemTitle>Factores</div>
+                </a>
+                <a *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')" mat-list-item
+                    routerLink="/admin/units" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>straighten</mat-icon>
+                    <div matListItemTitle>Unidades</div>
+                </a>
+                <a *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')" mat-list-item
+                    routerLink="/admin/scopes" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>category</mat-icon>
+                    <div matListItemTitle>Alcances</div>
+                </a>
+            </ng-container>
+
+            <mat-divider></mat-divider>
+            <a mat-list-item (click)="logout()">
+                <mat-icon matListItemIcon>logout</mat-icon>
+                <div matListItemTitle>Cerrar Sesión</div>
+            </a>
+        </mat-nav-list>
+    </mat-sidenav>
+
+    <mat-sidenav-content>
+        <mat-toolbar class="prestige-toolbar">
+            <button mat-icon-button (click)="sidenav.toggle()" class="menu-btn">
+                <mat-icon>menu</mat-icon>
+            </button>
+            <span class="toolbar-title">Zia Dashboard</span>
+
+            <span class="context-pill" *ngIf="authService.currentContext() as ctx"
+                style="margin-left: 15px; font-size: 0.85em; background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 16px; display: flex; align-items: center; gap: 5px; border: 1px solid rgba(0,0,0,0.1);">
+                <mat-icon style="font-size: 16px; width: 16px; height: 16px;">{{ ctx.type === 'global' ? 'language' :
+                    'business' }}</mat-icon>
+                <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
+                    {{ ctx.label }}
+                    <span *ngIf="ctx.role" style="opacity: 0.7; font-size: 0.9em;">({{ ctx.role }})</span>
+                </span>
+            </span>
+
+            <span class="spacer"></span>
+
+            <button mat-icon-button (click)="toggleTheme()" class="theme-toggle-btn"
+                [matTooltip]="themeService.isDarkMode() ? 'Modo Claro' : 'Modo Oscuro'">
+                <mat-icon>{{ themeService.isDarkMode() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+            </button>
+
+            <div class="user-pill" *ngIf="authService.currentUser() as user">
+                <span class="user-name">{{user.name}}</span>
+                <div class="user-avatar-small">{{user.name.charAt(0)}}</div>
+                <button mat-icon-button [matMenuTriggerFor]="userMenu">
+                    <mat-icon>expand_more</mat-icon>
+                </button>
+                <mat-menu #userMenu="matMenu" class="prestige-menu">
+                    <ng-container *ngIf="authService.availableContexts().length > 1">
+                        <div mat-subheader>Cambiar Contexto</div>
+                        <button mat-menu-item *ngFor="let ctx of authService.availableContexts()"
+                            (click)="authService.selectContext(ctx)">
+                            <mat-icon>{{ ctx.type === 'global' ? 'language' : 'business' }}</mat-icon>
+                            <span>{{ ctx.label }}</span>
+                            <span *ngIf="authService.currentContext()?.label === ctx.label"
+                                style="margin-left: 10px;">✓</span>
+                        </button>
+                        <mat-divider></mat-divider>
+                    </ng-container>
+                    <button mat-menu-item (click)="logout()">
+                        <mat-icon>logout</mat-icon>
+                        <span>Cerrar Sesión</span>
+                    </button>
+                </mat-menu>
+            </div>
+        </mat-toolbar>
+
+        <div class="content">
+            <router-outlet></router-outlet>
+        </div>
+    </mat-sidenav-content>
+</mat-sidenav-container>

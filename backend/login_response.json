@@ -1,0 +1,33 @@
+Note: Unnecessary use of -X or --request, POST is already inferred.
+* Host localhost:8000 was resolved.
+* IPv6: ::1
+* IPv4: 127.0.0.1
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0*   Trying [::1]:8000...
+* connect to ::1 port 8000 from ::1 port 63253 failed: Connection refused
+*   Trying 127.0.0.1:8000...
+* Connected to localhost (127.0.0.1) port 8000
+> POST /api/login HTTP/1.1
+> Host: localhost:8000
+> User-Agent: curl/8.7.1
+> Content-Type: application/json
+> Accept: application/json
+> Content-Length: 48
+> 
+} [48 bytes data]
+* upload completely sent off: 48 bytes
+100    48    0     0  100    48      0    231 --:--:-- --:--:-- --:--:--   230< HTTP/1.1 200 OK
+< Host: localhost:8000
+< Connection: close
+< X-Powered-By: PHP/8.4.17
+< Cache-Control: no-cache, private
+< Date: Sat, 14 Feb 2026 04:29:16 GMT
+< Content-Type: application/json
+< Access-Control-Allow-Origin: http://localhost:4200
+< Access-Control-Allow-Credentials: true
+< 
+{ [1210 bytes data]
+100  1258    0  1210  100    48   2505     99 --:--:-- --:--:-- --:--:--  2604
+* Closing connection
+{"user":{"id":1,"name":"Admin User","email":"admin@zia.com","email_verified_at":null,"created_at":"2026-02-14T04:23:32.000000Z","updated_at":"2026-02-14T04:23:32.000000Z"},"token":"eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIwMTljNWE2NS02YzQ4LTcyMDYtOTVhNC0wZmIxODdhNzA2OWUiLCJqdGkiOiIxMzAyYjY3MjUwN2IzMGIxODc5ZDQ2ZDBjYmNjY2M5NWU5MTZjYzU4OTcwODYxNDJiNzgxZDIxYWE3YzI0ODQxMjY3OTU3ZTkxMDg1OGQ0MCIsImlhdCI6MTc3MTA0MzM1Ni4wMzkzNTcsIm5iZiI6MTc3MTA0MzM1Ni4wMzkzNTgsImV4cCI6MTgwMjU3OTM1Ni4wMzUwNjIsInN1YiI6IjEiLCJzY29wZXMiOltdfQ.ud9Az0S786YS5_sRnjLHDfAm11zt7EGmuARvWxcO_zfyHuETHi9Eh96ircSR51lxwDnDkayvkNhAd9FHohYfoZAlP3apDu-F2UQxWH2DkE8IW4zlnDjqx7_9s6Q7HqCBqDqfDhkaD_N8R4Kjn7XTUQD1nSzJc3TP03GH8w5DAFunEONWe01VolE1M_aIipzhIPz7nZPrfMLe6yNvRiT0yVX89QEW8du52AqIBff11a9_CKdge5uH1mLN9bGK7Juzi1HcymjKWvtheYAFlTN_Az5WHjPLgGtNrjKtp5pPcEQkTT7wJPGlN2Zmkvxg2iwpDWRhjeZ9igHIJYnlrKqf4zeRbIMWPBhtwHY9VKhXLmTUzdGlPvzajV1SpWqH_tG4x-r-ORDielY4d7S0LLWhuwCl6dqzYjKZaGsNMbK5cy8Zzr3puKiVWsAMUCeKI5UOLEL6hgKVt-ngHff4Pcbu1XMAIZqtoYt0K3JGKwupiovQY_HcluYF3DXD_HlKk9r0GZICV35CVqz1P6L3zVgAvFH8RTU4SQdKQ-Lgmpzw3FEv7jWR-DcCKFnNUxxg1U7Sy09aJUJ1y132n2Wm_Y4kFdV6xurwdM_8lds6YRPfFUM80FhxTKEKdl9W-6LJoR9L_A-zreFN3_JYUQJiMumkb7LBjNTTNfh4wF6E4D8BQuQ"}

@@ -1,0 +1,238 @@
+.login-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+
+  /* Enforce Light Theme / Prestige Classic Constants locally */
+  --prestige-bg: #fdfdfd;
+  --prestige-card-bg: #ffffff;
+  --prestige-primary: #1a237e;
+  --prestige-primary-light: #534bae;
+  --prestige-accent: #00897b;
+  --prestige-text: #263238;
+  --prestige-text-muted: #546e7a;
+  --prestige-border: rgba(0, 0, 0, 0.08);
+  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+  --input-bg: #ffffff;
+
+  /* Dynamic Background */
+  background-color: #f0f2f5;
+  background: linear-gradient(135deg, #f0f2f5 0%, #e2e8f0 100%);
+}
+
+/* Particles Implementation - Carbon/Nature Theme (Floating Leaves) */
+.particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  z-index: 0;
+  /* Behind the card */
+  pointer-events: none;
+}
+
+.particles span {
+  position: absolute;
+  display: block;
+  list-style: none;
+  width: 20px;
+  height: 20px;
+  background: rgba(0, 137, 123, 0.2);
+  /* Prestige Accent (Teal/Green) for nature feel */
+  animation: animate-leaf 25s linear infinite;
+  top: -150px;
+  /* Start from top to fall down */
+  /* Sharper Leaf Shape */
+  border-radius: 2px 100% 2px 100%;
+}
+
+.particles span:nth-child(1) {
+  left: 25%;
+  width: 80px;
+  height: 80px;
+  animation-delay: 0s;
+}
+
+.particles span:nth-child(2) {
+  left: 10%;
+  width: 20px;
+  height: 20px;
+  animation-delay: 2s;
+  animation-duration: 12s;
+}
+
+.particles span:nth-child(3) {
+  left: 70%;
+  width: 20px;
+  height: 20px;
+  animation-delay: 4s;
+}
+
+.particles span:nth-child(4) {
+  left: 40%;
+  width: 60px;
+  height: 60px;
+  animation-delay: 0s;
+  animation-duration: 18s;
+}
+
+.particles span:nth-child(5) {
+  left: 65%;
+  width: 20px;
+  height: 20px;
+  animation-delay: 0s;
+}
+
+.particles span:nth-child(6) {
+  left: 75%;
+  width: 110px;
+  height: 110px;
+  animation-delay: 3s;
+}
+
+.particles span:nth-child(7) {
+  left: 35%;
+  width: 150px;
+  height: 150px;
+  animation-delay: 7s;
+}
+
+.particles span:nth-child(8) {
+  left: 50%;
+  width: 25px;
+  height: 25px;
+  animation-delay: 15s;
+  animation-duration: 45s;
+}
+
+.particles span:nth-child(9) {
+  left: 20%;
+  width: 15px;
+  height: 15px;
+  animation-delay: 2s;
+  animation-duration: 35s;
+}
+
+.particles span:nth-child(10) {
+  left: 85%;
+  width: 150px;
+  height: 150px;
+  animation-delay: 0s;
+  animation-duration: 11s;
+}
+
+@keyframes animate-leaf {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+
+  10% {
+    opacity: 0.8;
+  }
+
+  50% {
+    /* Swaying motion falling down */
+    transform: translateY(500px) rotate(180deg) translateX(50px);
+    opacity: 0.6;
+  }
+
+  100% {
+    transform: translateY(1200px) rotate(360deg) translateX(-50px);
+    opacity: 0;
+  }
+}
+
+.login-card {
+  position: relative;
+  z-index: 1;
+  /* Ensure card is above particles */
+  max-width: 400px;
+  width: 90%;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  background-color: rgba(255, 255, 255, 0.85);
+  /* Slightly transparent glass effect */
+  backdrop-filter: blur(12px);
+  text-align: center;
+  color: var(--prestige-text);
+  /* Will use enforced local var */
+  border: 1px solid rgba(255, 255, 255, 0.4);
+}
+
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0px;
+}
+
+.logo {
+  width: 150px;
+  height: 150px;
+}
+
+.title {
+  display: none;
+}
+
+.subtitle {
+  display: none;
+}
+
+.full-width {
+  width: 100%;
+  margin-bottom: 24px;
+}
+
+mat-form-field:nth-of-type(2) {
+  margin-bottom: 8px;
+}
+
+.error-message {
+  color: #d32f2f;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.actions {
+  margin-top: 16px;
+}
+
+.submit-btn {
+  width: 100%;
+  height: 60px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02857em;
+  text-transform: uppercase;
+  background-color: #65b9d5 !important;
+  color: white !important;
+  box-shadow: 0px 3px 1px -2px rgba(0, 0, 0, 0.2), 0px 2px 2px 0px rgba(0, 0, 0, 0.14), 0px 1px 5px 0px rgba(0, 0, 0, 0.12);
+}
+
+.submit-btn:hover {
+  background-color: #297791 !important;
+}
+
+.register-link {
+  margin-top: 16px;
+  font-size: 16px;
+  color: #65b9d5;
+  text-align: center;
+}
+
+.register-link a {
+  color: #65b9d5;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  color: #297791;
+  text-decoration: none;
+}

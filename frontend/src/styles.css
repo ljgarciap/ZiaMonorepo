@@ -1,0 +1,484 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Light Theme - Prestige Classic */
+    --prestige-bg: #fdfdfd;
+    --prestige-card-bg: #ffffff;
+    --prestige-primary: #1a237e;
+    --prestige-primary-light: #534bae;
+    --prestige-accent: #00897b;
+    --prestige-text: #263238;
+    --prestige-text-muted: #546e7a;
+    --prestige-border: rgba(0, 0, 0, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+    --input-bg: #ffffff;
+    --table-header-bg: #fafafa;
+    --row-hover-bg: rgba(26, 35, 126, 0.02);
+
+    /* Status & Badges - Light */
+    --status-success-bg: #f0fdf4;
+    --status-success-text: #166534;
+    --status-error-bg: #fff1f2;
+    --status-error-text: #991b1b;
+    --status-info-bg: #eff6ff;
+    --status-info-text: #1e40af;
+    --status-neutral-bg: #f8fafc;
+    --status-neutral-text: #475569;
+}
+
+body.dark-theme {
+    /* Dark Theme - Prestige Night */
+    --prestige-bg: #0f172a;
+    --prestige-card-bg: #1e293b;
+    --prestige-primary: #818cf8;
+    --prestige-primary-light: #a5b4fc;
+    --prestige-accent: #2dd4bf;
+    --prestige-text: #f8fafc;
+    --prestige-text-muted: #94a3b8;
+    --prestige-border: rgba(255, 255, 255, 0.1);
+    --glass-bg: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.05);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+    --input-bg: #334155;
+    --table-header-bg: #334155;
+    --row-hover-bg: rgba(255, 255, 255, 0.03);
+
+    /* Status & Badges - Dark (More vibrant/readable) */
+    --status-success-bg: rgba(34, 197, 94, 0.15);
+    --status-success-text: #4ade80;
+    --status-error-bg: rgba(239, 68, 68, 0.15);
+    --status-error-text: #f87171;
+    --status-info-bg: rgba(59, 130, 246, 0.15);
+    --status-info-text: #60a5fa;
+    --status-neutral-bg: rgba(148, 163, 184, 0.15);
+    --status-neutral-text: #cbd5e1;
+}
+
+/* --- THEME CORE: Architecture --- */
+:root {
+    --on-primary: #ffffff;
+    --on-accent: #ffffff;
+}
+
+/* Material Component Global Tokens */
+.mat-mdc-button,
+.mat-mdc-outlined-button {
+    --mdc-outlined-button-label-text-color: var(--prestige-primary) !important;
+}
+
+.mat-mdc-flat-button,
+.mat-mdc-raised-button {
+    --mdc-filled-button-container-color: var(--prestige-primary) !important;
+    --mdc-filled-button-label-text-color: var(--on-primary) !important;
+}
+
+.mat-mdc-flat-button[color="accent"],
+.mat-mdc-raised-button[color="accent"] {
+    --mdc-filled-button-container-color: var(--prestige-accent) !important;
+    --mdc-filled-button-label-text-color: var(--on-accent) !important;
+}
+
+/* Special Case: Prestige Button Class */
+.btn-prestige {
+    background-color: var(--prestige-primary) !important;
+    color: white !important;
+}
+
+.btn-prestige .mdc-button__label,
+.btn-prestige .mat-icon {
+    color: white !important;
+}
+
+/* --- GLOBAL TYPOGRAPHY --- */
+/* We only force primary semantic tags to avoid over-specificity on divs/spans */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+b,
+strong,
+p,
+li,
+a {
+    color: var(--prestige-text);
+}
+
+/* Force Light Text in Dark Mode only for specific elements to allow component overrides */
+body.dark-theme h1,
+body.dark-theme h2,
+body.dark-theme h3,
+body.dark-theme h4,
+body.dark-theme h5,
+body.dark-theme h6,
+body.dark-theme p,
+body.dark-theme li,
+body.dark-theme input,
+body.dark-theme textarea,
+body.dark-theme select,
+body.dark-theme .mat-mdc-list-item-title,
+body.dark-theme mat-panel-title,
+body.dark-theme mat-panel-description {
+    color: var(--prestige-text) !important;
+}
+
+/* Ensure ALL mat-icons follow theme unless they are prestige buttons */
+body.dark-theme mat-icon:not(.btn-prestige mat-icon) {
+    color: var(--prestige-text) !important;
+}
+
+/* Global Table Fixes for Dark Mode */
+body.dark-theme th,
+body.dark-theme thead,
+body.dark-theme tr[mat-header-row],
+body.dark-theme .mat-mdc-header-row {
+    background-color: var(--table-header-bg) !important;
+    background: var(--table-header-bg) !important;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--prestige-bg);
+    color: var(--prestige-text);
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+
+/* Allow icons to inherit color if they are inside buttons, otherwise force theme text */
+.mat-mdc-button .mat-icon,
+.mat-mdc-flat-button .mat-icon,
+.mat-mdc-raised-button .mat-icon {
+    color: inherit !important;
+}
+
+body.dark-theme mat-icon:not(.btn-prestige mat-icon) {
+    color: var(--prestige-text);
+}
+
+/* Material Expansion Panel Support */
+.mat-expansion-panel {
+    background: var(--prestige-card-bg) !important;
+    color: var(--prestige-text) !important;
+}
+
+/* Protected Zones (High Contrast Cards) */
+.equivalency-card,
+.equivalency-card .eq-title,
+.equivalency-card .eq-value,
+.equivalency-card .eq-label {
+    color: white !important;
+}
+
+/* Force white background and DARK blue text for the dashboard equivalency button ALWAYS */
+.equivalency-card .btn-eq {
+    background-color: white !important;
+    color: #1a237e !important;
+    /* Fixed dark brand blue for contrast on white in any theme */
+    border: none !important;
+    font-weight: 700 !important;
+}
+
+/* Ensure ALL text inside the card is white regardless of global rules */
+.equivalency-card span,
+.equivalency-card p,
+.equivalency-card div {
+    color: white !important;
+}
+
+.scope-badge,
+.avatar-prestige {
+    color: white !important;
+}
+
+/* Theme Adaptive Tags (Badges/Chips) */
+.period-tag,
+.unit-tag,
+.role-chip.user,
+.status-badge-premium {
+    background: var(--status-neutral-bg) !important;
+    color: var(--status-neutral-text) !important;
+    border: 1px solid var(--prestige-border) !important;
+}
+
+.prestige-primary-text {
+    color: var(--prestige-primary) !important;
+}
+
+mat-sidenav-container,
+mat-sidenav-content,
+mat-sidenav {
+    background-color: transparent !important;
+}
+
+.sidenav-container,
+.mat-drawer-container {
+    background-color: var(--prestige-bg) !important;
+}
+
+/* Dialog Premium Styling */
+.zia-dialog-premium,
+.mat-mdc-dialog-container,
+.mat-mdc-dialog-surface {
+    background-color: var(--prestige-card-bg) !important;
+    color: var(--prestige-text) !important;
+}
+
+/* Material Overlay & Tooltip Theme Support */
+.cdk-overlay-pane {
+    --mdc-dialog-container-color: var(--prestige-card-bg) !important;
+    --mdc-dialog-supporting-text-color: var(--prestige-text-muted) !important;
+}
+
+/* Force dark mode for checkbox labels and other dialog elements */
+body.dark-theme .mat-mdc-dialog-container .mdc-label {
+    color: var(--prestige-text) !important;
+}
+
+/* Mat Menu Theme Support */
+.mat-mdc-menu-panel,
+.prestige-menu {
+    background-color: var(--prestige-card-bg) !important;
+    border: 1px solid var(--prestige-border) !important;
+}
+
+.mat-mdc-menu-item {
+    color: var(--prestige-text) !important;
+}
+
+.mat-mdc-menu-item .mat-icon {
+    color: var(--prestige-text-muted) !important;
+}
+
+.mat-mdc-menu-item:hover {
+    background-color: var(--row-hover-bg) !important;
+}
+
+body.dark-theme .mat-mdc-menu-panel,
+body.dark-theme .prestige-menu {
+    background-color: var(--prestige-card-bg) !important;
+}
+
+/* Mat Select Panel Theme Support */
+.mat-mdc-select-panel {
+    background-color: var(--prestige-card-bg) !important;
+    border: 1px solid var(--prestige-border) !important;
+}
+
+.mat-mdc-option {
+    color: var(--prestige-text) !important;
+}
+
+.mat-mdc-option:hover:not(.mdc-list-item--disabled),
+.mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+    background-color: var(--row-hover-bg) !important;
+}
+
+.mat-mdc-option .mdc-list-item__primary-text {
+    color: inherit !important;
+}
+
+body.dark-theme .mat-mdc-select-panel {
+    background-color: var(--prestige-card-bg) !important;
+}
+
+/* Tooltips must ALWAYS be high contrast (White on Night-Blue) */
+.mat-mdc-tooltip .mdc-tooltip__body,
+.mdc-tooltip__body {
+    background-color: #263238 !important;
+    color: #ffffff !important;
+    font-family: 'Outfit', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+}
+
+/* Glassmorphism Utilities */
+.glass-card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 16px;
+}
+
+/* Elegant Inputs Override - Sophisticated scaling */
+.mat-mdc-form-field {
+    --mdc-filled-tonal-container-color: transparent !important;
+    --mdc-outlined-idle-outline-color: var(--prestige-border) !important;
+    --mdc-outlined-hover-outline-color: var(--prestige-primary) !important;
+    --mdc-outlined-active-outline-color: var(--prestige-primary) !important;
+    font-size: 13px !important;
+}
+
+/* Global Input Refinements */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+}
+
+input[type=number] {
+    -moz-appearance: textfield;
+    appearance: textfield;
+}
+
+.mat-mdc-text-field-wrapper {
+    background-color: var(--input-bg) !important;
+    border-radius: 10px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding-right: 12px !important;
+    /* Safety padding for suffixes */
+}
+
+/* Precise centering for the compact look */
+.mat-mdc-form-field-infix {
+    min-height: 44px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Fix for label position in outline fields */
+.mat-mdc-form-field-appearance-outline .mdc-notched-outline--upgraded .mdc-floating-label--float-above {
+    transform: translateY(-28px) scale(0.75) !important;
+    color: var(--prestige-primary) !important;
+}
+
+.mat-mdc-form-field-label-wrapper {
+    top: -4px !important;
+}
+
+.mat-mdc-floating-label {
+    color: var(--prestige-text-muted) !important;
+}
+
+.mat-mdc-form-field-suffix {
+    margin-right: 12px !important;
+    color: var(--prestige-text-muted) !important;
+    font-size: 13px !important;
+    font-weight: 500;
+}
+
+/* Zia Form Layouts */
+.zia-form-compact {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 10px 0;
+}
+
+.zia-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    padding: 10px 0;
+}
+
+.mat-mdc-form-field-subscript-wrapper {
+    display: none;
+}
+
+/* Ensure the selector text is also centered */
+.mat-mdc-select-value {
+    display: flex !important;
+    align-items: center !important;
+    font-size: 14px;
+    color: var(--prestige-text) !important;
+}
+
+.mat-mdc-select-arrow svg,
+.mat-select-arrow svg,
+.mat-expansion-indicator::after {
+    fill: var(--prestige-text) !important;
+    border-color: var(--prestige-text) !important;
+    opacity: 1 !important;
+}
+
+.mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
+    box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.04) !important;
+}
+
+.mdc-notched-outline__leading,
+.mdc-notched-outline__notch,
+.mdc-notched-outline__trailing {
+    border-width: 1px !important;
+    border-color: var(--prestige-border) !important;
+}
+
+/* Refined Premium Table */
+.prestige-table-container {
+    background: var(--prestige-card-bg);
+    border: 1px solid var(--prestige-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+mat-card,
+.mat-mdc-card {
+    background-color: var(--prestige-card-bg) !important;
+    color: var(--prestige-text) !important;
+    border: 1px solid var(--prestige-border);
+}
+
+.mat-mdc-table {
+    background: transparent !important;
+}
+
+.mat-mdc-header-row {
+    background: var(--table-header-bg) !important;
+}
+
+.mat-mdc-header-cell {
+    background: var(--table-header-bg) !important;
+    color: var(--prestige-text-muted) !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    font-size: 11px !important;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--prestige-border) !important;
+}
+
+.mat-mdc-cell {
+    color: var(--prestige-text) !important;
+    font-size: 13px !important;
+    border-bottom: 1px solid var(--prestige-border) !important;
+}
+
+.mat-mdc-row:hover {
+    background-color: var(--row-hover-bg) !important;
+}
+
+/* New Calculation Engine UI Helpers */
+.subtitle-premium {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--prestige-primary);
+    margin: 16px 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--prestige-border);
+}
+
+.zia-form-grid-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+    padding: 8px 0;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.mat-mdc-dialog-content {
+    max-height: 80vh !important;
+}

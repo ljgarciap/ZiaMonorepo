@@ -1,0 +1,26 @@
+.register-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--prestige-bg);
+}
+
+mat-card {
+    max-width: 400px;
+    width: 100%;
+    padding: 30px;
+    background: var(--prestige-card-bg) !important;
+    color: var(--prestige-text) !important;
+    border: 1px solid var(--prestige-border);
+    border-radius: 12px;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.error-message {
+    color: red;
+    margin-top: 10px;
+}

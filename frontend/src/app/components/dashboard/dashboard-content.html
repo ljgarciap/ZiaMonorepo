@@ -1,0 +1,101 @@
+<div class="dashboard-container">
+    <div class="dashboard-header">
+        <div class="flex-between">
+            <div>
+                <h1>ZIA Carbon Control</h1>
+                <p>Huella de Carbono Corporativa</p>
+            </div>
+            <app-context-selector></app-context-selector>
+        </div>
+    </div>
+
+    <!-- Top Summary Cards -->
+    <div class="summary-grid">
+        <div class="glass-card summary-card">
+            <span class="card-title">Huella Total</span>
+            <div class="card-value">
+                <span class="main-value">{{summary?.huella_total | number:'1.2-2'}}</span>
+                <span class="unit">tCO₂e</span>
+            </div>
+            <div class="card-footer">
+                <span class="footer-label">Neutralizados</span>
+                <span class="footer-value">{{summary?.neutralizados}} tCO₂e</span>
+            </div>
+        </div>
+
+        <div class="glass-card summary-card" *ngFor="let s of ['1','2','3']">
+            <span class="card-title">Alcance {{s}}</span>
+            <div class="card-value">
+                <span class="main-value">{{summary?.alcances['scope_'+s]?.total | number:'1.2-2'}}</span>
+                <span class="unit">tCO₂e</span>
+            </div>
+            <div class="card-footer">
+                <span class="footer-label">{{summary?.alcances['scope_'+s]?.percentage}}% del total</span>
+                <span class="footer-value">{{summary?.alcances['scope_'+s]?.neutralizado}} tCO₂e</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Middle Section: Donut + Details + Equivalency -->
+    <div class="middle-grid">
+        <div class="glass-card chart-card">
+            <h3 class="chart-title">Distribución por Alcance</h3>
+            <div class="donut-wrap">
+                <canvas #donutChart></canvas>
+                <div *ngIf="loading" class="spinner-overlay">
+                    <mat-progress-spinner diameter="40" mode="indeterminate"></mat-progress-spinner>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card details-card">
+            <div class="details-header">
+                <h3 class="chart-title">Detalles de Fuentes de Emisión</h3>
+            </div>
+            <div class="table-scroll">
+                <table class="prestige-mini-table">
+                    <thead>
+                        <tr>
+                            <th>Alcance</th>
+                            <th>Fuente</th>
+                            <th>Total (tCO₂e)</th>
+                            <th>% del Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let item of summary?.chart_data?.details">
+                            <td><span class="scope-badge" [ngClass]="getScopeClass(item.scope)">Alcance
+                                    {{item.scope}}</span></td>
+                            <td>{{item.source}}</td>
+                            <td><strong>{{item.total | number:'1.2-2'}}</strong></td>
+                            <td class="text-muted">{{item.percentage}}%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="glass-card equivalency-card">
+            <span class="eq-title">Tu huella equivale a:</span>
+            <span class="eq-value">5.119</span>
+            <span class="eq-label">Personas consumiendo energía <br> eléctrica anualmente</span>
+            <button class="btn-eq">VER DETALLES</button>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Trends -->
+    <div class="bottom-grid">
+        <div class="glass-card trend-card">
+            <h3 class="chart-title">Revenue Generated ($)</h3>
+            <div style="height: 250px;">
+                <canvas #lineChart></canvas>
+            </div>
+        </div>
+        <div class="glass-card trend-card">
+            <h3 class="chart-title">Categorical Distribution (Sales)</h3>
+            <div style="height: 250px;">
+                <canvas #barChart></canvas>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,66 @@
+version: '3.8'
+
+services:
+  # Database Service (PostgreSQL 16)
+  db:
+    image: postgres:16-alpine
+    container_name: zia_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: zia_carbon
+      POSTGRES_USER: zia_db_user
+      POSTGRES_PASSWORD: zia_db_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis Service (Caching & Queue)
+  redis:
+    image: redis:7-alpine
+    container_name: zia_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  # Backend API Service (Laravel 11)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zia_backend
+    restart: always
+    environment:
+      APP_ENV: production
+      APP_DEBUG: 'false'
+      APP_KEY: SomeRandomStringOf32CharsExactly!! # Will be overridden by artisan key:generate
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: zia_carbon
+      DB_USERNAME: zia_db_user
+      DB_PASSWORD: zia_db_password
+      REDIS_HOST: redis
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+
+  # Frontend SPA Service (Angular 21 + Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zia_frontend
+    restart: always
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:
+  redis_data:

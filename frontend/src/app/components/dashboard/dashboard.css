@@ -1,0 +1,134 @@
+.sidenav-container {
+    height: 100vh;
+}
+
+.sidenav {
+    width: 280px;
+    background: var(--prestige-card-bg);
+    border-right: 1px solid var(--prestige-border);
+}
+
+.spacer {
+    flex: 1 1 auto;
+}
+
+.content {
+    padding: 0;
+    min-height: calc(100vh - 70px);
+    background: var(--prestige-bg);
+    position: relative;
+    z-index: 1;
+}
+
+.active-link {
+    background: var(--row-hover-bg) !important;
+    color: var(--prestige-primary) !important;
+    font-weight: 600 !important;
+    border-right: 3px solid var(--prestige-primary);
+}
+
+mat-nav-list a {
+    color: var(--prestige-text-muted) !important;
+    font-weight: 500;
+    font-size: 14px;
+    margin: 4px 12px;
+    border-radius: 10px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+mat-nav-list a:hover {
+    background: var(--table-header-bg);
+    color: var(--prestige-primary);
+}
+
+.prestige-toolbar {
+    background: var(--prestige-card-bg) !important;
+    border-bottom: 1px solid var(--prestige-border);
+    height: 70px;
+    padding: 0 24px;
+    color: var(--prestige-text);
+    position: relative;
+    z-index: 1000;
+}
+
+.toolbar-title {
+    font-weight: 600;
+    font-size: 16px;
+    color: var(--prestige-primary);
+}
+
+.user-pill {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--table-header-bg);
+    padding: 6px 6px 6px 16px;
+    border-radius: 40px;
+    border: 1px solid var(--prestige-border);
+}
+
+.user-name {
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.user-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--prestige-primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.menu-btn {
+    margin-right: 12px;
+    color: var(--prestige-text-muted) !important;
+}
+
+mat-icon {
+    color: inherit !important;
+}
+
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.card {
+    background: var(--prestige-card-bg);
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid var(--prestige-border);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    height: 150px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: var(--prestige-text);
+}
+
+.theme-toggle-btn {
+    margin-right: 8px;
+    color: var(--prestige-text-muted);
+}
+
+.theme-toggle-btn:hover {
+    color: var(--prestige-primary);
+}
+
+.sidenav mat-toolbar {
+    background: var(--prestige-card-bg) !important;
+    color: var(--prestige-primary) !important;
+    font-weight: 700;
+    letter-spacing: 2px;
+}
