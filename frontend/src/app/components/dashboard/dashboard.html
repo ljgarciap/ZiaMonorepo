@@ -25,7 +25,7 @@
                     <mat-icon matListItemIcon>business</mat-icon>
                     <div matListItemTitle>Empresas</div>
                 </a>
-                <a mat-list-item routerLink="/admin/sectors" routerLinkActive="active-link">
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item routerLink="/admin/sectors" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>account_tree</mat-icon>
                     <div matListItemTitle>Sectores</div>
                 </a>
@@ -34,17 +34,17 @@
                     <div matListItemTitle>Usuarios</div>
                 </a>
 
-                <a *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')" mat-list-item
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/metadata" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>settings_suggest</mat-icon>
                     <div matListItemTitle>Factores</div>
                 </a>
-                <a *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')" mat-list-item
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/units" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>straighten</mat-icon>
                     <div matListItemTitle>Unidades</div>
                 </a>
-                <a *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')" mat-list-item
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/scopes" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>category</mat-icon>
                     <div matListItemTitle>Alcances</div>

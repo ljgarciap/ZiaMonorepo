@@ -20,8 +20,10 @@ class RoleMiddleware
         }
 
         $user = auth()->user();
+        
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
 
-        if (in_array($user->role, $roles)) {
+        if (in_array($activeRole, $roles)) {
             return $next($request);
         }
 

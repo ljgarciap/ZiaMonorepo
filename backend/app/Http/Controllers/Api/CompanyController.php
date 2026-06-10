@@ -32,8 +32,10 @@ class CompanyController extends Controller
             return response()->json(Company::where('id', $contextCompanyId)->get());
         }
 
-        // If Superadmin or Global Admin, return all
-        if ($user->role === 'superadmin' || $user->role === 'admin') {
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
+
+        // If Superadmin, return all
+        if ($activeRole === 'superadmin') {
             return response()->json(Company::all());
         }
 

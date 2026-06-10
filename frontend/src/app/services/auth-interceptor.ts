@@ -12,9 +12,13 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     };
 
     const context = authService.currentContext();
-    if (context && context.type === 'company') {
-      headers['X-Company-ID'] = context.id?.toString();
-      headers['X-Context-Role'] = context.role;
+    if (context) {
+      if (context.id) {
+        headers['X-Company-ID'] = context.id.toString();
+      }
+      if (context.role) {
+        headers['X-Context-Role'] = context.role;
+      }
     }
 
     const cloned = req.clone({

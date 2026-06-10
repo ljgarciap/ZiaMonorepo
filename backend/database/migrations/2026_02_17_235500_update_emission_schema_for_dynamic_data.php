@@ -22,7 +22,12 @@ return new class extends Migration
         // Data Migration for Scopes
         // Assuming current 'scope' column is enum '1','2','3' and maps directly to scopes table IDs 1, 2, 3
         if (Schema::hasColumn('emission_categories', 'scope')) {
-             DB::statement("UPDATE emission_categories SET scope_id = CAST(scope AS UNSIGNED) WHERE scope IS NOT NULL");
+             $driver = DB::getDriverName();
+             if ($driver === 'pgsql' || $driver === 'sqlite') {
+                 DB::statement("UPDATE emission_categories SET scope_id = CAST(scope AS INTEGER) WHERE scope IS NOT NULL");
+             } else {
+                 DB::statement("UPDATE emission_categories SET scope_id = CAST(scope AS UNSIGNED) WHERE scope IS NOT NULL");
+             }
              
              // Make it required after migration
             Schema::table('emission_categories', function (Blueprint $table) {
@@ -84,7 +89,12 @@ return new class extends Migration
             $table->enum('scope', ['1', '2', '3'])->nullable();
         });
 
-        DB::statement("UPDATE emission_categories SET scope = CAST(scope_id AS CHAR) WHERE scope_id IS NOT NULL");
+        $driver = DB::getDriverName();
+        if ($driver === 'pgsql') {
+            DB::statement("UPDATE emission_categories SET scope = CAST(scope_id AS VARCHAR) WHERE scope_id IS NOT NULL");
+        } else {
+            DB::statement("UPDATE emission_categories SET scope = CAST(scope_id AS CHAR) WHERE scope_id IS NOT NULL");
+        }
 
         Schema::table('emission_categories', function (Blueprint $table) {
              $table->dropForeign(['scope_id']);

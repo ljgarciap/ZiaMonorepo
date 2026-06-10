@@ -56,6 +56,10 @@ export class AdminService {
         return this.http.delete(`${this.apiUrl}/users/${id}`);
     }
 
+    restoreUser(id: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/users/${id}/restore`, {});
+    }
+
     // Master Data (SuperAdmin)
     getCategories(): Observable<any[]> {
         return this.http.get<any[]>(`${this.apiUrl}/categories`);

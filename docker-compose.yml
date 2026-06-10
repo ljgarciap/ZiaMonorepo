@@ -35,7 +35,7 @@ services:
     environment:
       APP_ENV: production
       APP_DEBUG: 'false'
-      APP_KEY: SomeRandomStringOf32CharsExactly!! # Will be overridden by artisan key:generate
+      APP_KEY: base64:xzxsCgKecumAqvrV4tcTZa+c2i7lxFHREms7TOoak/Y=
       DB_CONNECTION: pgsql
       DB_HOST: db
       DB_PORT: 5432

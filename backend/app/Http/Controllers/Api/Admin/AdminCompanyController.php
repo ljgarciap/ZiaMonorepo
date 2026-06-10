@@ -21,7 +21,13 @@ class AdminCompanyController extends Controller
      */
     public function index()
     {
-        return response()->json(Company::withTrashed()->with(['periods', 'sector'])->get());
+        $user = auth()->user();
+        $activeRole = request()->header('X-Context-Role') ?: $user->role;
+        if ($activeRole === 'superadmin') {
+            return response()->json(Company::withTrashed()->with(['periods', 'sector'])->get());
+        }
+
+        return response()->json($user->companies()->withTrashed()->with(['periods', 'sector'])->get());
     }
 
     /**

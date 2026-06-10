@@ -1,4 +1,4 @@
-FROM php:8.3-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Install system dependencies
 RUN apk update && apk add --no-cache \
@@ -9,10 +9,14 @@ RUN apk update && apk add --no-cache \
     zip \
     unzip \
     git \
-    bash
+    bash \
+    freetype-dev \
+    libjpeg-turbo-dev \
+    libpng-dev
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_pgsql zip bcmath opcache
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pdo_pgsql zip bcmath opcache gd
 
 # Get Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
@@ -29,6 +33,7 @@ RUN composer install --no-dev --optimize-autoloader --no-interaction
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 
 # Copy configuration files
+RUN mkdir -p /var/log/supervisor
 COPY ./docker/nginx.conf /etc/nginx/nginx.conf
 COPY ./docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

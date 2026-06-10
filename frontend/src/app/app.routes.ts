@@ -46,7 +46,7 @@ export const routes: Routes = [
                 path: 'admin/sectors',
                 component: SectorManagementComponent,
                 canActivate: [roleGuard],
-                data: { roles: ['superadmin', 'admin'] }
+                data: { roles: ['superadmin'] }
             },
             {
                 path: 'admin/users',
@@ -58,19 +58,19 @@ export const routes: Routes = [
                 path: 'admin/metadata',
                 component: MetadataManagementComponent,
                 canActivate: [roleGuard],
-                data: { roles: ['superadmin', 'admin'] }
+                data: { roles: ['superadmin'] }
             },
             {
                 path: 'admin/units',
                 loadComponent: () => import('./components/admin/unit-management/unit-management').then(m => m.UnitManagementComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['superadmin', 'admin'] }
+                data: { roles: ['superadmin'] }
             },
             {
                 path: 'admin/scopes',
                 loadComponent: () => import('./components/admin/scope-management/scope-management').then(m => m.ScopeManagementComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['superadmin', 'admin'] }
+                data: { roles: ['superadmin'] }
             },
             {
                 path: 'admin/audit',
