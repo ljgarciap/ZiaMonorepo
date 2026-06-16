@@ -1,0 +1,20 @@
+# Overlay de desarrollo: hot-reload para backend y frontend.
+# Uso: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  backend:
+    environment:
+      APP_ENV: local
+      APP_DEBUG: 'true'
+    volumes:
+      - ./backend:/var/www/html
+
+  frontend:
+    build:
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "4200:4200"
+    command: ["npm", "run", "start", "--", "--host", "0.0.0.0"]
