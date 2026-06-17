@@ -66,13 +66,3 @@ Ninguno de los dos `.env` se commitea (ambos están en `.gitignore`).
 - Frontend: `npm test` (`@angular/build:unit-test`, basado en Vitest).
 - CI: `.github/workflows/ci.yml` corre ambos en cada push/PR a
   `master`/`main`.
-
-## Flujo de trabajo del equipo
-
-Este proyecto sigue el flujo de agentes definido en el `CLAUDE.md` del
-workspace (`D:\SOFTCLASS\CLAUDE.md`): Analista → Arquitecto → PM →
-Backend/Frontend/DevOps → Senior Reviewer → QA → Luis. Los agentes y
-skills son globales (`D:\SOFTCLASS\.claude\`); este repo no duplica esa
-configuración, solo trae `.claude/settings.local.json` con permisos
-locales. Las specs de features de este proyecto viven en
-`docs/specs/`.
