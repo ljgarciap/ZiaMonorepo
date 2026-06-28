@@ -1,0 +1,95 @@
+<!-- Floating action button -->
+<button
+  mat-fab
+  class="zia-fab"
+  color="primary"
+  (click)="toggle()"
+  [matTooltip]="open() ? 'Cerrar ZIA' : 'Asistente ZIA'"
+  matTooltipPosition="left">
+  <mat-icon>{{ open() ? 'close' : 'smart_toy' }}</mat-icon>
+</button>
+
+<!-- Chat panel -->
+@if (open()) {
+  <div class="zia-panel" role="dialog" aria-label="Asistente ZIA">
+
+    <!-- Header -->
+    <div class="zia-header">
+      <div class="zia-header-info">
+        <mat-icon class="zia-logo-icon">eco</mat-icon>
+        <div>
+          <span class="zia-title">ZIA</span>
+          <span class="zia-subtitle">Asistente de Carbono</span>
+        </div>
+      </div>
+      <div class="zia-header-actions">
+        <button mat-icon-button (click)="clearChat()" matTooltip="Nuevo chat" [disabled]="streaming()">
+          <mat-icon>refresh</mat-icon>
+        </button>
+        <button mat-icon-button (click)="toggle()">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="zia-messages">
+      @for (msg of messages(); track $index) {
+        <div class="zia-message" [class.user]="msg.role === 'user'" [class.assistant]="msg.role === 'assistant'">
+          @if (msg.role === 'assistant') {
+            <div class="zia-avatar">
+              <mat-icon>eco</mat-icon>
+            </div>
+          }
+          @if (msg.pending && !msg.text) {
+            <div class="zia-bubble">
+              <span class="zia-typing">
+                <span></span><span></span><span></span>
+              </span>
+            </div>
+          } @else {
+            <div class="zia-bubble" [innerHTML]="msg.html"></div>
+          }
+        </div>
+      }
+
+      <!-- Tool activity indicator -->
+      @if (activeTool()) {
+        <div class="zia-message assistant">
+          <div class="zia-avatar"><mat-icon>eco</mat-icon></div>
+          <div class="zia-bubble zia-tool-bubble">
+            <mat-icon class="tool-spin">sync</mat-icon>
+            <span>{{ activeTool() }}…</span>
+          </div>
+        </div>
+      }
+
+      <div #messagesEnd></div>
+    </div>
+
+    <!-- Input -->
+    <div class="zia-input-row">
+      <textarea
+        class="zia-input"
+        [(ngModel)]="inputText"
+        (keydown)="onKeyDown($event)"
+        placeholder="Escribe un mensaje…"
+        rows="1"
+        [disabled]="streaming()"
+        (input)="autoResize($event)">
+      </textarea>
+
+      @if (streaming()) {
+        <button mat-icon-button class="zia-send-btn stop" (click)="stopStreaming()" matTooltip="Detener">
+          <mat-icon>stop_circle</mat-icon>
+        </button>
+      } @else {
+        <button mat-icon-button class="zia-send-btn" (click)="sendMessage()"
+          [disabled]="!inputText.trim()" matTooltip="Enviar (Enter)">
+          <mat-icon>send</mat-icon>
+        </button>
+      }
+    </div>
+
+  </div>
+}

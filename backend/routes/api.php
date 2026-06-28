@@ -7,6 +7,10 @@ use App\Http\Controllers\AuthController;
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
+// Internal endpoint for zia-agent Python microservice (Docker network only)
+Route::middleware(\App\Http\Middleware\InternalOnly::class)
+    ->post('/internal/calculate', [App\Http\Controllers\Api\InternalCalculationController::class, 'calculate']);
+
 Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
@@ -91,8 +95,9 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/reports/periods/{period}/pdf', [App\Http\Controllers\Api\ReportController::class, 'pdfSummary']);
         Route::get('/reports/periods/{period}/excel', [App\Http\Controllers\Api\ReportController::class, 'excelExport']);
 
-        // AI Sidecar Route
+        // AI Sidecar Routes
         Route::get('/ai/recommendations', [\App\Http\Controllers\Api\AISidecarController::class, 'getRecommendations']);
+        Route::post('/ai/chat', [\App\Http\Controllers\Api\AISidecarController::class, 'chat']);
 
         // Company Groups (consorcio / agrupación multi-empresa)
         Route::get('/groups', [App\Http\Controllers\Api\CompanyGroupController::class, 'index']);

@@ -39,11 +39,34 @@ services:
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     ports:
       - "8000:8000"
     depends_on:
       - db
       - redis
+
+  # ZIA Agent — Python FastAPI + Anthropic tool_use MCP
+  zia-agent:
+    build:
+      context: ./zia-agent
+      dockerfile: Dockerfile
+    container_name: zia_agent
+    restart: always
+    environment:
+      ZIA_BACKEND_URL: http://backend:8000
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+    ports:
+      - "8001:8001"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   # Frontend SPA Service (Angular 21 + Nginx)
   frontend:

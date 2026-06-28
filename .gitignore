@@ -1,5 +1,6 @@
 # ZiaMonorepo root gitignore
 Bases/
+insumos/
 .env
 
 # Internal agent workflow documents (specs, reviews, QA reports)

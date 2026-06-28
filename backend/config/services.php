@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'internal_secret' => env('INTERNAL_API_SECRET', ''),
+
+    'zia_agent_url' => env('ZIA_AGENT_URL', 'http://zia-agent:8001'),
+
 ];

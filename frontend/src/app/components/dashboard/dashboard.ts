@@ -11,6 +11,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../services/auth';
 import { ThemeService } from '../../services/theme.service';
+import { ZiaChatComponent } from '../zia-chat/zia-chat';
 
 @Component({
   selector: 'app-dashboard',
@@ -27,7 +28,8 @@ import { ThemeService } from '../../services/theme.service';
     MatButtonModule,
     MatMenuModule,
     MatDividerModule,
-    MatTooltipModule
+    MatTooltipModule,
+    ZiaChatComponent,
   ],
   templateUrl: './dashboard.html',
   styleUrls: ['./dashboard.css']
