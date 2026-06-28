@@ -1,88 +1,81 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+/* ZIA Carbon Control — Design System (canonical dark theme) */
 
 :root {
-    /* Light Theme - Prestige Classic */
-    --prestige-bg: #fdfdfd;
-    --prestige-card-bg: #ffffff;
-    --prestige-primary: #1a237e;
-    --prestige-primary-light: #534bae;
-    --prestige-accent: #00897b;
-    --prestige-text: #263238;
-    --prestige-text-muted: #546e7a;
-    --prestige-border: rgba(0, 0, 0, 0.08);
-    --glass-bg: rgba(255, 255, 255, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.4);
-    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-    --input-bg: #ffffff;
-    --table-header-bg: #fafafa;
-    --row-hover-bg: rgba(26, 35, 126, 0.02);
+    /* ── ZIA Brand Palette ── */
+    --zia-bg:           #012e40;   /* Petroleum Dark  */
+    --zia-surface:      #024959;   /* Deep Teal       */
+    --zia-primary:      #026773;   /* Mid Teal        */
+    --zia-primary-hover:#3CA6A6;   /* Mid Teal hover  */
+    --zia-tertiary:     #3CA6A6;   /* Turquoise       */
+    --zia-muted-fg:     #F2E3D5;   /* Warm Beige      */
+    --zia-text:         #FFFFFF;
+    --zia-text-muted:   rgba(255, 255, 255, 0.55);
+    --zia-border:       rgba(255, 255, 255, 0.08);
+    --zia-border-strong:rgba(255, 255, 255, 0.18);
 
-    /* Status & Badges - Light */
-    --status-success-bg: #f0fdf4;
-    --status-success-text: #166534;
-    --status-error-bg: #fff1f2;
-    --status-error-text: #991b1b;
-    --status-info-bg: #eff6ff;
-    --status-info-text: #1e40af;
-    --status-neutral-bg: #f8fafc;
-    --status-neutral-text: #475569;
-}
+    /* ── Surface helpers ── */
+    --zia-input-bg:        #024959;
+    --zia-table-header-bg: #012e40;
+    --zia-row-hover-bg:    rgba(255, 255, 255, 0.04);
 
-body.dark-theme {
-    /* Dark Theme - Prestige Night */
-    --prestige-bg: #0f172a;
-    --prestige-card-bg: #1e293b;
-    --prestige-primary: #818cf8;
-    --prestige-primary-light: #a5b4fc;
-    --prestige-accent: #2dd4bf;
-    --prestige-text: #f8fafc;
-    --prestige-text-muted: #94a3b8;
-    --prestige-border: rgba(255, 255, 255, 0.1);
-    --glass-bg: rgba(30, 41, 59, 0.7);
-    --glass-border: rgba(255, 255, 255, 0.05);
-    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-    --input-bg: #334155;
-    --table-header-bg: #334155;
-    --row-hover-bg: rgba(255, 255, 255, 0.03);
+    /* ── Status tokens ── */
+    --zia-status-success: #22C55E;
+    --zia-status-warning: #EAB308;
+    --zia-status-error:   #EF4444;
+    --zia-status-info:    #3CA6A6;
 
-    /* Status & Badges - Dark (More vibrant/readable) */
-    --status-success-bg: rgba(34, 197, 94, 0.15);
-    --status-success-text: #4ade80;
-    --status-error-bg: rgba(239, 68, 68, 0.15);
-    --status-error-text: #f87171;
-    --status-info-bg: rgba(59, 130, 246, 0.15);
-    --status-info-text: #60a5fa;
-    --status-neutral-bg: rgba(148, 163, 184, 0.15);
-    --status-neutral-text: #cbd5e1;
-}
+    --status-success-bg:   rgba(34, 197, 94, 0.12);
+    --status-success-text: #22C55E;
+    --status-error-bg:     rgba(239, 68, 68, 0.12);
+    --status-error-text:   #EF4444;
+    --status-info-bg:      rgba(60, 166, 166, 0.12);
+    --status-info-text:    #3CA6A6;
+    --status-neutral-bg:   rgba(255, 255, 255, 0.08);
+    --status-neutral-text: rgba(255, 255, 255, 0.55);
 
-/* --- THEME CORE: Architecture --- */
-:root {
+    /* ── Glass utilities ── */
+    --glass-bg:     rgba(2, 73, 89, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.06);
+    --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.35);
+
+    /* ── Legacy aliases — keeps --prestige-* refs in components working ── */
+    --prestige-bg:           var(--zia-bg);
+    --prestige-card-bg:      var(--zia-surface);
+    --prestige-primary:      var(--zia-primary);
+    --prestige-primary-light:var(--zia-tertiary);
+    --prestige-accent:       var(--zia-tertiary);
+    --prestige-text:         var(--zia-text);
+    --prestige-text-muted:   var(--zia-text-muted);
+    --prestige-border:       var(--zia-border);
+    --input-bg:              var(--zia-input-bg);
+    --table-header-bg:       var(--zia-table-header-bg);
+    --row-hover-bg:          var(--zia-row-hover-bg);
+
+    /* ── On-color helpers ── */
     --on-primary: #ffffff;
-    --on-accent: #ffffff;
+    --on-accent:  #ffffff;
 }
 
-/* Material Component Global Tokens */
+/* ── Material Component Token Overrides ── */
 .mat-mdc-button,
 .mat-mdc-outlined-button {
-    --mdc-outlined-button-label-text-color: var(--prestige-primary) !important;
+    --mdc-outlined-button-label-text-color: var(--zia-tertiary) !important;
 }
 
 .mat-mdc-flat-button,
 .mat-mdc-raised-button {
-    --mdc-filled-button-container-color: var(--prestige-primary) !important;
-    --mdc-filled-button-label-text-color: var(--on-primary) !important;
+    --mdc-filled-button-container-color: var(--zia-primary) !important;
+    --mdc-filled-button-label-text-color: #ffffff !important;
 }
 
 .mat-mdc-flat-button[color="accent"],
 .mat-mdc-raised-button[color="accent"] {
-    --mdc-filled-button-container-color: var(--prestige-accent) !important;
-    --mdc-filled-button-label-text-color: var(--on-accent) !important;
+    --mdc-filled-button-container-color: var(--zia-tertiary) !important;
+    --mdc-filled-button-label-text-color: #ffffff !important;
 }
 
-/* Special Case: Prestige Button Class */
 .btn-prestige {
-    background-color: var(--prestige-primary) !important;
+    background-color: var(--zia-primary) !important;
     color: white !important;
 }
 
@@ -91,105 +84,69 @@ body.dark-theme {
     color: white !important;
 }
 
-/* --- GLOBAL TYPOGRAPHY --- */
-/* We only force primary semantic tags to avoid over-specificity on divs/spans */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6,
-b,
-strong,
-p,
-li,
-a {
-    color: var(--prestige-text);
+/* ── Global Typography ── */
+h1, h2, h3, h4, h5, h6, b, strong, p, li, a {
+    color: var(--zia-text);
 }
 
-/* Force Light Text in Dark Mode only for specific elements to allow component overrides */
-body.dark-theme h1,
-body.dark-theme h2,
-body.dark-theme h3,
-body.dark-theme h4,
-body.dark-theme h5,
-body.dark-theme h6,
-body.dark-theme p,
-body.dark-theme li,
-body.dark-theme input,
-body.dark-theme textarea,
-body.dark-theme select,
-body.dark-theme .mat-mdc-list-item-title,
-body.dark-theme mat-panel-title,
-body.dark-theme mat-panel-description {
-    color: var(--prestige-text) !important;
+mat-icon {
+    color: var(--zia-text) !important;
 }
 
-/* Ensure ALL mat-icons follow theme unless they are prestige buttons */
-body.dark-theme mat-icon:not(.btn-prestige mat-icon) {
-    color: var(--prestige-text) !important;
+.mat-mdc-list-item-title,
+mat-panel-title,
+mat-panel-description {
+    color: var(--zia-text) !important;
 }
 
-/* Global Table Fixes for Dark Mode */
-body.dark-theme th,
-body.dark-theme thead,
-body.dark-theme tr[mat-header-row],
-body.dark-theme .mat-mdc-header-row {
-    background-color: var(--table-header-bg) !important;
-    background: var(--table-header-bg) !important;
-}
-
-html,
-body {
+/* ── Global base ── */
+html, body {
     height: 100%;
     margin: 0;
-    font-family: 'Outfit', sans-serif;
-    background-color: var(--prestige-bg);
-    color: var(--prestige-text);
+    font-family: 'Inter', sans-serif;
+    background-color: var(--zia-bg);
+    color: var(--zia-text);
     -webkit-font-smoothing: antialiased;
-    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-
-/* Allow icons to inherit color if they are inside buttons, otherwise force theme text */
+/* ── Icon color in buttons inherits button color ── */
 .mat-mdc-button .mat-icon,
 .mat-mdc-flat-button .mat-icon,
 .mat-mdc-raised-button .mat-icon {
     color: inherit !important;
 }
 
-body.dark-theme mat-icon:not(.btn-prestige mat-icon) {
-    color: var(--prestige-text);
+/* ── Table header / row theme ── */
+th,
+thead,
+tr[mat-header-row],
+.mat-mdc-header-row {
+    background-color: var(--zia-table-header-bg) !important;
+    background:       var(--zia-table-header-bg) !important;
 }
 
-/* Material Expansion Panel Support */
+/* ── Material Expansion Panel ── */
 .mat-expansion-panel {
-    background: var(--prestige-card-bg) !important;
-    color: var(--prestige-text) !important;
+    background: var(--zia-surface) !important;
+    color:      var(--zia-text) !important;
 }
 
-/* Protected Zones (High Contrast Cards) */
+/* ── Protected zone: equivalency card always white text ── */
 .equivalency-card,
 .equivalency-card .eq-title,
 .equivalency-card .eq-value,
-.equivalency-card .eq-label {
-    color: white !important;
-}
-
-/* Force white background and DARK blue text for the dashboard equivalency button ALWAYS */
-.equivalency-card .btn-eq {
-    background-color: white !important;
-    color: #1a237e !important;
-    /* Fixed dark brand blue for contrast on white in any theme */
-    border: none !important;
-    font-weight: 700 !important;
-}
-
-/* Ensure ALL text inside the card is white regardless of global rules */
+.equivalency-card .eq-label,
 .equivalency-card span,
 .equivalency-card p,
 .equivalency-card div {
     color: white !important;
+}
+
+.equivalency-card .btn-eq {
+    background-color: white !important;
+    color: var(--zia-primary) !important;
+    border: none !important;
+    font-weight: 700 !important;
 }
 
 .scope-badge,
@@ -197,20 +154,21 @@ body.dark-theme mat-icon:not(.btn-prestige mat-icon) {
     color: white !important;
 }
 
-/* Theme Adaptive Tags (Badges/Chips) */
+/* ── Theme Adaptive Tags ── */
 .period-tag,
 .unit-tag,
 .role-chip.user,
 .status-badge-premium {
     background: var(--status-neutral-bg) !important;
-    color: var(--status-neutral-text) !important;
-    border: 1px solid var(--prestige-border) !important;
+    color:      var(--status-neutral-text) !important;
+    border: 1px solid var(--zia-border) !important;
 }
 
 .prestige-primary-text {
-    color: var(--prestige-primary) !important;
+    color: var(--zia-primary) !important;
 }
 
+/* ── Sidenav ── */
 mat-sidenav-container,
 mat-sidenav-content,
 mat-sidenav {
@@ -219,105 +177,93 @@ mat-sidenav {
 
 .sidenav-container,
 .mat-drawer-container {
-    background-color: var(--prestige-bg) !important;
+    background-color: var(--zia-bg) !important;
 }
 
-/* Dialog Premium Styling */
+/* ── Dialog ── */
 .zia-dialog-premium,
 .mat-mdc-dialog-container,
 .mat-mdc-dialog-surface {
-    background-color: var(--prestige-card-bg) !important;
-    color: var(--prestige-text) !important;
+    background-color: var(--zia-surface) !important;
+    color:            var(--zia-text) !important;
 }
 
-/* Material Overlay & Tooltip Theme Support */
 .cdk-overlay-pane {
-    --mdc-dialog-container-color: var(--prestige-card-bg) !important;
-    --mdc-dialog-supporting-text-color: var(--prestige-text-muted) !important;
+    --mdc-dialog-container-color:       var(--zia-surface) !important;
+    --mdc-dialog-supporting-text-color: var(--zia-text-muted) !important;
 }
 
-/* Force dark mode for checkbox labels and other dialog elements */
-body.dark-theme .mat-mdc-dialog-container .mdc-label {
-    color: var(--prestige-text) !important;
+.mat-mdc-dialog-container .mdc-label {
+    color: var(--zia-text) !important;
 }
 
-/* Mat Menu Theme Support */
+/* ── Menu ── */
 .mat-mdc-menu-panel,
 .prestige-menu {
-    background-color: var(--prestige-card-bg) !important;
-    border: 1px solid var(--prestige-border) !important;
+    background-color: var(--zia-surface) !important;
+    border: 1px solid var(--zia-border) !important;
 }
 
 .mat-mdc-menu-item {
-    color: var(--prestige-text) !important;
+    color: var(--zia-text) !important;
 }
 
 .mat-mdc-menu-item .mat-icon {
-    color: var(--prestige-text-muted) !important;
+    color: var(--zia-text-muted) !important;
 }
 
 .mat-mdc-menu-item:hover {
-    background-color: var(--row-hover-bg) !important;
+    background-color: var(--zia-row-hover-bg) !important;
 }
 
-body.dark-theme .mat-mdc-menu-panel,
-body.dark-theme .prestige-menu {
-    background-color: var(--prestige-card-bg) !important;
-}
-
-/* Mat Select Panel Theme Support */
+/* ── Select ── */
 .mat-mdc-select-panel {
-    background-color: var(--prestige-card-bg) !important;
-    border: 1px solid var(--prestige-border) !important;
+    background-color: var(--zia-surface) !important;
+    border: 1px solid var(--zia-border) !important;
 }
 
 .mat-mdc-option {
-    color: var(--prestige-text) !important;
+    color: var(--zia-text) !important;
 }
 
 .mat-mdc-option:hover:not(.mdc-list-item--disabled),
 .mat-mdc-option.mdc-list-item--selected:not(.mdc-list-item--disabled) {
-    background-color: var(--row-hover-bg) !important;
+    background-color: var(--zia-row-hover-bg) !important;
 }
 
 .mat-mdc-option .mdc-list-item__primary-text {
     color: inherit !important;
 }
 
-body.dark-theme .mat-mdc-select-panel {
-    background-color: var(--prestige-card-bg) !important;
-}
-
-/* Tooltips must ALWAYS be high contrast (White on Night-Blue) */
+/* ── Tooltips — always high contrast ── */
 .mat-mdc-tooltip .mdc-tooltip__body,
 .mdc-tooltip__body {
-    background-color: #263238 !important;
-    color: #ffffff !important;
-    font-family: 'Outfit', sans-serif !important;
-    font-size: 12px !important;
-    font-weight: 500 !important;
+    background-color: #012e40 !important;
+    color:            #ffffff !important;
+    font-family:      'Inter', sans-serif !important;
+    font-size:        12px !important;
+    font-weight:      500 !important;
 }
 
-/* Glassmorphism Utilities */
+/* ── Glassmorphism ── */
 .glass-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(10px);
+    background:           var(--glass-bg);
+    backdrop-filter:      blur(10px);
     -webkit-backdrop-filter: blur(10px);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--glass-shadow);
-    border-radius: 16px;
+    border:               1px solid var(--glass-border);
+    box-shadow:           var(--glass-shadow);
+    border-radius:        16px;
 }
 
-/* Elegant Inputs Override - Sophisticated scaling */
+/* ── Form Fields ── */
 .mat-mdc-form-field {
-    --mdc-filled-tonal-container-color: transparent !important;
-    --mdc-outlined-idle-outline-color: var(--prestige-border) !important;
-    --mdc-outlined-hover-outline-color: var(--prestige-primary) !important;
-    --mdc-outlined-active-outline-color: var(--prestige-primary) !important;
+    --mdc-filled-tonal-container-color:    transparent !important;
+    --mdc-outlined-idle-outline-color:     var(--zia-border-strong) !important;
+    --mdc-outlined-hover-outline-color:    var(--zia-primary) !important;
+    --mdc-outlined-active-outline-color:   var(--zia-primary) !important;
     font-size: 13px !important;
 }
 
-/* Global Input Refinements */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
     -webkit-appearance: none;
@@ -331,24 +277,21 @@ input[type=number] {
 }
 
 .mat-mdc-text-field-wrapper {
-    background-color: var(--input-bg) !important;
-    border-radius: 10px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-    padding-right: 12px !important;
-    /* Safety padding for suffixes */
+    background-color: var(--zia-input-bg) !important;
+    border-radius:    8px !important;
+    transition:       all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding-right:    12px !important;
 }
 
-/* Precise centering for the compact look */
 .mat-mdc-form-field-infix {
     min-height: 44px !important;
-    display: flex !important;
+    display:    flex !important;
     align-items: center !important;
 }
 
-/* Fix for label position in outline fields */
 .mat-mdc-form-field-appearance-outline .mdc-notched-outline--upgraded .mdc-floating-label--float-above {
     transform: translateY(-28px) scale(0.75) !important;
-    color: var(--prestige-primary) !important;
+    color:     var(--zia-primary) !important;
 }
 
 .mat-mdc-form-field-label-wrapper {
@@ -356,76 +299,81 @@ input[type=number] {
 }
 
 .mat-mdc-floating-label {
-    color: var(--prestige-text-muted) !important;
+    color: var(--zia-text-muted) !important;
 }
 
 .mat-mdc-form-field-suffix {
     margin-right: 12px !important;
-    color: var(--prestige-text-muted) !important;
-    font-size: 13px !important;
-    font-weight: 500;
+    color:        var(--zia-text-muted) !important;
+    font-size:    13px !important;
+    font-weight:  500;
 }
 
-/* Zia Form Layouts */
 .zia-form-compact {
-    display: flex;
+    display:        flex;
     flex-direction: column;
-    gap: 16px;
-    padding: 10px 0;
+    gap:            16px;
+    padding:        10px 0;
 }
 
 .zia-form-grid {
-    display: grid;
+    display:               grid;
     grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    padding: 10px 0;
+    gap:                   16px;
+    padding:               10px 0;
+}
+
+.zia-form-grid-3 {
+    display:               grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap:                   12px;
+    padding:               8px 0;
 }
 
 .mat-mdc-form-field-subscript-wrapper {
     display: none;
 }
 
-/* Ensure the selector text is also centered */
 .mat-mdc-select-value {
-    display: flex !important;
+    display:     flex !important;
     align-items: center !important;
-    font-size: 14px;
-    color: var(--prestige-text) !important;
+    font-size:   14px;
+    color:       var(--zia-text) !important;
 }
 
 .mat-mdc-select-arrow svg,
 .mat-select-arrow svg,
 .mat-expansion-indicator::after {
-    fill: var(--prestige-text) !important;
-    border-color: var(--prestige-text) !important;
+    fill:         var(--zia-text) !important;
+    border-color: var(--zia-text) !important;
     opacity: 1 !important;
 }
 
 .mat-mdc-form-field.mat-focused .mat-mdc-text-field-wrapper {
-    box-shadow: 0 0 0 3px rgba(26, 35, 126, 0.04) !important;
+    box-shadow: 0 0 0 3px rgba(2, 103, 115, 0.2) !important;
 }
 
 .mdc-notched-outline__leading,
 .mdc-notched-outline__notch,
 .mdc-notched-outline__trailing {
     border-width: 1px !important;
-    border-color: var(--prestige-border) !important;
+    border-color: var(--zia-border-strong) !important;
 }
 
-/* Refined Premium Table */
+/* ── Tables ── */
 .prestige-table-container {
-    background: var(--prestige-card-bg);
-    border: 1px solid var(--prestige-border);
-    box-shadow: var(--glass-shadow);
+    background:    var(--zia-surface);
+    border:        1px solid var(--zia-border);
+    box-shadow:    var(--glass-shadow);
     border-radius: 16px;
-    overflow: hidden;
+    overflow:      hidden;
 }
 
 mat-card,
 .mat-mdc-card {
-    background-color: var(--prestige-card-bg) !important;
-    color: var(--prestige-text) !important;
-    border: 1px solid var(--prestige-border);
+    background-color: var(--zia-surface) !important;
+    color:            var(--zia-text) !important;
+    border:           1px solid var(--zia-border);
 }
 
 .mat-mdc-table {
@@ -433,46 +381,39 @@ mat-card,
 }
 
 .mat-mdc-header-row {
-    background: var(--table-header-bg) !important;
+    background: var(--zia-table-header-bg) !important;
 }
 
 .mat-mdc-header-cell {
-    background: var(--table-header-bg) !important;
-    color: var(--prestige-text-muted) !important;
-    font-weight: 600 !important;
-    text-transform: uppercase;
-    font-size: 11px !important;
-    letter-spacing: 0.05em;
-    border-bottom: 1px solid var(--prestige-border) !important;
+    background:      var(--zia-table-header-bg) !important;
+    color:           var(--zia-text-muted) !important;
+    font-weight:     600 !important;
+    text-transform:  uppercase;
+    font-size:       11px !important;
+    letter-spacing:  0.05em;
+    border-bottom:   1px solid var(--zia-border) !important;
 }
 
 .mat-mdc-cell {
-    color: var(--prestige-text) !important;
-    font-size: 13px !important;
-    border-bottom: 1px solid var(--prestige-border) !important;
+    color:         var(--zia-text) !important;
+    font-size:     13px !important;
+    border-bottom: 1px solid var(--zia-border) !important;
 }
 
 .mat-mdc-row:hover {
-    background-color: var(--row-hover-bg) !important;
+    background-color: var(--zia-row-hover-bg) !important;
 }
 
-/* New Calculation Engine UI Helpers */
+/* ── Typography utilities ── */
 .subtitle-premium {
-    font-size: 11px;
-    font-weight: 700;
+    font-size:      11px;
+    font-weight:    700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
-    color: var(--prestige-primary);
-    margin: 16px 0 12px 0;
+    color:          var(--zia-primary);
+    margin:         16px 0 12px 0;
     padding-bottom: 4px;
-    border-bottom: 1px solid var(--prestige-border);
-}
-
-.zia-form-grid-3 {
-    display: grid;
-    grid-template-columns: 1fr 1fr 1fr;
-    gap: 12px;
-    padding: 8px 0;
+    border-bottom:  1px solid var(--zia-border);
 }
 
 .full-width {
