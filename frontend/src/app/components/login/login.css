@@ -5,22 +5,8 @@
   min-height: 100vh;
   position: relative;
   overflow: hidden;
-
-  /* Enforce Light Theme / Prestige Classic Constants locally */
-  --prestige-bg: #fdfdfd;
-  --prestige-card-bg: #ffffff;
-  --prestige-primary: #1a237e;
-  --prestige-primary-light: #534bae;
-  --prestige-accent: #00897b;
-  --prestige-text: #263238;
-  --prestige-text-muted: #546e7a;
-  --prestige-border: rgba(0, 0, 0, 0.08);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
-  --input-bg: #ffffff;
-
-  /* Dynamic Background */
-  background-color: #f0f2f5;
-  background: linear-gradient(135deg, #f0f2f5 0%, #e2e8f0 100%);
+  background-color: var(--zia-bg);
+  background: linear-gradient(135deg, var(--zia-bg) 0%, var(--zia-surface) 100%);
 }
 
 /* Particles Implementation - Carbon/Nature Theme (Floating Leaves) */
@@ -42,8 +28,7 @@
   list-style: none;
   width: 20px;
   height: 20px;
-  background: rgba(0, 137, 123, 0.2);
-  /* Prestige Accent (Teal/Green) for nature feel */
+  background: rgba(60, 166, 166, 0.18);
   animation: animate-leaf 25s linear infinite;
   top: -150px;
   /* Start from top to fall down */
@@ -151,19 +136,16 @@
 .login-card {
   position: relative;
   z-index: 1;
-  /* Ensure card is above particles */
   max-width: 400px;
   width: 90%;
   padding: 40px;
   border-radius: 16px;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  background-color: rgba(255, 255, 255, 0.85);
-  /* Slightly transparent glass effect */
+  box-shadow: var(--glass-shadow);
+  background-color: var(--glass-bg);
   backdrop-filter: blur(12px);
   text-align: center;
-  color: var(--prestige-text);
-  /* Will use enforced local var */
-  border: 1px solid rgba(255, 255, 255, 0.4);
+  color: var(--zia-text);
+  border: 1px solid var(--glass-border);
 }
 
 .logo-container {
@@ -211,28 +193,28 @@ mat-form-field:nth-of-type(2) {
   font-weight: 500;
   letter-spacing: 0.02857em;
   text-transform: uppercase;
-  background-color: #65b9d5 !important;
+  background-color: var(--zia-primary) !important;
   color: white !important;
   box-shadow: 0px 3px 1px -2px rgba(0, 0, 0, 0.2), 0px 2px 2px 0px rgba(0, 0, 0, 0.14), 0px 1px 5px 0px rgba(0, 0, 0, 0.12);
 }
 
 .submit-btn:hover {
-  background-color: #297791 !important;
+  background-color: var(--zia-primary-hover) !important;
 }
 
 .register-link {
   margin-top: 16px;
   font-size: 16px;
-  color: #65b9d5;
+  color: var(--zia-tertiary);
   text-align: center;
 }
 
 .register-link a {
-  color: #65b9d5;
+  color: var(--zia-tertiary);
   text-decoration: none;
 }
 
 .register-link a:hover {
-  color: #297791;
+  color: var(--zia-primary);
   text-decoration: none;
 }
