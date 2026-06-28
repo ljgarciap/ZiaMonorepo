@@ -15,18 +15,18 @@ class CalculationFormulaSeeder extends Seeder
         $formulas = [
             [
                 'name' => 'Combustión Estándar (Actividad * Factor)',
-                'expression' => 'activity_data * factor_total_co2e',
-                'description' => 'Cálculo básico multiplicando el dato de actividad por el factor total de CO2e.'
+                'expression' => 'activity_data * factor_total_co2e / 1000',
+                'description' => 'Cálculo básico: actividad × factor_total_co2e / 1000 → resultado en tCO2e.'
             ],
             [
                 'name' => 'Combustión Móvil (Excel Z16)',
-                'expression' => '(activity_data * factor_co2) + (activity_data * factor_ch4 * gwp_ch4) + (activity_data * factor_n2o * gwp_n2o)',
-                'description' => 'Lógica detallada que suma las contribuciones de CO2, CH4 y N2O ajustadas por sus GWP.'
+                'expression' => '((activity_data * factor_co2) + (activity_data * factor_ch4 * gwp_ch4) + (activity_data * factor_n2o * gwp_n2o)) / 1000',
+                'description' => 'Suma CO2+CH4+N2O ajustados por GWP / 1000 → resultado en tCO2e. Replica lógica Excel Z16.'
             ],
             [
                 'name' => 'Fugas de Refrigerante',
                 'expression' => 'activity_data * (factor_total_co2e / 1000)',
-                'description' => 'Cálculo para fugas de gas refrigerante asumiendo que el dato de actividad está en gramos.'
+                'description' => 'Actividad en kg × GWP / 1000 → resultado en tCO2e. Usado para refrigerantes y extintores.'
             ]
         ];
 

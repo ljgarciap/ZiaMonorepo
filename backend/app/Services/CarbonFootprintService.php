@@ -128,6 +128,9 @@ class CarbonFootprintService
         // When the factor has a custom formula, it overrides the standard sum
         if ($factor->formula) {
             $totalCO2e = $this->formulaService->evaluate($factor->formula->expression, $vars);
+        } elseif ($totalCO2e == 0 && ($factor->factor_total_co2e ?? 0) > 0) {
+            // Fallback for factors that only define factor_total_co2e (e.g. refrigerants with GWP)
+            $totalCO2e = ($totalActivityData * $factor->factor_total_co2e) / 1000;
         }
 
         // 4. Uncertainty Calculation (Root Sum Squares of Absolute Uncertainties)
