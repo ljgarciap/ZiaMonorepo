@@ -1,4 +1,4 @@
-/* ZIA Carbon Control — Design System (canonical dark theme) */
+/* ZIA Carbon Control — Design System (dark default, light optional) */
 
 :root {
     /* ── ZIA Brand Palette ── */
@@ -422,4 +422,43 @@ mat-card,
 
 .mat-mdc-dialog-content {
     max-height: 80vh !important;
+}
+
+/* ── Color scheme per theme class ── */
+body.dark-theme  { color-scheme: dark; }
+body.light-theme { color-scheme: light; }
+
+/* ── ZIA Carbon Light — token overrides ── */
+body.light-theme {
+    --zia-bg:              #F0F7F7;
+    --zia-surface:         #FFFFFF;
+    --zia-primary:         #026773;
+    --zia-primary-hover:   #3CA6A6;
+    --zia-tertiary:        #3CA6A6;
+    --zia-muted-fg:        #024959;
+    --zia-text:            #012e40;
+    --zia-text-muted:      rgba(1, 46, 64, 0.55);
+    --zia-border:          rgba(1, 46, 64, 0.10);
+    --zia-border-strong:   rgba(1, 46, 64, 0.22);
+    --zia-input-bg:        #FFFFFF;
+    --zia-table-header-bg: #E8F4F4;
+    --zia-row-hover-bg:    rgba(1, 46, 64, 0.04);
+
+    --zia-status-success: #16A34A;
+    --zia-status-warning: #CA8A04;
+    --zia-status-error:   #DC2626;
+    --zia-status-info:    #026773;
+
+    --status-success-bg:   rgba(22, 163, 74, 0.10);
+    --status-success-text: #16A34A;
+    --status-error-bg:     rgba(220, 38, 38, 0.10);
+    --status-error-text:   #DC2626;
+    --status-info-bg:      rgba(2, 103, 115, 0.10);
+    --status-info-text:    #026773;
+    --status-neutral-bg:   rgba(1, 46, 64, 0.08);
+    --status-neutral-text: rgba(1, 46, 64, 0.60);
+
+    --glass-bg:     rgba(255, 255, 255, 0.80);
+    --glass-border: rgba(1, 46, 64, 0.10);
+    --glass-shadow: 0 8px 32px 0 rgba(1, 46, 64, 0.10);
 }

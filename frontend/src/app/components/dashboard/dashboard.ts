@@ -10,6 +10,7 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../../services/auth';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -32,7 +33,14 @@ import { AuthService } from '../../services/auth';
   styleUrls: ['./dashboard.css']
 })
 export class DashboardComponent {
-  constructor(public authService: AuthService) { }
+  constructor(
+    public authService: AuthService,
+    public themeService: ThemeService
+  ) { }
+
+  toggleTheme() {
+    this.themeService.toggleTheme();
+  }
 
   logout() {
     this.authService.logout();

@@ -78,6 +78,11 @@
 
             <span class="spacer"></span>
 
+            <button mat-icon-button (click)="toggleTheme()"
+                [matTooltip]="themeService.isDarkMode() ? 'Modo Claro' : 'Modo Oscuro'">
+                <mat-icon>{{ themeService.isDarkMode() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+            </button>
+
             <div class="user-pill" *ngIf="authService.currentUser() as user">
                 <span class="user-name">{{user.name}}</span>
                 <div class="user-avatar-small">{{user.name.charAt(0)}}</div>
