@@ -95,7 +95,6 @@ class CarbonFootprintService
         // Factors in Excel row 16 were like 7.618 (X16).
         // AA16 = (Q16 * X16) / 1000. Q16 is Gal. X16 is kg CO2/Gal. Result AA16 is Tonnes CO2.
         
-        // Dynamic Formula Evaluation
         $vars = [
             'activity_data' => $totalActivityData,
             'factor_co2' => $factor->factor_co2,
@@ -103,6 +102,7 @@ class CarbonFootprintService
             'factor_n2o' => $factor->factor_n2o,
             'factor_nf3' => $factor->factor_nf3 ?? 0,
             'factor_sf6' => $factor->factor_sf6 ?? 0,
+            'factor_total_co2e' => $factor->factor_total_co2e ?? 0,
             'gwp_co2' => self::GWP_CO2,
             'gwp_ch4' => self::GWP_CH4,
             'gwp_n2o' => self::GWP_N2O,
@@ -110,28 +110,24 @@ class CarbonFootprintService
             'gwp_sf6' => self::GWP_SF6,
         ];
 
-        if ($factor->formula) {
-            $totalCO2e = $this->formulaService->evaluate($factor->formula->expression, $vars);
-        }
-        
-        // Standard Calculation (Combustion)
+        // Standard calculation (GHG Protocol per-gas breakdown)
         $emissionsCO2 = ($totalActivityData * $factor->factor_co2) / 1000;
         $emissionsCH4 = ($totalActivityData * $factor->factor_ch4) / 1000;
         $emissionsN2O = ($totalActivityData * $factor->factor_n2o) / 1000;
         $emissionsNF3 = ($totalActivityData * ($factor->factor_nf3 ?? 0)) / 1000;
         $emissionsSF6 = ($totalActivityData * ($factor->factor_sf6 ?? 0)) / 1000;
-        
+
         $co2e_CO2 = $emissionsCO2 * self::GWP_CO2;
         $co2e_CH4 = $emissionsCH4 * self::GWP_CH4;
         $co2e_N2O = $emissionsN2O * self::GWP_N2O;
         $co2e_NF3 = $emissionsNF3 * self::GWP_NF3;
         $co2e_SF6 = $emissionsSF6 * self::GWP_SF6;
-        
+
         $totalCO2e = $co2e_CO2 + $co2e_CH4 + $co2e_N2O + $co2e_NF3 + $co2e_SF6;
 
-        // Formula Override (if specific total formula exists)
-        if ($factor->formula && $factor->formula->name === 'Total CO2e') {
-             $totalCO2e = $this->formulaService->evaluate($factor->formula->expression, $vars);
+        // When the factor has a custom formula, it overrides the standard sum
+        if ($factor->formula) {
+            $totalCO2e = $this->formulaService->evaluate($factor->formula->expression, $vars);
         }
 
         // 4. Uncertainty Calculation (Root Sum Squares of Absolute Uncertainties)

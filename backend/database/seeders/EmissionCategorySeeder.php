@@ -39,6 +39,10 @@ class EmissionCategorySeeder extends Seeder
                     'Viajes Aéreos',
                     'Trabajo Remoto',
                 ],
+                'Agua y Residuos' => [
+                    'Consumo de Agua',
+                    'Residuos Sólidos',
+                ],
             ],
         ];
 

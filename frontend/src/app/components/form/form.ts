@@ -11,10 +11,14 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule, MatPaginatorIntl } from '@angular/material/paginator';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { HttpClient } from '@angular/common/http';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { MasterDataService } from '../../services/master-data.service';
 import { ContextService } from '../../services/context.service';
 import { AuthService } from '../../services/auth';
+import { CarbonService } from '../../services/carbon.service';
 
 @Injectable()
 export class CustomPaginatorIntl extends MatPaginatorIntl {
@@ -52,7 +56,8 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
     MatDividerModule,
     MatCardModule,
     MatTableModule,
-    MatPaginatorModule
+    MatPaginatorModule,
+    MatSnackBarModule
   ],
   providers: [
     { provide: MatPaginatorIntl, useClass: CustomPaginatorIntl }
@@ -116,7 +121,11 @@ export class FormComponent implements AfterViewInit {
   private masterDataService = inject(MasterDataService);
   private contextService = inject(ContextService);
   private authService = inject(AuthService);
+  private carbonService = inject(CarbonService);
+  private snack = inject(MatSnackBar);
   private cdr = inject(ChangeDetectorRef);
+
+  submitting = false;
 
   // Context Selection
   companies: any[] = [];
@@ -329,15 +338,47 @@ export class FormComponent implements AfterViewInit {
   }
 
   onSubmit() {
-    const apiData = {
-      uid: 'CURRENT_USER_ID',
-      data: {} as any
-    };
+    if (!this.selectedCompany || !this.selectedPeriod) {
+      this.snack.open('Selecciona una empresa y período antes de guardar.', 'Cerrar', { duration: 4000 });
+      return;
+    }
 
-    Object.keys(this.dataSources).forEach(key => {
-      apiData.data[`scope${key}`] = this.dataSources[parseInt(key)].data;
+    const allItems: any[] = [];
+    Object.values(this.dataSources).forEach(ds => allItems.push(...ds.data));
+
+    if (allItems.length === 0) {
+      this.snack.open('No hay datos para guardar. Agrega al menos una fuente de emisión.', 'Cerrar', { duration: 4000 });
+      return;
+    }
+
+    this.submitting = true;
+    const periodId = this.selectedPeriod.id;
+
+    const requests = allItems.map(item =>
+      this.carbonService.storeEmission(periodId, {
+        emission_factor_id: item.emissionFactorId,
+        quantity: item.quantity,
+        notes: `[Form] ${item.type} — ${item.subtype}`
+      }).pipe(catchError(err => of({ error: true, item: item.type })))
+    );
+
+    forkJoin(requests).subscribe(results => {
+      this.submitting = false;
+      const errors = results.filter((r: any) => r?.error);
+
+      if (errors.length === 0) {
+        this.snack.open(`${allItems.length} emisión(es) guardadas correctamente.`, 'Cerrar', { duration: 4000 });
+        Object.keys(this.dataSources).forEach(k => {
+          this.dataSources[parseInt(k)] = new MatTableDataSource<any>([]);
+        });
+        this.cdr.detectChanges();
+      } else {
+        this.snack.open(
+          `${allItems.length - errors.length} guardadas, ${errors.length} con error. Revisa la consola.`,
+          'Cerrar', { duration: 6000 }
+        );
+        console.error('Errores al guardar:', errors);
+      }
     });
-
-    console.log('Submitting Data:', apiData);
   }
 }

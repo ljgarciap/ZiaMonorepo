@@ -81,6 +81,7 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/emissions/{emission}', [App\Http\Controllers\Api\CarbonEmissionController::class, 'destroy']);
         
         Route::get('/dictionaries/factors', [App\Http\Controllers\Api\MasterDataController::class, 'emissionFactors']);
+        Route::get('/dictionaries/questionnaire', [App\Http\Controllers\Api\MasterDataController::class, 'questionnaireRules']);
 
         // Dashboard Routes
         Route::get('/dashboard/summary', [App\Http\Controllers\Api\DashboardController::class, 'summary']);
@@ -92,6 +93,16 @@ Route::middleware('auth:api')->group(function () {
 
         // AI Sidecar Route
         Route::get('/ai/recommendations', [\App\Http\Controllers\Api\AISidecarController::class, 'getRecommendations']);
+
+        // Company Groups (consorcio / agrupación multi-empresa)
+        Route::get('/groups', [App\Http\Controllers\Api\CompanyGroupController::class, 'index']);
+        Route::get('/groups/{group}/summary', [App\Http\Controllers\Api\CompanyGroupController::class, 'summary']);
+        Route::middleware(['role:superadmin,admin'])->group(function () {
+            Route::post('/groups', [App\Http\Controllers\Api\CompanyGroupController::class, 'store']);
+            Route::post('/groups/{group}/companies', [App\Http\Controllers\Api\CompanyGroupController::class, 'addCompany']);
+            Route::delete('/groups/{group}/companies', [App\Http\Controllers\Api\CompanyGroupController::class, 'removeCompany']);
+            Route::delete('/groups/{group}', [App\Http\Controllers\Api\CompanyGroupController::class, 'destroy']);
+        });
     });
 });
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\EmissionCategory;
+use App\Models\SectorQuestionnaireRule;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
@@ -74,5 +75,43 @@ class MasterDataController extends Controller
                 $this->filterCategoryFactors($child, $companyId);
             });
         }
+    }
+
+    /**
+     * Returns questionnaire questions for a sector, with correct emission_factor_id per question.
+     * GET /api/dictionaries/questionnaire?sector={code}
+     */
+    public function questionnaireRules(Request $request)
+    {
+        $sectorCode = $request->query('sector');
+
+        if (!$sectorCode) {
+            return response()->json(['error' => 'sector query parameter is required'], 422);
+        }
+
+        $rules = SectorQuestionnaireRule::with([
+                'emissionFactor.unit',
+                'emissionFactor.category.scope',
+            ])
+            ->where('sector_code', $sectorCode)
+            ->orderBy('display_order')
+            ->get()
+            ->map(fn($rule) => [
+                'id'                  => $rule->id,
+                'emission_factor_id'  => $rule->emission_factor_id,
+                'questionnaire_label' => $rule->questionnaire_label,
+                'variable_name'       => $rule->variable_name,
+                'input_unit_hint'     => $rule->input_unit_hint,
+                'is_required'         => (bool) $rule->is_required,
+                'display_order'       => $rule->display_order,
+                'help_text'           => $rule->help_text,
+                'factor_name'         => $rule->emissionFactor?->name,
+                'factor_total_co2e'   => $rule->emissionFactor?->factor_total_co2e,
+                'unit_symbol'         => $rule->emissionFactor?->unit?->symbol,
+                'scope_id'            => $rule->emissionFactor?->category?->scope_id,
+                'scope_name'          => $rule->emissionFactor?->category?->scope?->name,
+            ]);
+
+        return response()->json($rules);
     }
 }

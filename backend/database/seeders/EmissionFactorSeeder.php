@@ -53,20 +53,31 @@ class EmissionFactorSeeder extends Seeder
             ]
         );
 
-        // 3. Fugitive Emissions (Refrigerants)
+        // 3. Fugitive Emissions (Refrigerants) — GWP from IPCC AR5
         $fugitiveId = $cat('Emisiones Fugitivas - Refrigerantes');
 
-        EmissionFactor::updateOrCreate(
-            ['name' => 'R-410A', 'emission_category_id' => $fugitiveId],
-            [
-                'measurement_unit_id' => $unit('kg'),
-                'factor_co2' => 0,
-                'factor_ch4' => 0,
-                'factor_n2o' => 0,
-                'factor_total_co2e' => 2088,
-                'source_reference' => 'IPCC AR4/AR5'
-            ]
-        );
+        $refrigerants = [
+            ['name' => 'R-410A (HFC)',      'factor_total_co2e' => 2088, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
+            ['name' => 'R-22 (HCFC-22)',    'factor_total_co2e' => 1810, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
+            ['name' => 'R-134a (HFC-134a)', 'factor_total_co2e' => 1430, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
+            ['name' => 'R-404A (HFC)',       'factor_total_co2e' => 3922, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
+            ['name' => 'R-32 (HFC-32)',      'factor_total_co2e' => 675,  'source' => 'IPCC AR5 WG1 Table 8.A.1'],
+            ['name' => 'R-123 (HCFC-123)',   'factor_total_co2e' => 77,   'source' => 'IPCC AR5 WG1 Table 8.A.1'],
+        ];
+
+        foreach ($refrigerants as $r) {
+            EmissionFactor::updateOrCreate(
+                ['name' => $r['name'], 'emission_category_id' => $fugitiveId],
+                [
+                    'measurement_unit_id' => $unit('kg'),
+                    'factor_co2' => 0,
+                    'factor_ch4' => 0,
+                    'factor_n2o' => 0,
+                    'factor_total_co2e' => $r['factor_total_co2e'],
+                    'source_reference' => $r['source'],
+                ]
+            );
+        }
 
         // 4. Mobile Gaseous
         $mobileGaseousId = $cat('Fuentes Móviles - Gases');
@@ -186,6 +197,46 @@ class EmissionFactorSeeder extends Seeder
                 'measurement_unit_id' => $unit('día'),
                 'factor_total_co2e' => 2.5,
                 'source_reference' => 'EcoAct 2020 - Home working emissions'
+            ]
+        );
+
+        // 13. Scope 3 - Agua y Residuos
+        $waterCatId = $cat('Consumo de Agua');
+        $wasteCatId = $cat('Residuos Sólidos');
+
+        EmissionFactor::updateOrCreate(
+            ['name' => 'Agua Potable Consumida (m3)', 'emission_category_id' => $waterCatId],
+            [
+                'measurement_unit_id' => $unit('m3'),
+                'factor_total_co2e' => 0.00035,
+                'source_reference' => 'EcoAct 2020 - Water supply emissions (kgCO2e/m3 → tCO2e/m3)',
+            ]
+        );
+
+        EmissionFactor::updateOrCreate(
+            ['name' => 'Aguas Residuales Tratadas (m3)', 'emission_category_id' => $waterCatId],
+            [
+                'measurement_unit_id' => $unit('m3'),
+                'factor_total_co2e' => 0.00078,
+                'source_reference' => 'EcoAct 2020 - Wastewater treatment emissions (kgCO2e/m3 → tCO2e/m3)',
+            ]
+        );
+
+        EmissionFactor::updateOrCreate(
+            ['name' => 'Residuos Sólidos en Vertedero (ton)', 'emission_category_id' => $wasteCatId],
+            [
+                'measurement_unit_id' => $unit('Ton'),
+                'factor_total_co2e' => 0.5,
+                'source_reference' => 'IPCC 2006 Vol. 5 - Solid waste disposal (conservative estimate)',
+            ]
+        );
+
+        EmissionFactor::updateOrCreate(
+            ['name' => 'Residuos Reciclables Gestionados (ton)', 'emission_category_id' => $wasteCatId],
+            [
+                'measurement_unit_id' => $unit('Ton'),
+                'factor_total_co2e' => 0.021,
+                'source_reference' => 'DEFRA 2023 - Material recycling (avoided emissions proxy)',
             ]
         );
 

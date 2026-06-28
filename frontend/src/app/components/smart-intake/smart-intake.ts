@@ -1,40 +1,37 @@
-import { Component, inject, OnInit, ChangeDetectorRef, computed } from '@angular/core';
+import { Component, inject, OnInit, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { evaluate } from 'mathjs';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ContextService } from '../../services/context.service';
 import { CarbonService } from '../../services/carbon.service';
-import { AuthService } from '../../services/auth';
+import { MasterDataService } from '../../services/master-data.service';
 
-interface Question {
-  id: string;
-  label: string;
-  type: 'number' | 'select' | 'text';
-  placeholder?: string;
-  variableName: string; // Used in mathjs formula
-  options?: { label: string; value: any; factor?: number }[];
-  value: any;
-}
-
-interface QuestionnaireSection {
-  id: string;
-  title: string;
-  icon: string;
-  tag: string; // sectorial tag for filtering
-  formula: string; // mathjs formula (e.g. "consumption * density * factor")
-  resultUnit: string;
-  questions: Question[];
-  factor: number; // default factor
-  calculatedResult: number;
+interface QuestionnaireRule {
+  id: number;
+  emission_factor_id: number;
+  questionnaire_label: string;
+  variable_name: string;
+  input_unit_hint: string | null;
+  is_required: boolean;
+  display_order: number;
+  help_text: string | null;
+  factor_name: string;
+  factor_total_co2e: number;
+  unit_symbol: string | null;
+  scope_id: number;
+  scope_name: string;
+  // runtime state
+  value: number | null;
+  estimatedCO2e: number;
 }
 
 @Component({
@@ -43,97 +40,108 @@ interface QuestionnaireSection {
   imports: [
     CommonModule,
     FormsModule,
-    ReactiveFormsModule,
     MatFormFieldModule,
     MatInputModule,
-    MatSelectModule,
     MatButtonModule,
     MatIconModule,
     MatCardModule,
     MatTabsModule,
     MatProgressBarModule,
-    MatSnackBarModule
+    MatProgressSpinnerModule,
+    MatSnackBarModule,
+    MatTooltipModule,
   ],
   template: `
     <div class="smart-intake-container">
       <div class="header-section">
         <h1>Smart Intake</h1>
-        <p>Cuestionario Inteligente de Carga de Datos - ECONOVA</p>
+        <p>Cuestionario de Captura de Emisiones por Sector</p>
       </div>
 
-      <!-- Ally Profiles Tags Info -->
+      <!-- Company context card -->
       <div class="profile-card glass-card" *ngIf="selectedCompany()">
         <mat-icon>business</mat-icon>
         <div class="company-details">
-          <h2>{{selectedCompany().name}}</h2>
+          <h2>{{ selectedCompany().name }}</h2>
           <div class="tag-row">
-            <span class="profile-badge">Aliado ECONOVA</span>
-            <span class="sector-tag" *ngFor="let tag of activeTags()">#{{tag}}</span>
-            <span class="sector-tag empty-tag" *ngIf="activeTags().length === 0">Sin etiquetas de sector (Acceso Total)</span>
+            <span class="profile-badge">{{ selectedCompany().sector?.name || 'Sin sector' }}</span>
+            <span class="sector-tag" *ngIf="selectedCompany().subsector_code">#{{ selectedCompany().subsector_code }}</span>
+            <span class="period-tag" *ngIf="selectedPeriod()">Período {{ selectedPeriod().year }}</span>
           </div>
         </div>
       </div>
 
-      <!-- No Context Selected -->
+      <!-- No context -->
       <div *ngIf="!selectedCompany() || !selectedPeriod()" class="empty-state-card glass-card">
         <mat-icon>warning</mat-icon>
-        <p>Por favor seleccione una Empresa y Período en el panel superior para cargar el Smart Intake.</p>
+        <p>Selecciona una empresa y período en el panel superior para cargar el cuestionario.</p>
       </div>
 
-      <!-- Main Questionnaire Forms -->
-      <div class="questionnaire-body" *ngIf="selectedCompany() && selectedPeriod()">
-        <mat-tab-group class="custom-tabs" animationDuration="300ms">
-          <mat-tab *ngFor="let section of filteredSections()">
+      <!-- No sector configured -->
+      <div *ngIf="selectedCompany() && selectedPeriod() && !sectorCode() && !loading()" class="empty-state-card glass-card">
+        <mat-icon>category</mat-icon>
+        <p>La empresa no tiene sector configurado. Un administrador debe asignar el sector desde el panel de Empresas.</p>
+      </div>
+
+      <!-- Loading -->
+      <div *ngIf="loading()" class="loading-state">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Cargando cuestionario para {{ sectorCode() }}…</p>
+      </div>
+
+      <!-- Questionnaire by scope tabs -->
+      <div class="questionnaire-body" *ngIf="!loading() && rules().length > 0 && selectedCompany() && selectedPeriod()">
+
+        <div class="scope-progress">
+          <span>{{ completedCount() }} / {{ rules().length }} fuentes capturadas</span>
+          <mat-progress-bar mode="determinate" [value]="progressPct()"></mat-progress-bar>
+        </div>
+
+        <mat-tab-group class="custom-tabs" animationDuration="200ms">
+          <mat-tab *ngFor="let scopeGroup of scopeGroups()">
             <ng-template matTabLabel>
-              <mat-icon class="tab-icon">{{section.icon}}</mat-icon>
-              <span>{{section.title}}</span>
+              <mat-icon class="tab-icon">{{ scopeIcon(scopeGroup.scope_id) }}</mat-icon>
+              <span>{{ scopeGroup.scope_name }}</span>
             </ng-template>
 
-            <div class="section-card glass-card">
-              <h3>{{section.title}}</h3>
-              <p class="section-desc">Complete las variables físicas requeridas. El motor científico evaluará la huella en tiempo real.</p>
-              
-              <div class="questions-grid">
-                <div *ngFor="let q of section.questions" class="question-item">
-                  <label class="q-label">{{q.label}}</label>
+            <div class="scope-card glass-card">
+              <div *ngFor="let rule of scopeGroup.rules" class="rule-row">
+                <div class="rule-header">
+                  <span class="rule-label">
+                    {{ rule.questionnaire_label }}
+                    <span class="required-badge" *ngIf="rule.is_required">*</span>
+                  </span>
+                  <mat-icon class="help-icon" *ngIf="rule.help_text"
+                    [matTooltip]="rule.help_text" matTooltipPosition="above">
+                    help_outline
+                  </mat-icon>
+                </div>
 
-                  <mat-form-field appearance="outline" class="full-width-field" *ngIf="q.type === 'number'">
-                    <input matInput type="number" [(ngModel)]="q.value" (ngModelChange)="evaluateSection(section)" [placeholder]="q.placeholder || ''">
+                <div class="rule-input-row">
+                  <mat-form-field appearance="outline" class="value-field">
+                    <input matInput type="number" min="0"
+                      [(ngModel)]="rule.value"
+                      (ngModelChange)="recalculate(rule)"
+                      [placeholder]="'Ingresa en ' + (rule.input_unit_hint || rule.unit_symbol || 'unidades')">
+                    <span matSuffix *ngIf="rule.input_unit_hint">{{ rule.input_unit_hint }}</span>
                   </mat-form-field>
 
-                  <mat-form-field appearance="outline" class="full-width-field" *ngIf="q.type === 'select'">
-                    <mat-select [(ngModel)]="q.value" (ngModelChange)="evaluateSection(section)">
-                      <mat-option *ngFor="let opt of q.options" [value]="opt.value">
-                        {{opt.label}}
-                      </mat-option>
-                    </mat-select>
-                  </mat-form-field>
+                  <div class="rule-result" *ngIf="rule.value !== null && rule.value! > 0">
+                    <span class="co2e-val">{{ rule.estimatedCO2e | number:'1.4-4' }}</span>
+                    <span class="co2e-unit">tCO₂e</span>
+                  </div>
 
-                  <mat-form-field appearance="outline" class="full-width-field" *ngIf="q.type === 'text'">
-                    <input matInput [(ngModel)]="q.value" [placeholder]="q.placeholder || ''">
-                  </mat-form-field>
+                  <button mat-flat-button color="primary"
+                    [disabled]="!rule.value || rule.value! <= 0 || submitting()"
+                    (click)="saveRule(rule)">
+                    <mat-icon>save</mat-icon>
+                    Registrar
+                  </button>
                 </div>
-              </div>
 
-              <!-- Realtime Mathjs Dynamic Math Preview -->
-              <div class="calculator-preview">
-                <div class="math-expr">
-                  <span class="label">Fórmula de Cálculo (mathjs):</span>
-                  <code>{{section.formula}}</code>
-                </div>
-                <div class="calculator-result">
-                  <span class="res-lbl">Resultado Estimado:</span>
-                  <span class="res-val">{{section.calculatedResult | number:'1.2-4'}}</span>
-                  <span class="res-unit">{{section.resultUnit}}</span>
-                </div>
-              </div>
-
-              <div class="action-bar">
-                <button mat-flat-button color="primary" [disabled]="section.calculatedResult <= 0 || submitting" (click)="saveSectionEmission(section)">
-                  <mat-icon *ngIf="!submitting">save</mat-icon>
-                  <span *ngIf="!submitting">REGISTRAR EN EMISIONES</span>
-                  <span *ngIf="submitting">REGISTRANDO...</span>
-                </button>
+                <p class="factor-hint">
+                  Factor: {{ rule.factor_name }} — {{ rule.factor_total_co2e }} tCO₂e / {{ rule.unit_symbol || rule.input_unit_hint }}
+                </p>
               </div>
             </div>
           </mat-tab>
@@ -142,266 +150,161 @@ interface QuestionnaireSection {
     </div>
   `,
   styles: [`
-    .smart-intake-container { padding: 24px; max-width: 1200px; margin: 0 auto; font-family: 'Outfit', sans-serif; }
+    .smart-intake-container { padding: 24px; max-width: 900px; margin: 0 auto; }
     .header-section { margin-bottom: 24px; }
-    .header-section h1 { font-size: 28px; font-weight: 700; color: var(--prestige-primary); margin: 0; }
-    .header-section p { color: var(--prestige-text-muted); margin-top: 6px; }
+    .header-section h1 { font-size: 26px; font-weight: 700; color: var(--zia-primary); margin: 0; }
+    .header-section p { color: var(--zia-text-muted); margin-top: 6px; }
 
-    .glass-card { 
-      background: rgba(255, 255, 255, 0.95); 
-      border: 1px solid var(--prestige-border); 
-      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.05); 
-      border-radius: 16px; 
+    .glass-card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 16px;
       padding: 24px;
-      margin-bottom: 24px;
-    }
-    :host-context(.dark-theme) .glass-card {
-      background: var(--prestige-card-bg);
-      border-color: var(--prestige-border);
+      margin-bottom: 20px;
     }
 
     .profile-card { display: flex; align-items: center; gap: 16px; }
-    .profile-card mat-icon { font-size: 40px; width: 40px; height: 40px; color: var(--prestige-primary); }
-    .company-details h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--prestige-text); }
-    .tag-row { display: flex; gap: 8px; margin-top: 6px; align-items: center; }
-    .profile-badge { background: #1a237e; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-    .sector-tag { background: #00897b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; }
-    .empty-tag { background: #666 !important; }
+    .profile-card mat-icon { font-size: 40px; width: 40px; height: 40px; color: var(--zia-primary); }
+    .company-details h2 { margin: 0; font-size: 18px; font-weight: 600; color: var(--zia-text); }
+    .tag-row { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+    .profile-badge { background: var(--zia-primary); color: white; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .sector-tag { background: var(--zia-tertiary); color: white; padding: 2px 10px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .period-tag { background: transparent; color: var(--zia-text-muted); border: 1px solid var(--glass-border); padding: 2px 10px; border-radius: 4px; font-size: 11px; }
 
-    .custom-tabs { margin-top: 16px; }
-    .tab-icon { margin-right: 8px; }
-    .section-card { border-top-left-radius: 0; border-top-right-radius: 0; padding: 32px; }
-    .section-card h3 { font-size: 20px; font-weight: 600; margin: 0; color: var(--prestige-text); }
-    .section-desc { font-size: 13px; color: var(--prestige-text-muted); margin-bottom: 24px; }
+    .empty-state-card { display: flex; flex-direction: column; align-items: center; gap: 12px; text-align: center; color: var(--zia-text-muted); padding: 48px; }
+    .empty-state-card mat-icon { font-size: 48px; width: 48px; height: 48px; color: var(--zia-tertiary); }
 
-    .questions-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-bottom: 32px; }
-    .question-item { display: flex; flex-direction: column; gap: 6px; }
-    .q-label { font-size: 13px; font-weight: 500; color: var(--prestige-text); }
-    .full-width-field { width: 100%; }
+    .loading-state { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 48px; color: var(--zia-text-muted); }
 
-    .calculator-preview { 
-      background: rgba(26, 35, 126, 0.03); 
-      border-radius: 12px; 
-      padding: 20px; 
-      display: flex; 
-      justify-content: space-between; 
-      align-items: center; 
-      border: 1px dashed var(--prestige-border);
-      margin-bottom: 32px;
-    }
-    :host-context(.dark-theme) .calculator-preview {
-      background: rgba(255, 255, 255, 0.02);
-    }
-    .math-expr { display: flex; flex-direction: column; gap: 4px; }
-    .math-expr .label { font-size: 11px; text-transform: uppercase; color: var(--prestige-text-muted); font-weight: 700; }
-    .math-expr code { font-family: 'Courier New', Courier, monospace; background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; color: #d81b60; font-size: 13px; }
-    :host-context(.dark-theme) .math-expr code { background: rgba(255,255,255,0.08); color: #f48fb1; }
-    
-    .calculator-result { text-align: right; display: flex; flex-direction: column; }
-    .res-lbl { font-size: 11px; text-transform: uppercase; color: var(--prestige-text-muted); font-weight: 700; }
-    .res-val { font-size: 28px; font-weight: 800; color: var(--prestige-primary); line-height: 1.2; }
-    :host-context(.dark-theme) .res-val { color: var(--prestige-primary-light); }
-    .res-unit { font-size: 11px; font-weight: 600; color: var(--prestige-text-muted); }
+    .scope-progress { margin-bottom: 16px; }
+    .scope-progress span { font-size: 12px; color: var(--zia-text-muted); display: block; margin-bottom: 6px; }
 
-    .action-bar { display: flex; justify-content: flex-end; }
-    .empty-state-card { display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; color: var(--prestige-text-muted); padding: 48px; }
-    .empty-state-card mat-icon { font-size: 48px; width: 48px; height: 48px; color: #ff9800; }
+    .scope-card { border-top-left-radius: 0; border-top-right-radius: 0; padding: 28px; display: flex; flex-direction: column; gap: 28px; }
 
-    @media(max-width: 768px) {
-      .questions-grid { grid-template-columns: 1fr; }
-      .calculator-preview { flex-direction: column; gap: 16px; align-items: flex-start; }
-      .calculator-result { text-align: left; }
+    .rule-row { display: flex; flex-direction: column; gap: 6px; }
+    .rule-header { display: flex; align-items: center; gap: 8px; }
+    .rule-label { font-size: 13px; font-weight: 500; color: var(--zia-text); }
+    .required-badge { color: #e53935; font-weight: 700; }
+    .help-icon { font-size: 16px; width: 16px; height: 16px; color: var(--zia-text-muted); cursor: help; }
+
+    .rule-input-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .value-field { flex: 1; min-width: 180px; }
+
+    .rule-result { display: flex; flex-direction: column; align-items: flex-end; min-width: 90px; }
+    .co2e-val { font-size: 20px; font-weight: 700; color: var(--zia-tertiary); line-height: 1.2; }
+    .co2e-unit { font-size: 10px; color: var(--zia-text-muted); font-weight: 600; }
+
+    .factor-hint { font-size: 11px; color: var(--zia-text-muted); margin: 0; padding-left: 2px; }
+
+    .tab-icon { margin-right: 6px; font-size: 18px; width: 18px; height: 18px; }
+
+    @media(max-width: 600px) {
+      .rule-input-row { flex-direction: column; align-items: stretch; }
+      .rule-result { align-items: flex-start; }
     }
   `]
 })
 export class SmartIntakeComponent implements OnInit {
   private context = inject(ContextService);
   private carbonService = inject(CarbonService);
+  private masterData = inject(MasterDataService);
   private snack = inject(MatSnackBar);
 
-  // Directly link signals from ContextService
   selectedCompany = this.context.selectedCompany;
   selectedPeriod = this.context.selectedPeriod;
 
-  submitting = false;
+  rules = signal<QuestionnaireRule[]>([]);
+  loading = signal(false);
+  submitting = signal(false);
 
-  // Compute tags based on company name reactively!
-  activeTags = computed(() => {
+  sectorCode = computed(() => {
     const company = this.selectedCompany();
-    if (!company) return [];
-    
-    const name = company.name.toLowerCase();
-    if (name.includes('econova') || name.includes('energy')) {
-      return ['energia', 'agua'];
-    } else if (name.includes('trans') || name.includes('logistica')) {
-      return ['transporte'];
-    }
-    return [];
+    return company?.sector?.code ?? null;
   });
 
-  // Master Questionnaire list
-  questionnaireSections: QuestionnaireSection[] = [
-    {
-      id: 'combustion_gas',
-      title: 'Combustión Estacionaria (Gas Natural)',
-      icon: 'local_fire_department',
-      tag: 'energia',
-      formula: 'consumption * factor',
-      resultUnit: 'tCO2e',
-      factor: 1.956, // kg CO2e / m3
-      calculatedResult: 0,
-      questions: [
-        { id: 'q1', label: 'Consumo de Gas Natural (m³)', type: 'number', placeholder: 'Ej. 500', variableName: 'consumption', value: '' }
-      ]
-    },
-    {
-      id: 'energia_electrica',
-      title: 'Consumo Eléctrico (Red Comercial)',
-      icon: 'bolt',
-      tag: 'energia',
-      formula: 'consumption * grid_factor',
-      resultUnit: 'tCO2e',
-      factor: 0.126, // default factor
-      calculatedResult: 0,
-      questions: [
-        { id: 'q2', label: 'Energía Activa Consumida (kWh)', type: 'number', placeholder: 'Ej. 12500', variableName: 'consumption', value: '' },
-        { 
-          id: 'q3', 
-          label: 'Subestación / Red de Distribución', 
-          type: 'select', 
-          variableName: 'grid_factor', 
-          value: 0.126,
-          options: [
-            { label: 'Sistema Interconectado Nacional (0.126 kg CO2/kWh)', value: 0.126 },
-            { label: 'Red de Distribución Local - Antioquia (0.114 kg CO2/kWh)', value: 0.114 },
-            { label: 'Generación Diésel de Respaldo (0.680 kg CO2/kWh)', value: 0.680 }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'flota_vehicular',
-      title: 'Transporte y Movilidad (Combustión Móvil)',
-      icon: 'directions_car',
-      tag: 'transporte',
-      formula: 'gallons * density * factor',
-      resultUnit: 'tCO2e',
-      factor: 8.78, // default factor
-      calculatedResult: 0,
-      questions: [
-        { id: 'q4', label: 'Galones de Combustible Cargados (gal)', type: 'number', placeholder: 'Ej. 150', variableName: 'gallons', value: '' },
-        { 
-          id: 'q5', 
-          label: 'Tipo de Combustible', 
-          type: 'select', 
-          variableName: 'density', 
-          value: 1.0,
-          options: [
-            { label: 'Gasolina Corriente (Densidad 1.0)', value: 1.0 },
-            { label: 'Diésel / ACPM (Densidad 1.15)', value: 1.15 }
-          ]
-        },
-        {
-          id: 'q6',
-          label: 'Factor de Emisión Combustible (kg/gal)',
-          type: 'select',
-          variableName: 'factor',
-          value: 8.78,
-          options: [
-            { label: 'Gasolina Regular (8.78 kg CO2e/gal)', value: 8.78 },
-            { label: 'Diésel Comercial (10.21 kg CO2e/gal)', value: 10.21 }
-          ]
-        }
-      ]
-    },
-    {
-      id: 'agua_consumo',
-      title: 'Consumo y Tratamiento de Agua',
-      icon: 'water_drop',
-      tag: 'agua',
-      formula: 'm3_consumed * 0.00035 + m3_treated * 0.00078',
-      resultUnit: 'tCO2e',
-      factor: 0.00035,
-      calculatedResult: 0,
-      questions: [
-        { id: 'q7', label: 'Volumen de Agua Consumida (m³)', type: 'number', placeholder: 'Ej. 25', variableName: 'm3_consumed', value: '' },
-        { id: 'q8', label: 'Volumen de Aguas Residuales Tratadas (m³)', type: 'number', placeholder: 'Ej. 22', variableName: 'm3_treated', value: '' }
-      ]
+  scopeGroups = computed(() => {
+    const grouped = new Map<number, { scope_id: number; scope_name: string; rules: QuestionnaireRule[] }>();
+    for (const rule of this.rules()) {
+      if (!grouped.has(rule.scope_id)) {
+        grouped.set(rule.scope_id, { scope_id: rule.scope_id, scope_name: rule.scope_name, rules: [] });
+      }
+      grouped.get(rule.scope_id)!.rules.push(rule);
     }
-  ];
-
-  // Compute filtered sections reactively!
-  filteredSections = computed(() => {
-    const tags = this.activeTags();
-    if (tags.length === 0) {
-      return this.questionnaireSections;
-    }
-    return this.questionnaireSections.filter(s => tags.includes(s.tag));
+    return Array.from(grouped.values()).sort((a, b) => a.scope_id - b.scope_id);
   });
+
+  completedCount = computed(() => this.rules().filter(r => r.value !== null && r.value > 0).length);
+  progressPct = computed(() => {
+    const total = this.rules().length;
+    return total > 0 ? (this.completedCount() / total) * 100 : 0;
+  });
+
+  constructor() {
+    effect(() => {
+      const code = this.sectorCode();
+      if (code) {
+        this.loadQuestionnaire(code);
+      } else {
+        this.rules.set([]);
+      }
+    });
+  }
 
   ngOnInit() {}
 
-  /**
-   * Evaluate dynamic formula using mathjs
-   */
-  evaluateSection(section: QuestionnaireSection) {
-    try {
-      const scopeVariables: { [key: string]: number } = {};
-      
-      // Map question values to variables
-      section.questions.forEach(q => {
-        const val = parseFloat(q.value);
-        scopeVariables[q.variableName] = isNaN(val) ? 0 : val;
-      });
-
-      // Add default section factor if not overridden in questions
-      if (section.factor && scopeVariables['factor'] === undefined) {
-        scopeVariables['factor'] = section.factor;
+  private loadQuestionnaire(sectorCode: string) {
+    this.loading.set(true);
+    this.masterData.getQuestionnaire(sectorCode).subscribe({
+      next: (data) => {
+        this.rules.set(data.map(r => ({ ...r, value: null, estimatedCO2e: 0 })));
+        this.loading.set(false);
+      },
+      error: () => {
+        this.snack.open('Error al cargar el cuestionario del sector.', 'Cerrar', { duration: 4000 });
+        this.loading.set(false);
       }
-
-      // Parse and evaluate with mathjs
-      const result = evaluate(section.formula, scopeVariables);
-      
-      // Total in tonnes (factors are typically in kg, so divide by 1000 unless calculated directly)
-      section.calculatedResult = result > 0 ? (result / 1000.0) : 0;
-    } catch (e) {
-      section.calculatedResult = 0;
-    }
+    });
   }
 
-  saveSectionEmission(section: QuestionnaireSection) {
+  recalculate(rule: QuestionnaireRule) {
+    const v = rule.value ?? 0;
+    // factor_total_co2e is in kg/unit; result in tCO2e = (v * factor) / 1000
+    rule.estimatedCO2e = v > 0 ? (v * rule.factor_total_co2e) / 1000 : 0;
+  }
+
+  saveRule(rule: QuestionnaireRule) {
     const period = this.selectedPeriod();
     if (!period) {
-      this.snack.open('Por favor seleccione un período activo.', 'Cerrar', { duration: 3000 });
+      this.snack.open('Selecciona un período activo antes de guardar.', 'Cerrar', { duration: 3000 });
       return;
     }
 
-    this.submitting = true;
+    this.submitting.set(true);
 
-    // We construct notes with variables
-    const notesStr = section.questions.map(q => `${q.label}: ${q.value}`).join(', ');
-
-    // Let's call the carbon service
     this.carbonService.storeEmission(period.id, {
-      emission_factor_id: 1, // Mock factor id
-      quantity: section.calculatedResult * 1000.0, // Convert back to standard units
-      notes: `[Smart Intake] ${notesStr} | Fórmula: ${section.formula}`
+      emission_factor_id: rule.emission_factor_id,
+      quantity: rule.value,
+      notes: `[Smart Intake] ${rule.questionnaire_label}: ${rule.value} ${rule.input_unit_hint ?? rule.unit_symbol ?? ''}`
     }).subscribe({
-      next: (res: any) => {
-        this.snack.open('Registro de emisión guardado exitosamente.', 'Cerrar', { duration: 3000 });
-        
-        // Reset questions
-        section.questions.forEach(q => {
-          if (q.type === 'number') q.value = '';
-        });
-        section.calculatedResult = 0;
-        
-        this.submitting = false;
+      next: () => {
+        this.snack.open(`Registradas ${rule.estimatedCO2e.toFixed(4)} tCO₂e de "${rule.factor_name}".`, 'Cerrar', { duration: 4000 });
+        rule.value = null;
+        rule.estimatedCO2e = 0;
+        this.submitting.set(false);
       },
-      error: (err: any) => {
-        this.snack.open('Error al guardar emisión.', 'Cerrar', { duration: 3000 });
-        this.submitting = false;
+      error: () => {
+        this.snack.open('Error al guardar la emisión. Verifica que el período esté activo.', 'Cerrar', { duration: 4000 });
+        this.submitting.set(false);
       }
     });
+  }
+
+  scopeIcon(scopeId: number): string {
+    const icons: Record<number, string> = {
+      1: 'local_fire_department',
+      2: 'bolt',
+      3: 'public',
+    };
+    return icons[scopeId] ?? 'eco';
   }
 }

@@ -25,4 +25,8 @@ export class MasterDataService {
             : `${this.apiUrl}/dictionaries/factors`;
         return this.http.get<any[]>(url);
     }
+
+    getQuestionnaire(sectorCode: string): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/dictionaries/questionnaire?sector=${sectorCode}`);
+    }
 }
