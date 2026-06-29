@@ -28,7 +28,7 @@ class AdminMasterDataController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $category = EmissionCategory::create($request->all());
+        $category = EmissionCategory::create($request->only(['name', 'scope_id', 'description']));
         return response()->json($category, 201);
     }
 
@@ -52,13 +52,23 @@ class AdminMasterDataController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $factor = EmissionFactor::create($request->all());
+        $factor = EmissionFactor::create($request->only([
+            'emission_category_id', 'calculation_formula_id', 'measurement_unit_id',
+            'name', 'factor_co2', 'factor_ch4', 'factor_n2o', 'factor_nf3', 'factor_sf6',
+            'factor_total_co2e', 'uncertainty_lower', 'uncertainty_upper',
+            'uncertainty_distribution', 'source_reference',
+        ]));
         return response()->json($factor, 201);
     }
 
     public function updateFactor(Request $request, EmissionFactor $factor)
     {
-        $factor->update($request->all());
+        $factor->update($request->only([
+            'emission_category_id', 'calculation_formula_id', 'measurement_unit_id',
+            'name', 'factor_co2', 'factor_ch4', 'factor_n2o', 'factor_nf3', 'factor_sf6',
+            'factor_total_co2e', 'uncertainty_lower', 'uncertainty_upper',
+            'uncertainty_distribution', 'source_reference',
+        ]));
         return response()->json($factor);
     }
 

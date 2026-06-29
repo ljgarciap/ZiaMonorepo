@@ -23,10 +23,8 @@
             <directory>app/Http/Middleware</directory>
             <directory>app/Providers</directory>
             <directory>app/Traits</directory>
-            <!-- Controllers dependent on external services (PDF/Excel, AI, IoT) -->
-            <file>app/Http/Controllers/Api/AISidecarController.php</file>
+            <!-- Controllers dependent on external services (IoT) -->
             <file>app/Http/Controllers/Api/CompanyController.php</file>
-            <file>app/Http/Controllers/Api/ReportController.php</file>
             <!-- External service implementations — no CI API keys available -->
             <file>app/Services/AI/AIServiceInterface.php</file>
             <file>app/Services/AI/GeminiAIService.php</file>
