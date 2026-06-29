@@ -1,59 +1,88 @@
-# ZiaFrontend
+# ZIA Frontend — Angular 21
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.1.4.
+SPA (Single Page Application) de ZIA Carbon Control. Interfaz para captura de emisiones, dashboard de huella de carbono, agente IA conversacional y gestión administrativa.
 
-## Development server
+## Stack
 
-To start a local development server, run:
+- **Angular 21** (standalone components, signals)
+- **Angular Material** — design system
+- **Vitest** — testing (via `@angular/build:unit-test`)
+- **Nginx** — servidor en producción (dentro de Docker)
 
-```bash
-ng serve
-```
+## Pantallas principales
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+| Ruta | Roles | Descripción |
+|---|---|---|
+| `/login` | — | Autenticación |
+| `/dashboard` | todos | Resumen de huella de carbono por alcance |
+| `/form` | user, admin | Formulario de captura de emisiones |
+| `/smart-intake` | user, admin | Captura asistida por formularios dinámicos |
+| `/live` | user, admin | Chat en tiempo real con el agente ZIA (SSE) |
+| `/history` | todos | Historial de emisiones registradas |
+| `/admin/companies` | admin, superadmin | Gestión de empresas y períodos |
+| `/admin/users` | admin, superadmin | Gestión de usuarios |
+| `/admin/sectors` | superadmin | Gestión de sectores económicos |
+| `/admin/metadata` | superadmin | Categorías y factores de emisión |
+| `/admin/units` | superadmin | Unidades de medida |
+| `/admin/scopes` | superadmin | Alcances GHG |
+| `/admin/audit` | superadmin | Logs de auditoría |
 
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
-
-```bash
-ng build
-```
-
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
-
-## Running unit tests
-
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
+## Ejecutar en desarrollo (con hot-reload)
 
 ```bash
-ng test
+cd frontend
+npm install
+npm start          # http://localhost:4200
 ```
 
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
+O con Docker (hot-reload incluido):
 
 ```bash
-ng e2e
+# Desde la raíz del monorepo
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up frontend
 ```
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Ejecutar en producción
 
-## Additional Resources
+```bash
+# Desde la raíz del monorepo
+docker compose up -d --build frontend
+# Disponible en http://localhost:8080
+```
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## Tests
+
+```bash
+cd frontend
+npx ng test --watch=false
+```
+
+- **89 tests** — cobertura ≥ 60% (statements, branches, functions, lines)
+- Configuración de thresholds en `angular.json`
+
+## Estructura relevante
+
+```
+src/app/
+├── components/
+│   ├── login/ register/     Autenticación
+│   ├── dashboard/           Layout principal + resumen GEI
+│   ├── form/                Captura manual de emisiones
+│   ├── smart-intake/        Captura asistida con cuestionario dinámico
+│   ├── zia-chat/            Chat flotante con agente ZIA
+│   ├── zia-live/            Vista completa del agente ZIA (SSE)
+│   └── admin/               Gestión administrativa (companies, users, metadata...)
+├── services/
+│   ├── auth.ts              Login, logout, token management
+│   ├── carbon.service.ts    CRUD de emisiones y períodos
+│   ├── dashboard.service.ts Datos del dashboard
+│   ├── master-data.service.ts Factores, categorías, unidades
+│   └── context.service.ts   Empresa activa (X-Company-ID header)
+└── guards/
+    ├── auth-guard.ts        Requiere sesión activa
+    └── role-guard.ts        Requiere rol específico
+```
+
+## Documentación completa
+
+Ver [`../docs/architecture/overview.md`](../docs/architecture/overview.md).

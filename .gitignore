@@ -3,5 +3,6 @@ Bases/
 insumos/
 .env
 
-# Internal agent workflow documents (specs, reviews, QA reports)
-docs/
+# Internal agent workflow documents — no van al repo
+docs/specs/
+docs/reviews/
