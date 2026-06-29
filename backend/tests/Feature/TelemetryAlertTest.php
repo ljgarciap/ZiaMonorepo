@@ -137,4 +137,78 @@ class TelemetryAlertTest extends TestCase
         
         $this->assertDatabaseCount('telemetry_alerts', 1);
     }
+
+    /**
+     * Water flow of 0.2 m3 on a Sunday night is below the 0.3 threshold — no alert.
+     */
+    public function test_water_device_normal_off_hours_triggers_no_alert()
+    {
+        // Sunday 2:00 AM
+        $ts = Carbon::create(2026, 6, 7, 2, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $this->waterDevice->id,
+            'metric_name' => 'water_m3',
+            'value'       => 0.2, // Below 0.3 m3 threshold
+            'timestamp'   => $ts,
+        ]);
+
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNull($alert);
+        $this->assertDatabaseCount('telemetry_alerts', 0);
+    }
+
+    /**
+     * Energy reading > 40 kWh off-hours triggers a critical severity alert.
+     */
+    public function test_energy_device_critical_extreme_triggers_critical_alert()
+    {
+        // Saturday 1:00 AM
+        $ts = Carbon::create(2026, 6, 6, 1, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $this->energyDevice->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 95.0, // Extreme — well above 40 kWh critical threshold
+            'timestamp'   => $ts,
+        ]);
+
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNotNull($alert);
+        $this->assertEquals('critical', $alert->severity);
+        $this->assertEquals(95.0, $alert->actual_value);
+        $this->assertDatabaseCount('telemetry_alerts', 1);
+    }
+
+    /**
+     * A device with an unrecognized type must be handled gracefully — no exception, no alert.
+     */
+    public function test_unknown_device_type_handled_gracefully()
+    {
+        $solarDevice = IotDevice::create([
+            'thingsboard_id' => 'solar_panel_01',
+            'name'           => 'Solar Panel Sensor',
+            'type'           => 'solar', // Not 'energy' or 'water'
+            'location'       => 'Roof',
+            'unit'           => 'kW',
+        ]);
+
+        // Saturday 3:00 AM
+        $ts = Carbon::create(2026, 6, 6, 3, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $solarDevice->id,
+            'metric_name' => 'solar_kw',
+            'value'       => 500.0, // Very high — but unknown type should not trigger
+            'timestamp'   => $ts,
+        ]);
+
+        // Must not throw any exception
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNull($alert);
+        $this->assertDatabaseCount('telemetry_alerts', 0);
+    }
 }

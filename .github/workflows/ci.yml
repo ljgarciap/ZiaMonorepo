@@ -20,8 +20,15 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_pgsql, zip, bcmath, opcache, gd
-          coverage: none
+          extensions: pdo_sqlite, pdo_pgsql, zip, bcmath, opcache, gd
+          coverage: pcov
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: backend/vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
 
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --optimize-autoloader
@@ -33,14 +40,26 @@ jobs:
           php artisan passport:keys --force
 
       - name: Run tests
-        run: php artisan test
+        run: php artisan test --coverage --min=60
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage/
+          if-no-files-found: ignore
 
   zia-agent:
-    name: ZIA Agent (Python lint + import)
+    name: ZIA Agent (pytest + coverage + lint)
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: zia-agent
+    env:
+      ANTHROPIC_API_KEY: ""
+      MISTRAL_API_KEY: ""
+      INTERNAL_API_SECRET: "test-secret-ci"
+      ZIA_BACKEND_URL: "http://localhost:8000"
     steps:
       - uses: actions/checkout@v4
 
@@ -49,13 +68,29 @@ jobs:
         with:
           python-version: '3.12'
           cache: 'pip'
-          cache-dependency-path: zia-agent/requirements.txt
+          cache-dependency-path: |
+            zia-agent/requirements.txt
+            zia-agent/requirements-dev.txt
 
-      - name: Install dependencies
+      - name: Install production dependencies
         run: pip install -r requirements.txt
 
-      - name: Syntax check
-        run: python -m py_compile main.py
+      - name: Install dev dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint
+        run: ruff check main.py
+        continue-on-error: true
+
+      - name: Run tests with coverage
+        run: pytest --cov=. --cov-report=term-missing --cov-fail-under=60
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: zia-agent-coverage
+          path: zia-agent/.coverage
+          if-no-files-found: ignore
 
   frontend:
     name: Frontend (build + tests)
@@ -80,4 +115,11 @@ jobs:
         run: npm run build
 
       - name: Run tests
-        run: npm test -- --watch=false
+        run: npm test -- --no-watch --coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          if-no-files-found: ignore

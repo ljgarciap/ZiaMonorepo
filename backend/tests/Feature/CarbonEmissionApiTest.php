@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
+use App\Models\CarbonEmission;
 use App\Models\User;
 use App\Models\Company;
 use App\Models\Period;
@@ -64,5 +65,166 @@ class CarbonEmissionApiTest extends TestCase
             'calculated_co2e' => 1.0,
             'uncertainty_result' => 5.0,
         ]);
+    }
+
+    public function test_store_with_valid_data_returns_201_and_response_shape()
+    {
+        $payload = [
+            'emission_factor_id' => $this->factor->id,
+            'monthly_inputs'     => [50, 100, 150],
+        ];
+
+        $response = $this->postJson("/api/periods/{$this->period->id}/emissions", $payload);
+
+        $response->assertStatus(201)
+                 ->assertJsonStructure(['id', 'calculated_co2e', 'uncertainty_result', 'period_id']);
+    }
+
+    public function test_store_with_missing_fields_returns_422()
+    {
+        // Neither quantity nor monthly_inputs provided
+        $payload = [
+            'emission_factor_id' => $this->factor->id,
+        ];
+
+        $response = $this->postJson("/api/periods/{$this->period->id}/emissions", $payload);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_unauthenticated_request_returns_401()
+    {
+        // Reset auth guards so the request appears unauthenticated
+        $this->app['auth']->forgetGuards();
+
+        $response = $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ]);
+
+        $response->assertStatus(401);
+    }
+
+    public function test_index_returns_emissions_for_period()
+    {
+        // Create one emission for the period
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ]);
+
+        $response = $this->getJson("/api/periods/{$this->period->id}/emissions");
+
+        $response->assertStatus(200);
+        $this->assertCount(1, $response->json());
+    }
+
+    public function test_delete_emission_returns_204()
+    {
+        // Create an emission first
+        $createResponse = $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ]);
+        $emissionId = $createResponse->json('id');
+
+        $response = $this->deleteJson("/api/emissions/{$emissionId}");
+
+        $response->assertStatus(204);
+        $this->assertDatabaseMissing('carbon_emissions', ['id' => $emissionId, 'deleted_at' => null]);
+    }
+
+    public function test_delete_without_auth_returns_401()
+    {
+        // Create an emission while authenticated
+        $createResponse = $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ]);
+        $emissionId = $createResponse->json('id');
+
+        // Reset auth guards to appear unauthenticated
+        $this->app['auth']->forgetGuards();
+
+        $response = $this->deleteJson("/api/emissions/{$emissionId}");
+
+        $response->assertStatus(401);
+    }
+
+    public function test_history_with_search_filter()
+    {
+        // Create emission with a specifically named factor
+        $namedFactor = EmissionFactor::factory()->create([
+            'emission_category_id' => EmissionCategory::factory()->create()->id,
+            'name'                 => 'Gasolina Especial',
+            'factor_co2'           => 5.0,
+            'uncertainty_upper'    => 2.0,
+        ]);
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $namedFactor->id,
+            'quantity'           => 100,
+        ]);
+
+        // Search by factor name
+        $response = $this->getJson(
+            "/api/companies/{$this->period->company_id}/emissions/history?search=Gasolina+Especial"
+        );
+
+        $response->assertStatus(200);
+        $this->assertGreaterThanOrEqual(1, $response->json('total'));
+    }
+
+    public function test_history_with_sort_parameter()
+    {
+        // Create two emissions with different CO2e values
+        $lowFactor = EmissionFactor::factory()->create([
+            'emission_category_id' => EmissionCategory::factory()->create()->id,
+            'factor_co2'           => 1.0,
+            'uncertainty_upper'    => 0.0,
+        ]);
+        $highFactor = EmissionFactor::factory()->create([
+            'emission_category_id' => EmissionCategory::factory()->create()->id,
+            'factor_co2'           => 10.0,
+            'uncertainty_upper'    => 0.0,
+        ]);
+
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $lowFactor->id,
+            'quantity'           => 100,
+        ]);
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $highFactor->id,
+            'quantity'           => 100,
+        ]);
+
+        $response = $this->getJson(
+            "/api/companies/{$this->period->company_id}/emissions/history?sort_by=calculated_co2e&sort_dir=desc"
+        );
+
+        $response->assertStatus(200);
+        $data = $response->json('data');
+        $this->assertCount(2, $data);
+        // First item should have higher co2e when sorted descending
+        $this->assertGreaterThanOrEqual($data[1]['calculated_co2e'], $data[0]['calculated_co2e']);
+    }
+
+    public function test_history_with_page_2_returns_paginated_results()
+    {
+        // Create 12 emissions so that page 2 (per_page=10) has 2 records
+        for ($i = 0; $i < 12; $i++) {
+            $this->postJson("/api/periods/{$this->period->id}/emissions", [
+                'emission_factor_id' => $this->factor->id,
+                'quantity'           => 100,
+            ]);
+        }
+
+        $response = $this->getJson(
+            "/api/companies/{$this->period->company_id}/emissions/history?page=2&per_page=10"
+        );
+
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['data', 'total', 'current_page', 'per_page']);
+        $this->assertEquals(2, $response->json('current_page'));
+        $this->assertCount(2, $response->json('data'));
     }
 }
