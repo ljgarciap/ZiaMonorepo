@@ -5,12 +5,12 @@ import pytest
 os.environ.setdefault("ANTHROPIC_API_KEY", "")
 os.environ.setdefault("MISTRAL_API_KEY", "")
 os.environ.setdefault("INTERNAL_API_SECRET", "test-secret-ci")
-os.environ.setdefault("ZIA_BACKEND_URL", "http://test-backend:8000")
+os.environ.setdefault("ZIA_BACKEND_URL", "http://localhost:8000")
 
 
 @pytest.fixture
 def backend_url():
-    return "http://test-backend:8000"
+    return os.environ.get("ZIA_BACKEND_URL", "http://localhost:8000")
 
 
 @pytest.fixture

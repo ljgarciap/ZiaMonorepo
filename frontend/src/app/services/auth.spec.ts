@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
-import { provideRouter } from '@angular/router';
+import { Router } from '@angular/router';
 import { vi } from 'vitest';
 
 import { AuthService } from './auth';
@@ -14,6 +14,12 @@ describe('AuthService', () => {
   let httpMock: HttpTestingController;
   let ctxMock: ReturnType<typeof createMockContextService>;
 
+  const mockRouter = {
+    navigate: vi.fn().mockResolvedValue(true),
+    navigateByUrl: vi.fn().mockResolvedValue(true),
+    url: '/',
+  };
+
   // Configure TestBed without injecting the service yet so each test can
   // pre-populate localStorage before the constructor runs.
   function setup() {
@@ -22,7 +28,7 @@ describe('AuthService', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([]),
+        { provide: Router, useValue: mockRouter },
         { provide: ContextService, useValue: ctxMock },
       ],
     });
