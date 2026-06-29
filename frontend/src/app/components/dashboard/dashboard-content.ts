@@ -175,18 +175,16 @@ import { MatButtonModule } from '@angular/material/button';
     .summary-card:hover { transform: translateY(-4px); }
     .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--prestige-text-muted); }
     .card-footer { margin-top: 16px; border-top: 1px solid var(--prestige-border); display: flex; justify-content: space-between; font-size: 11px; padding-top: 12px; color: var(--prestige-text-muted); }
-    .card-footer span:last-child { color: var(--prestige-primary); font-weight: 700; }
-    :host-context(.dark-theme) .card-footer span:last-child { color: var(--prestige-primary-light); }
-    :host-context(.dark-theme) .main-value { color: var(--prestige-text); }
-    :host-context(.dark-theme) .card-title { color: var(--prestige-text-muted); }
+    .card-footer span:last-child { color: var(--zia-tertiary); font-weight: 700; }
+    .main-value { color: var(--zia-text); }
+    .card-title { color: var(--zia-text-muted); }
     
     .middle-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 24px; margin-bottom: 32px; }
     .chart-card { padding: 24px; }
     .donut-wrap { height: 250px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }
     .table-scroll { max-height: 300px; overflow-y: auto; }
     .prestige-mini-table { width: 100%; border-collapse: collapse; }
-    .prestige-mini-table th { text-align: left; padding: 12px; font-size: 10px; text-transform: uppercase; background: var(--table-header-bg); color: var(--prestige-text-muted); }
-    :host-context(.dark-theme) .prestige-mini-table th { color: var(--prestige-text); }
+    .prestige-mini-table th { text-align: left; padding: 12px; font-size: 10px; text-transform: uppercase; background: var(--table-header-bg); color: var(--zia-text-muted); }
     .prestige-mini-table td { padding: 12px; font-size: 13px; border-bottom: 1px solid var(--prestige-border); color: var(--prestige-text); }
     .scope-badge { padding: 2px 6px; border-radius: 4px; font-size: 9px; color: white; display: inline-block; }
     .scope-1 { background: #1a237e; }
@@ -336,6 +334,7 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
 
       if (data.length === 0) return;
 
+      const { text } = this.getChartColors();
       this.donutChartInst = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -349,7 +348,7 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { position: 'bottom' } },
+          plugins: { legend: { position: 'bottom', labels: { color: text } } },
           cutout: '70%'
         }
       });
@@ -358,8 +357,26 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
     }
   }
 
+  private getChartColors() {
+    const style = getComputedStyle(document.body);
+    return {
+      text:   style.getPropertyValue('--zia-text').trim()        || '#ffffff',
+      muted:  style.getPropertyValue('--zia-text-muted').trim()  || 'rgba(255,255,255,0.55)',
+      grid:   style.getPropertyValue('--zia-border').trim()      || 'rgba(255,255,255,0.08)',
+    };
+  }
+
   initializeTrends(res: any) {
     if (!res) return;
+    const { text, muted, grid } = this.getChartColors();
+
+    const scaleDefaults = {
+      ticks: { color: muted },
+      grid:  { color: grid  },
+    };
+    const legendDefaults = {
+      labels: { color: text },
+    };
 
     try {
       if (this.lineCanvas) {
@@ -367,7 +384,12 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
         this.lineChartInst = new Chart(this.lineCanvas.nativeElement.getContext('2d'), {
           type: 'line',
           data: res.revenue_trend,
-          options: { responsive: true, maintainAspectRatio: false }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: legendDefaults },
+            scales: { x: scaleDefaults, y: scaleDefaults },
+          }
         });
       }
       if (this.barCanvas) {
@@ -375,7 +397,13 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
         this.barChartInst = new Chart(this.barCanvas.nativeElement.getContext('2d'), {
           type: 'bar',
           data: res.sales_quantity,
-          options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            indexAxis: 'y',
+            plugins: { legend: legendDefaults },
+            scales: { x: scaleDefaults, y: scaleDefaults },
+          }
         });
       }
     } catch (e) {

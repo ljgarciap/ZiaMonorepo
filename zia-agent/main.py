@@ -1,6 +1,5 @@
 import os
 import json
-import asyncio
 from typing import AsyncIterator
 
 import anthropic
@@ -10,7 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-app = FastAPI(title="ZIA Agent", version="1.0.0")
+try:
+    from mistralai import Mistral
+except ImportError:
+    Mistral = None
+
+app = FastAPI(title="ZIA Agent", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -22,10 +26,12 @@ app.add_middleware(
 BACKEND_URL     = os.getenv("ZIA_BACKEND_URL", "http://backend:8000")
 INTERNAL_SECRET = os.getenv("INTERNAL_API_SECRET", "")
 ANTHROPIC_KEY   = os.getenv("ANTHROPIC_API_KEY", "")
+MISTRAL_KEY     = os.getenv("MISTRAL_API_KEY", "")
 
-client = anthropic.Anthropic(api_key=ANTHROPIC_KEY)
+anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_KEY) if ANTHROPIC_KEY else None
+mistral_client   = Mistral(api_key=MISTRAL_KEY) if (Mistral and MISTRAL_KEY) else None
 
-# ─── Tool definitions ────────────────────────────────────────────────────────
+# ─── Tool definitions (Anthropic format) ─────────────────────────────────────
 
 TOOLS = [
     {
@@ -131,13 +137,26 @@ TOOLS = [
         "input_schema": {
             "type": "object",
             "properties": {
-                "company_id": {"type": "integer"},
-                "period_id":  {"type": "integer"},
-                "sector_code":{"type": "string"},
+                "company_id":  {"type": "integer"},
+                "period_id":   {"type": "integer"},
+                "sector_code": {"type": "string"},
             },
             "required": ["company_id", "period_id", "sector_code"],
         },
     },
+]
+
+# Mistral/OpenAI tool format derived from TOOLS
+TOOLS_MISTRAL = [
+    {
+        "type": "function",
+        "function": {
+            "name": t["name"],
+            "description": t["description"],
+            "parameters": t["input_schema"],
+        },
+    }
+    for t in TOOLS
 ]
 
 SYSTEM_PROMPT = """Eres ZIA, el asistente inteligente de captura de emisiones de carbono de la plataforma ZIA Carbon Control.
@@ -188,14 +207,14 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
                 periods = rp.json() if rp.status_code == 200 else []
                 active = next((p for p in periods if p.get("status") == "active"), None)
                 return json.dumps({
-                    "id":              company["id"],
-                    "name":            company["name"],
-                    "sector_code":     company.get("sector", {}).get("code") if isinstance(company.get("sector"), dict) else None,
-                    "sector_name":     company.get("sector", {}).get("name") if isinstance(company.get("sector"), dict) else None,
-                    "subsector_code":  company.get("subsector_code"),
-                    "num_employees":   company.get("num_employees"),
-                    "floor_sqm":       company.get("floor_sqm"),
-                    "active_period_id":active["id"] if active else None,
+                    "id":               company["id"],
+                    "name":             company["name"],
+                    "sector_code":      company.get("sector", {}).get("code") if isinstance(company.get("sector"), dict) else None,
+                    "sector_name":      company.get("sector", {}).get("name") if isinstance(company.get("sector"), dict) else None,
+                    "subsector_code":   company.get("subsector_code"),
+                    "num_employees":    company.get("num_employees"),
+                    "floor_sqm":        company.get("floor_sqm"),
+                    "active_period_id": active["id"] if active else None,
                     "active_period_year": active["year"] if active else None,
                 })
 
@@ -246,7 +265,7 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
                 return json.dumps(r.json() if r.status_code == 201 else {"error": r.text})
 
             elif tool_name == "get_pending_questions":
-                sector   = tool_input["sector_code"]
+                sector    = tool_input["sector_code"]
                 period_id = tool_input["period_id"]
 
                 rq = await http.get(
@@ -265,7 +284,7 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
 
                 pending = [
                     {
-                        "emission_factor_id": q["emission_factor_id"],
+                        "emission_factor_id":  q["emission_factor_id"],
                         "questionnaire_label": q["questionnaire_label"],
                         "is_required":         q["is_required"],
                         "scope_name":          q["scope_name"],
@@ -279,19 +298,77 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
             return json.dumps({"error": str(e)})
 
 
-# ─── Agent loop with SSE streaming ───────────────────────────────────────────
+# ─── Mistral agentic loop ────────────────────────────────────────────────────
 
-async def agent_stream(
+async def agent_stream_mistral(
     messages: list,
     auth_token: str,
     company_id: int,
 ) -> AsyncIterator[str]:
-    """Run the agentic loop and yield SSE events."""
+    history = [{"role": "system", "content": SYSTEM_PROMPT}]
+    for m in messages:
+        content = m["content"] if isinstance(m["content"], str) else json.dumps(m["content"])
+        history.append({"role": m["role"], "content": content})
 
+    while True:
+        response = mistral_client.chat.complete(
+            model="mistral-small-latest",
+            messages=history,
+            tools=TOOLS_MISTRAL,
+            tool_choice="auto",
+        )
+
+        msg    = response.choices[0].message
+        finish = response.choices[0].finish_reason
+
+        if msg.content:
+            yield f"data: {json.dumps({'type': 'text', 'content': msg.content})}\n\n"
+
+        if finish == "stop" or not msg.tool_calls:
+            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            break
+
+        # Append assistant turn with tool calls
+        history.append({
+            "role": "assistant",
+            "content": msg.content or "",
+            "tool_calls": [
+                {
+                    "id":       tc.id,
+                    "type":     "function",
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                }
+                for tc in msg.tool_calls
+            ],
+        })
+
+        for tc in msg.tool_calls:
+            name      = tc.function.name
+            tool_input = json.loads(tc.function.arguments)
+
+            yield f"data: {json.dumps({'type': 'tool_start', 'tool': name, 'input': tool_input})}\n\n"
+            result = await execute_tool(name, tool_input, auth_token, company_id)
+            yield f"data: {json.dumps({'type': 'tool_end', 'tool': name})}\n\n"
+
+            history.append({
+                "role":         "tool",
+                "content":      result,
+                "tool_call_id": tc.id,
+                "name":         name,
+            })
+
+
+# ─── Anthropic agentic loop (fallback) ───────────────────────────────────────
+
+async def agent_stream_anthropic(
+    messages: list,
+    auth_token: str,
+    company_id: int,
+) -> AsyncIterator[str]:
     history = list(messages)
 
     while True:
-        response = client.messages.create(
+        response = anthropic_client.messages.create(
             model="claude-haiku-4-5-20251001",
             max_tokens=4096,
             system=SYSTEM_PROMPT,
@@ -299,39 +376,57 @@ async def agent_stream(
             messages=history,
         )
 
-        # Stream text blocks
         for block in response.content:
             if hasattr(block, "text") and block.text:
                 yield f"data: {json.dumps({'type': 'text', 'content': block.text})}\n\n"
 
-        # If no tool use, we're done
         if response.stop_reason == "end_turn":
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             break
 
-        # Process tool calls
         if response.stop_reason == "tool_use":
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
                     yield f"data: {json.dumps({'type': 'tool_start', 'tool': block.name, 'input': block.input})}\n\n"
-
                     result = await execute_tool(block.name, block.input, auth_token, company_id)
-
                     yield f"data: {json.dumps({'type': 'tool_end', 'tool': block.name})}\n\n"
-
                     tool_results.append({
                         "type":        "tool_result",
                         "tool_use_id": block.id,
                         "content":     result,
                     })
 
-            # Append assistant turn + tool results
             history.append({"role": "assistant", "content": response.content})
-            history.append({"role": "user", "content": tool_results})
+            history.append({"role": "user",      "content": tool_results})
         else:
             yield f"data: {json.dumps({'type': 'done'})}\n\n"
             break
+
+
+# ─── Provider dispatcher ──────────────────────────────────────────────────────
+
+async def agent_stream(
+    messages: list,
+    auth_token: str,
+    company_id: int,
+) -> AsyncIterator[str]:
+    if mistral_client:
+        try:
+            async for event in agent_stream_mistral(messages, auth_token, company_id):
+                yield event
+            return
+        except Exception as e:
+            # Mistral failed — fall through to Anthropic silently
+            pass
+
+    if anthropic_client:
+        async for event in agent_stream_anthropic(messages, auth_token, company_id):
+            yield event
+        return
+
+    yield f"data: {json.dumps({'type': 'error', 'message': 'No AI provider configured'})}\n\n"
+    yield f"data: {json.dumps({'type': 'done'})}\n\n"
 
 
 # ─── FastAPI endpoints ────────────────────────────────────────────────────────
@@ -346,8 +441,8 @@ class ChatRequest(BaseModel):
 
 @app.post("/chat")
 async def chat(req: ChatRequest):
-    if not ANTHROPIC_KEY:
-        raise HTTPException(status_code=503, detail="ANTHROPIC_API_KEY not configured")
+    if not mistral_client and not anthropic_client:
+        raise HTTPException(status_code=503, detail="No AI provider configured")
 
     messages = list(req.history)
     messages.append({"role": "user", "content": req.message})
@@ -356,7 +451,7 @@ async def chat(req: ChatRequest):
         agent_stream(messages, req.auth_token, req.company_id),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",
+            "Cache-Control":    "no-cache",
             "X-Accel-Buffering": "no",
         },
     )
@@ -364,4 +459,15 @@ async def chat(req: ChatRequest):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "zia-agent"}
+    providers = []
+    if mistral_client:
+        providers.append("mistral")
+    if anthropic_client:
+        providers.append("anthropic")
+    return {
+        "status":          "ok",
+        "service":         "zia-agent",
+        "primary":         providers[0] if providers else None,
+        "fallback":        providers[1] if len(providers) > 1 else None,
+        "providers_ready": providers,
+    }

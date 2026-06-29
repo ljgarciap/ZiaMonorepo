@@ -54,7 +54,7 @@ mat-nav-list a:hover {
 .toolbar-title {
     font-weight: 600;
     font-size: 16px;
-    color: var(--prestige-primary);
+    color: var(--zia-text);
 }
 
 .user-pill {
@@ -128,7 +128,7 @@ mat-icon {
 
 .sidenav mat-toolbar {
     background: var(--prestige-card-bg) !important;
-    color: var(--prestige-primary) !important;
+    color: var(--zia-tertiary) !important;
     font-weight: 700;
     letter-spacing: 2px;
 }

@@ -428,7 +428,7 @@ mat-card,
 body.dark-theme  { color-scheme: dark; }
 body.light-theme { color-scheme: light; }
 
-/* ── ZIA Carbon Light — token overrides ── */
+/* ── ZIA Carbon Light — brand tokens only (M3 system tokens handled by material-theme.scss) ── */
 body.light-theme {
     --zia-bg:              #F0F7F7;
     --zia-surface:         #FFFFFF;
@@ -462,104 +462,163 @@ body.light-theme {
     --glass-border: rgba(1, 46, 64, 0.10);
     --glass-shadow: 0 8px 32px 0 rgba(1, 46, 64, 0.10);
 
-    /* ── Angular Material M3 system overrides ── */
-    --mat-sys-surface:                    #F0F7F7;
-    --mat-sys-on-surface:                 #012e40;
-    --mat-sys-surface-container:          #FFFFFF;
-    --mat-sys-surface-container-low:      #E8F4F4;
-    --mat-sys-surface-container-high:     #E0EEEE;
-    --mat-sys-surface-container-highest:  #D8E8E8;
-    --mat-sys-surface-variant:            #E0EEEE;
-    --mat-sys-on-surface-variant:         rgba(1, 46, 64, 0.65);
-    --mat-sys-outline:                    rgba(1, 46, 64, 0.22);
-    --mat-sys-outline-variant:            rgba(1, 46, 64, 0.12);
-    --mat-sys-primary:                    #026773;
-    --mat-sys-on-primary:                 #FFFFFF;
-    --mat-sys-secondary:                  #3CA6A6;
-    --mat-sys-on-secondary:               #FFFFFF;
-    --mat-sys-background:                 #F0F7F7;
-    --mat-sys-on-background:              #012e40;
-
-    /* Toolbar */
-    --mat-toolbar-container-background-color: #FFFFFF;
-    --mat-toolbar-container-text-color:       #012e40;
-
-    /* Card */
-    --mat-card-elevated-container-color:  #FFFFFF;
-    --mat-card-outlined-container-color:  #FFFFFF;
-
-    /* Expansion panel */
-    --mat-expansion-container-background-color: #FFFFFF;
-    --mat-expansion-container-text-color:       #012e40;
-    --mat-expansion-header-text-color:          #012e40;
-    --mat-expansion-header-description-color:   rgba(1, 46, 64, 0.65);
-
-    /* List items (sidenav nav items) */
-    --mdc-list-list-item-label-text-color:             #FFFFFF;
-    --mdc-list-list-item-supporting-text-color:        rgba(255,255,255,0.55);
-    --mdc-list-list-item-leading-icon-color:           rgba(255,255,255,0.55);
-    --mdc-list-list-item-hover-label-text-color:       #3CA6A6;
-    --mdc-list-list-item-hover-leading-icon-color:     #3CA6A6;
-    --mat-list-active-indicator-color:                 rgba(60, 166, 166, 0.15);
-
-    /* Form fields */
-    --mdc-outlined-text-field-input-text-color:        #012e40;
-    --mdc-outlined-text-field-disabled-input-text-color: rgba(1,46,64,0.38);
-    --mdc-outlined-text-field-label-text-color:        rgba(1, 46, 64, 0.55);
-    --mdc-outlined-text-field-hover-label-text-color:  #026773;
-    --mdc-outlined-text-field-focus-label-text-color:  #026773;
-    --mdc-outlined-text-field-outline-color:           rgba(1, 46, 64, 0.22);
-    --mdc-outlined-text-field-hover-outline-color:     #026773;
-    --mdc-outlined-text-field-focus-outline-color:     #026773;
-    --mdc-outlined-text-field-caret-color:             #026773;
-    --mdc-outlined-text-field-container-shape:         8px;
-
-    /* Select */
-    --mat-select-trigger-text-color:         #012e40;
-    --mat-select-placeholder-text-color:     rgba(1, 46, 64, 0.55);
-    --mat-select-arrow-foreground-color:     rgba(1, 46, 64, 0.55);
-    --mat-select-focused-arrow-color:        #026773;
-    --mat-select-panel-background-color:     #FFFFFF;
-
-    /* Table */
-    --mat-table-row-item-label-text-color:   #012e40;
-    --mat-table-header-headline-color:       rgba(1, 46, 64, 0.65);
-
-    /* Dialog */
-    --mdc-dialog-container-color:            #FFFFFF;
-    --mdc-dialog-supporting-text-color:      rgba(1, 46, 64, 0.65);
-    --mat-dialog-headline-color:             #012e40;
-
-    /* Menu */
-    --mat-menu-container-color:              #FFFFFF;
-    --mat-menu-item-label-text-color:        #012e40;
-    --mat-menu-item-icon-color:              rgba(1, 46, 64, 0.55);
-    --mat-menu-item-hover-state-layer-color: rgba(1, 46, 64, 0.04);
-
-    /* Option (select dropdown) */
-    --mat-option-label-text-color:           #012e40;
-    --mat-option-selected-state-label-text-color: #026773;
-    --mat-option-hover-state-layer-color:    rgba(1, 46, 64, 0.04);
-
-    /* Paginator */
-    --mat-paginator-container-background-color: #E8F4F4;
-    --mat-paginator-container-text-color:       #012e40;
-    --mat-paginator-select-trigger-color:       #012e40;
+    /* Legacy aliases */
+    --prestige-bg:           var(--zia-bg);
+    --prestige-card-bg:      var(--zia-surface);
+    --prestige-primary:      var(--zia-primary);
+    --prestige-primary-light:var(--zia-tertiary);
+    --prestige-accent:       var(--zia-tertiary);
+    --prestige-text:         var(--zia-text);
+    --prestige-text-muted:   var(--zia-text-muted);
+    --prestige-border:       var(--zia-border);
+    --input-bg:              var(--zia-input-bg);
+    --table-header-bg:       var(--zia-table-header-bg);
+    --row-hover-bg:          var(--zia-row-hover-bg);
 
     /* Tooltip stays dark for contrast */
-    --mat-tooltip-container-color:           #012e40;
-    --mat-tooltip-supporting-text-color:     #FFFFFF;
+    --mat-tooltip-container-color:        #012e40;
+    --mat-tooltip-supporting-text-color:  #FFFFFF;
+}
 
-    /* Divider */
-    --mat-divider-color: rgba(1, 46, 64, 0.12);
+/* ── Light mode — global overrides that beat M3 component styles ── */
+body.light-theme h1,
+body.light-theme h2,
+body.light-theme h3,
+body.light-theme h4,
+body.light-theme h5,
+body.light-theme h6,
+body.light-theme b,
+body.light-theme strong,
+body.light-theme p,
+body.light-theme li {
+    color: var(--zia-text);
+}
 
-    /* Buttons */
-    --mdc-filled-button-container-color:     #026773;
-    --mdc-filled-button-label-text-color:    #FFFFFF;
-    --mdc-outlined-button-outline-color:     rgba(1, 46, 64, 0.22);
-    --mdc-outlined-button-label-text-color:  #026773;
-    --mdc-text-button-label-text-color:      #026773;
-    --mat-text-button-state-layer-color:     rgba(2, 103, 115, 0.08);
-    --mat-icon-button-state-layer-color:     rgba(1, 46, 64, 0.06);
-    --mat-icon-button-icon-color:            #012e40;
+body.light-theme mat-icon {
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .mat-mdc-button .mat-icon,
+body.light-theme .mat-mdc-flat-button .mat-icon,
+body.light-theme .mat-mdc-raised-button .mat-icon {
+    color: inherit !important;
+}
+
+body.light-theme mat-card,
+body.light-theme .mat-mdc-card {
+    background-color: var(--zia-surface) !important;
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .mat-expansion-panel {
+    background: var(--zia-surface) !important;
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .mat-mdc-text-field-wrapper {
+    background-color: var(--zia-input-bg) !important;
+}
+
+body.light-theme th,
+body.light-theme thead,
+body.light-theme tr[mat-header-row],
+body.light-theme .mat-mdc-header-row {
+    background-color: var(--zia-table-header-bg) !important;
+    background:       var(--zia-table-header-bg) !important;
+}
+
+body.light-theme .mat-mdc-header-cell {
+    background: var(--zia-table-header-bg) !important;
+    color: var(--zia-text-muted) !important;
+}
+
+body.light-theme .mat-mdc-cell {
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .mat-mdc-row:hover {
+    background-color: var(--zia-row-hover-bg) !important;
+}
+
+body.light-theme .mat-mdc-select-value {
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .mat-mdc-option {
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .mat-mdc-menu-item {
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .mat-mdc-menu-item .mat-icon {
+    color: var(--zia-text-muted) !important;
+}
+
+body.light-theme .zia-dialog-premium,
+body.light-theme .mat-mdc-dialog-container,
+body.light-theme .mat-mdc-dialog-surface {
+    background-color: var(--zia-surface) !important;
+    color: var(--zia-text) !important;
+}
+
+body.light-theme .prestige-table-container {
+    background: var(--zia-surface);
+    border-color: var(--zia-border);
+}
+
+body.light-theme .subtitle-premium {
+    color: var(--zia-primary);
+    border-bottom-color: var(--zia-border);
+}
+
+body.light-theme .period-tag,
+body.light-theme .unit-tag,
+body.light-theme .role-chip.user,
+body.light-theme .status-badge-premium {
+    background: var(--status-neutral-bg) !important;
+    color: var(--status-neutral-text) !important;
+    border-color: var(--zia-border) !important;
+}
+
+/* Sidenav — light mode: white background, dark text */
+body.light-theme .sidenav,
+body.light-theme mat-sidenav {
+    background-color: var(--zia-surface) !important;
+    border-right-color: var(--zia-border) !important;
+}
+
+body.light-theme mat-sidenav mat-toolbar {
+    background: var(--zia-surface) !important;
+    color: var(--zia-primary) !important;
+}
+
+body.light-theme mat-sidenav mat-icon {
+    color: var(--zia-text-muted) !important;
+}
+
+body.light-theme mat-sidenav a,
+body.light-theme mat-sidenav .mdc-list-item__primary-text,
+body.light-theme mat-sidenav [matListItemTitle] {
+    color: var(--zia-text-muted) !important;
+}
+
+body.light-theme mat-sidenav .active-link {
+    color: var(--zia-primary) !important;
+    background: rgba(2, 103, 115, 0.10) !important;
+    border-right-color: var(--zia-primary) !important;
+}
+
+body.light-theme mat-sidenav .active-link mat-icon {
+    color: var(--zia-primary) !important;
+}
+
+body.light-theme mat-sidenav a:hover {
+    background: var(--zia-row-hover-bg) !important;
+    color: var(--zia-primary) !important;
+}
+
+body.light-theme mat-sidenav a:hover mat-icon {
+    color: var(--zia-primary) !important;
 }

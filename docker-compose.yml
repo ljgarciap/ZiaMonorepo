@@ -55,6 +55,7 @@ services:
     restart: always
     environment:
       ZIA_BACKEND_URL: http://backend:8000
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
     ports:

@@ -16,6 +16,17 @@ html {
   ));
 }
 
+// Light theme: let M3 regenerate all system tokens from the palette
+body.light-theme {
+  @include mat.theme((
+    color: (
+      primary: mat.$cyan-palette,
+      tertiary: mat.$spring-green-palette,
+      theme-type: light,
+    ),
+  ));
+}
+
 body {
   background-color: var(--mat-sys-surface);
   color: var(--mat-sys-on-surface);
