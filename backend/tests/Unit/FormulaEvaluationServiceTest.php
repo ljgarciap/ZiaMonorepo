@@ -82,4 +82,42 @@ class FormulaEvaluationServiceTest extends TestCase
         $this->assertTrue(is_numeric($result), 'evaluate() must return a numeric value');
         $this->assertEqualsWithDelta(6.0, $result, 0.0001);
     }
+
+    // ─── caret operator compatibility ─────────────────────────────────────────
+
+    public function test_caret_operator_is_rewritten_to_exponent()
+    {
+        // Formulas imported from Excel may use ^ — service replaces it with **
+        $result = $this->service->evaluate('2^10', []);
+        $this->assertEqualsWithDelta(1024.0, $result, 0.0001);
+    }
+
+    public function test_caret_with_variable()
+    {
+        $result = $this->service->evaluate('base^2', ['base' => 5.0]);
+        $this->assertEqualsWithDelta(25.0, $result, 0.0001);
+    }
+
+    // ─── GHG Protocol expression (integration with CarbonFootprintService vars) ──
+
+    public function test_standard_combustion_expression_uses_service_variable_names()
+    {
+        // This is the expression stored in DB for standard combustion formulas.
+        // Verifies that variable names match what CarbonFootprintService passes to evaluate().
+        $result = $this->service->evaluate(
+            '(activity_data * factor_co2) / 1000',
+            [
+                'activity_data'      => 1000.0,
+                'factor_co2'         => 7.618,
+                'factor_ch4'         => 0.0,
+                'factor_n2o'         => 0.0,
+                'factor_total_co2e'  => 0.0,
+                'gwp_co2'            => 1.0,
+                'gwp_ch4'            => 28.0,
+                'gwp_n2o'            => 265.0,
+            ]
+        );
+        // (1000 * 7.618) / 1000 = 7.618 tCO2
+        $this->assertEqualsWithDelta(7.618, $result, 0.0001);
+    }
 }

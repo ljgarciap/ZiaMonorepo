@@ -273,4 +273,79 @@ class CarbonFootprintServiceTest extends TestCase
 
         $this->assertEqualsWithDelta(0.0, $result['uncertainty_result'], 0.0001);
     }
+
+    // ─── seeder regression values ─────────────────────────────────────────────
+
+    public function test_gas_natural_seeder_value()
+    {
+        // Gas Natural: 1.933 kgCO2/m3 (from EmissionFactorSeeder — Colombia UPME)
+        // 1000 m3 of natural gas → 1.933 tCO2
+        $factor = EmissionFactor::factory()->create([
+            'factor_co2'        => 1.933,
+            'factor_ch4'        => 0.0,
+            'factor_n2o'        => 0.0,
+            'factor_nf3'        => 0.0,
+            'factor_sf6'        => 0.0,
+            'factor_total_co2e' => 0.0,
+            'uncertainty_upper' => 0.0,
+        ]);
+
+        $result = $this->service->calculate([1000], $factor);
+
+        // (1000 * 1.933) / 1000 = 1.933 tCO2
+        $this->assertEqualsWithDelta(1.933, $result['emissions_co2'], 0.0001);
+        $this->assertEqualsWithDelta(1.933, $result['calculated_co2e'], 0.0001);
+    }
+
+    public function test_refrigerant_r410a_seeder_value()
+    {
+        // R-410A (HFC): GWP 2088 kgCO2e/kg — stored as factor_total_co2e in seeder
+        // 0.5 kg leaked → fallback: (0.5 * 2088) / 1000 = 1.044 tCO2e
+        $factor = EmissionFactor::factory()->create([
+            'factor_co2'        => 0.0,
+            'factor_ch4'        => 0.0,
+            'factor_n2o'        => 0.0,
+            'factor_nf3'        => 0.0,
+            'factor_sf6'        => 0.0,
+            'factor_total_co2e' => 2088.0,
+            'uncertainty_upper' => 0.0,
+        ]);
+
+        $result = $this->service->calculate([0.5], $factor);
+
+        $this->assertEqualsWithDelta(1.044, $result['calculated_co2e'], 0.001);
+        $this->assertEqualsWithDelta(0.5,   $result['activity_data_total'], 0.0001);
+    }
+
+    // ─── custom formula branch (P0.3 regression) ─────────────────────────────
+
+    public function test_custom_formula_overrides_standard_gwp_sum()
+    {
+        // Factor has CH4 that would add 70 tCO2e via standard GWP sum.
+        // The formula ignores CH4 entirely — total should be 5, not 75.
+        $formula = CalculationFormula::create([
+            'name'       => 'CO2-only custom',
+            'expression' => '(activity_data * factor_co2) / 1000',
+        ]);
+
+        $factor = EmissionFactor::factory()->create([
+            'factor_co2'              => 10.0,
+            'factor_ch4'              => 5.0,
+            'factor_n2o'              => 0.0,
+            'factor_nf3'              => 0.0,
+            'factor_sf6'              => 0.0,
+            'factor_total_co2e'       => 0.0,
+            'uncertainty_upper'       => 0.0,
+            'calculation_formula_id'  => $formula->id,
+        ]);
+
+        $result = $this->service->calculate([500], $factor);
+
+        // Formula result: (500 * 10) / 1000 = 5.0
+        // Standard without formula would be: 5.0 + (2.5 * 28) = 75.0
+        $this->assertEqualsWithDelta(5.0, $result['calculated_co2e'], 0.0001);
+
+        // Per-gas breakdown is still computed (formula only overrides total)
+        $this->assertEqualsWithDelta(2.5, $result['emissions_ch4'], 0.0001);
+    }
 }
