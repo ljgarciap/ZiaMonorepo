@@ -64,6 +64,10 @@ TOOLS = [
                     "type": "string",
                     "description": "Sector code: 'servicios', 'industria', 'transporte', 'energia', 'publico', 'tecnologia'",
                 },
+                "company_id": {
+                    "type": "integer",
+                    "description": "Company ID to filter out factors disabled for this company. Always pass it when available.",
+                },
                 "scope_filter": {
                     "type": "array",
                     "items": {"type": "integer"},
@@ -84,6 +88,7 @@ TOOLS = [
             "properties": {
                 "scope_id":      {"type": "integer", "description": "Filter by scope (1, 2 or 3)"},
                 "category_name": {"type": "string",  "description": "Partial category name: 'Electricidad', 'Refrigerantes', etc."},
+                "company_id":    {"type": "integer", "description": "Company ID to filter out factors disabled for this company. Always pass it when available."},
             },
         },
     },
@@ -222,9 +227,12 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
 
             elif tool_name == "get_questionnaire":
                 sector = tool_input["sector_code"]
+                params: dict = {"sector": sector}
+                if "company_id" in tool_input and tool_input["company_id"]:
+                    params["company_id"] = tool_input["company_id"]
                 r = await http.get(
                     f"{BACKEND_URL}/api/dictionaries/questionnaire",
-                    params={"sector": sector},
+                    params=params,
                     headers=headers,
                 )
                 rules = r.json() if r.status_code == 200 else []
@@ -236,6 +244,8 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
                 params = {}
                 if "scope_id" in tool_input:
                     params["scope_id"] = tool_input["scope_id"]
+                if "company_id" in tool_input and tool_input["company_id"]:
+                    params["company_id"] = tool_input["company_id"]
                 r = await http.get(
                     f"{BACKEND_URL}/api/dictionaries/factors",
                     params=params,
@@ -267,12 +277,17 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
                 return json.dumps(r.json() if r.status_code == 201 else {"error": r.text})
 
             elif tool_name == "get_pending_questions":
-                sector    = tool_input["sector_code"]
-                period_id = tool_input["period_id"]
+                sector     = tool_input["sector_code"]
+                period_id  = tool_input["period_id"]
+                company_id = tool_input.get("company_id")
+
+                q_params: dict = {"sector": sector}
+                if company_id:
+                    q_params["company_id"] = company_id
 
                 rq = await http.get(
                     f"{BACKEND_URL}/api/dictionaries/questionnaire",
-                    params={"sector": sector},
+                    params=q_params,
                     headers=headers,
                 )
                 all_questions = rq.json() if rq.status_code == 200 else []

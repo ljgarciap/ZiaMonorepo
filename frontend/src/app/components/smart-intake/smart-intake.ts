@@ -254,7 +254,8 @@ export class SmartIntakeComponent implements OnInit {
 
   private loadQuestionnaire(sectorCode: string) {
     this.loading.set(true);
-    this.masterData.getQuestionnaire(sectorCode).subscribe({
+    const companyId = this.selectedCompany()?.id;
+    this.masterData.getQuestionnaire(sectorCode, companyId).subscribe({
       next: (data) => {
         this.rules.set(data.map(r => ({ ...r, value: null, estimatedCO2e: 0 })));
         this.loading.set(false);

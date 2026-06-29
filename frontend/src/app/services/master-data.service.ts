@@ -26,7 +26,10 @@ export class MasterDataService {
         return this.http.get<any[]>(url);
     }
 
-    getQuestionnaire(sectorCode: string): Observable<any[]> {
-        return this.http.get<any[]>(`${this.apiUrl}/dictionaries/questionnaire?sector=${sectorCode}`);
+    getQuestionnaire(sectorCode: string, companyId?: number): Observable<any[]> {
+        const url = companyId
+            ? `${this.apiUrl}/dictionaries/questionnaire?sector=${sectorCode}&company_id=${companyId}`
+            : `${this.apiUrl}/dictionaries/questionnaire?sector=${sectorCode}`;
+        return this.http.get<any[]>(url);
     }
 }

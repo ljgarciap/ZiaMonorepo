@@ -122,4 +122,81 @@ class MasterDataControllerTest extends TestCase
 
         $this->assertContains('FactorGlobal', $allFactorNames->all());
     }
+
+    // --- Gap-7: questionnaire respects company is_enabled ---
+
+    public function test_questionnaire_hides_disabled_factor_for_company()
+    {
+        $company = \App\Models\Company::factory()->create();
+
+        $enabled  = EmissionFactor::factory()->create(['name' => 'FactorActivo']);
+        $disabled = EmissionFactor::factory()->create(['name' => 'FactorInactivo']);
+
+        $company->factors()->attach($disabled->id, ['is_enabled' => false]);
+
+        foreach ([$enabled, $disabled] as $factor) {
+            SectorQuestionnaireRule::create([
+                'sector_code'         => 'servicios',
+                'emission_factor_id'  => $factor->id,
+                'questionnaire_label' => "Pregunta {$factor->name}",
+                'variable_name'       => 'var_' . $factor->id,
+                'is_required'         => true,
+                'display_order'       => 1,
+            ]);
+        }
+
+        $response = $this->getJson("/api/dictionaries/questionnaire?sector=servicios&company_id={$company->id}");
+
+        $response->assertStatus(200);
+        $labels = collect($response->json())->pluck('questionnaire_label');
+
+        $this->assertContains('Pregunta FactorActivo',   $labels->all());
+        $this->assertNotContains('Pregunta FactorInactivo', $labels->all());
+    }
+
+    public function test_questionnaire_shows_factor_with_no_pivot_record_as_enabled()
+    {
+        $company = \App\Models\Company::factory()->create();
+        $factor  = EmissionFactor::factory()->create(['name' => 'FactorSinPivot']);
+
+        // No company_emission_factor record → default enabled
+        SectorQuestionnaireRule::create([
+            'sector_code'         => 'servicios',
+            'emission_factor_id'  => $factor->id,
+            'questionnaire_label' => 'Pregunta sin pivot',
+            'variable_name'       => 'var_sin_pivot',
+            'is_required'         => false,
+            'display_order'       => 1,
+        ]);
+
+        $response = $this->getJson("/api/dictionaries/questionnaire?sector=servicios&company_id={$company->id}");
+
+        $response->assertStatus(200);
+        $labels = collect($response->json())->pluck('questionnaire_label');
+        $this->assertContains('Pregunta sin pivot', $labels->all());
+    }
+
+    public function test_questionnaire_without_company_id_returns_all_factors()
+    {
+        $company = \App\Models\Company::factory()->create();
+        $factor  = EmissionFactor::factory()->create(['name' => 'FactorDeshabilitado']);
+
+        $company->factors()->attach($factor->id, ['is_enabled' => false]);
+
+        SectorQuestionnaireRule::create([
+            'sector_code'         => 'servicios',
+            'emission_factor_id'  => $factor->id,
+            'questionnaire_label' => 'Pregunta global',
+            'variable_name'       => 'var_global',
+            'is_required'         => false,
+            'display_order'       => 1,
+        ]);
+
+        // Without company_id, no filtering — disabled factors still appear
+        $response = $this->getJson('/api/dictionaries/questionnaire?sector=servicios');
+
+        $response->assertStatus(200);
+        $labels = collect($response->json())->pluck('questionnaire_label');
+        $this->assertContains('Pregunta global', $labels->all());
+    }
 }

@@ -84,6 +84,7 @@ class MasterDataController extends Controller
     public function questionnaireRules(Request $request)
     {
         $sectorCode = $request->query('sector');
+        $companyId  = $request->query('company_id');
 
         if (!$sectorCode) {
             return response()->json(['error' => 'sector query parameter is required'], 422);
@@ -94,6 +95,13 @@ class MasterDataController extends Controller
                 'emissionFactor.category.scope',
             ])
             ->where('sector_code', $sectorCode)
+            ->when($companyId, function ($q) use ($companyId) {
+                // Exclude factors explicitly disabled for this company
+                $q->whereDoesntHave('emissionFactor.companies', function ($cq) use ($companyId) {
+                    $cq->where('company_emission_factor.company_id', $companyId)
+                       ->where('company_emission_factor.is_enabled', false);
+                });
+            })
             ->orderBy('display_order')
             ->get()
             ->map(fn($rule) => [
