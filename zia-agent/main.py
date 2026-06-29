@@ -381,6 +381,14 @@ def normalize_history_for_mistral(messages: list) -> list:
     - {"role": "user", "content": [tool_result blocks]}  → separate {"role": "tool"} messages
     - Simple text messages pass through unchanged.
     """
+    # Build lookup tool_use_id → tool_name so tool messages carry the correct name
+    tool_name_map: dict[str, str] = {}
+    for m in messages:
+        if m.get("role") == "assistant" and isinstance(m.get("content"), list):
+            for block in m["content"]:
+                if block.get("type") == "tool_use":
+                    tool_name_map[block["id"]] = block["name"]
+
     result = []
     for msg in messages:
         role    = msg.get("role", "")
@@ -417,11 +425,12 @@ def normalize_history_for_mistral(messages: list) -> list:
         ):
             for block in content:
                 if block.get("type") == "tool_result":
+                    tool_use_id = block.get("tool_use_id", "")
                     result.append({
                         "role":         "tool",
                         "content":      block.get("content", ""),
-                        "tool_call_id": block.get("tool_use_id", ""),
-                        "name":         "",
+                        "tool_call_id": tool_use_id,
+                        "name":         tool_name_map.get(tool_use_id, ""),
                     })
                 elif block.get("type") == "text" and block.get("text"):
                     result.append({"role": "user", "content": block["text"]})

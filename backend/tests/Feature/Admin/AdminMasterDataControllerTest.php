@@ -129,6 +129,9 @@ class AdminMasterDataControllerTest extends TestCase
         $factor = EmissionFactor::factory()->create([
             'emission_category_id' => $this->category->id,
             'factor_total_co2e'    => 1.0,
+            'factor_co2'           => 0.80,
+            'factor_ch4'           => 0.05,
+            'factor_n2o'           => 0.03,
         ]);
 
         $this->actingAs($this->superadmin, 'api')
@@ -138,6 +141,14 @@ class AdminMasterDataControllerTest extends TestCase
              ])
              ->assertOk()
              ->assertJsonPath('factor_total_co2e', 2.5);
+
+        // Partial update must not zero out gas columns not included in the request
+        $this->assertDatabaseHas('emission_factors', [
+            'id'         => $factor->id,
+            'factor_co2' => 0.80,
+            'factor_ch4' => 0.05,
+            'factor_n2o' => 0.03,
+        ]);
     }
 
     public function test_superadmin_can_delete_factor()

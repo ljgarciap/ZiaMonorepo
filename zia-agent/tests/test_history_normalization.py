@@ -254,6 +254,44 @@ class TestNormalizeForMistral:
     def test_empty_history_returns_empty(self):
         assert normalize_history_for_mistral([]) == []
 
+    def test_tool_result_carries_tool_name_from_preceding_tool_use(self):
+        """tool_use_id in the tool_result must resolve to the correct tool name."""
+        messages = [
+            {
+                "role":    "assistant",
+                "content": [
+                    {"type": "tool_use", "id": "tu_abc", "name": "calculate_ghg",
+                     "input": {"emission_factor_id": 5, "monthly_values": [100.0]}},
+                ],
+            },
+            {
+                "role":    "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "tu_abc",
+                     "content": '{"calculated_co2e": 0.45}'},
+                ],
+            },
+        ]
+        result = normalize_history_for_mistral(messages)
+
+        tool_msg = next(m for m in result if m["role"] == "tool")
+        assert tool_msg["name"] == "calculate_ghg"
+        assert tool_msg["tool_call_id"] == "tu_abc"
+
+    def test_tool_result_name_is_empty_string_when_no_preceding_tool_use(self):
+        """Falls back to empty string if the tool_use is not in the provided history slice."""
+        messages = [
+            {
+                "role":    "user",
+                "content": [
+                    {"type": "tool_result", "tool_use_id": "tu_orphan",
+                     "content": "{}"},
+                ],
+            },
+        ]
+        result = normalize_history_for_mistral(messages)
+        assert result[0]["name"] == ""
+
 
 # ─── round-trip: Mistral → Anthropic → Mistral ───────────────────────────────
 
