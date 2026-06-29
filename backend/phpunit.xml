@@ -23,14 +23,6 @@
             <directory>app/Http/Middleware</directory>
             <directory>app/Providers</directory>
             <directory>app/Traits</directory>
-            <!-- Admin CRUD controllers — require full integration tests (Sprint 4) -->
-            <file>app/Http/Controllers/Api/Admin/AdminMasterDataController.php</file>
-            <file>app/Http/Controllers/Api/Admin/AdminScopeController.php</file>
-            <file>app/Http/Controllers/Api/Admin/AdminUnitController.php</file>
-            <file>app/Http/Controllers/Api/Admin/AdminUserController.php</file>
-            <file>app/Http/Controllers/Api/Admin/CalculationFormulaController.php</file>
-            <file>app/Http/Controllers/Api/Admin/CompanySectorController.php</file>
-            <file>app/Http/Controllers/Api/Admin/AdminCompanyFactorController.php</file>
             <!-- Controllers dependent on external services (PDF/Excel, AI, IoT) -->
             <file>app/Http/Controllers/Api/AISidecarController.php</file>
             <file>app/Http/Controllers/Api/CompanyController.php</file>
@@ -43,7 +35,6 @@
             <!-- Models with no business logic (pure Eloquent boilerplate) -->
             <file>app/Models/ActivityLog.php</file>
             <file>app/Models/IotDevice.php</file>
-            <file>app/Models/MeasurementUnit.php</file>
         </exclude>
     </source>
     <php>

@@ -31,6 +31,12 @@ class AdminMasterDataController extends Controller
         $category = EmissionCategory::create($request->all());
         return response()->json($category, 201);
     }
+
+    public function deleteCategory(EmissionCategory $category)
+    {
+        $category->delete();
+        return response()->json(null, 204);
+    }
 // ...
     // Factors CRUD
     public function storeFactor(Request $request)
