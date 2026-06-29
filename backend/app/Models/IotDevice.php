@@ -15,7 +15,9 @@ class IotDevice extends Model
         'name',
         'type',
         'location',
-        'unit'
+        'unit',
+        'company_id',
+        'emission_factor_id',
     ];
 
     public function readings()
@@ -26,5 +28,15 @@ class IotDevice extends Model
     public function alerts()
     {
         return $this->hasMany(TelemetryAlert::class, 'device_id');
+    }
+
+    public function company()
+    {
+        return $this->belongsTo(\App\Models\Company::class);
+    }
+
+    public function emissionFactor()
+    {
+        return $this->belongsTo(\App\Models\EmissionFactor::class, 'emission_factor_id');
     }
 }

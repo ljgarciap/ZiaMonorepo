@@ -1,0 +1,167 @@
+<?php
+
+namespace Tests\Feature;
+
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+use App\Models\Company;
+use App\Models\Period;
+use App\Models\EmissionFactor;
+use App\Models\EmissionCategory;
+use App\Models\Scope;
+use App\Models\IotDevice;
+use App\Models\TelemetryReading;
+use App\Models\CarbonEmission;
+use App\Services\IoTCarbonIngestionService;
+
+class IoTCarbonIngestionServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private IoTCarbonIngestionService $service;
+    private Company $company;
+    private Period $period;
+    private EmissionFactor $factor;
+    private IotDevice $device;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->service = app(IoTCarbonIngestionService::class);
+
+        $scope          = Scope::firstOrCreate(['name' => 'Alcance 2'], ['description' => 'Scope 2']);
+        $category       = EmissionCategory::factory()->create(['scope_id' => $scope->id]);
+        $this->factor   = EmissionFactor::factory()->create([
+            'emission_category_id' => $category->id,
+            'factor_total_co2e'    => 0.000126, // tCO2e per kWh (Colombia grid)
+        ]);
+
+        $this->company = Company::factory()->create();
+        $this->period  = Period::factory()->create([
+            'company_id' => $this->company->id,
+            'year'       => now()->year,
+            'status'     => 'open',
+        ]);
+
+        $this->device = IotDevice::create([
+            'thingsboard_id'     => 'test-device-001',
+            'name'               => 'Medidor Test',
+            'type'               => 'energy',
+            'unit'               => 'kWh',
+            'company_id'         => $this->company->id,
+            'emission_factor_id' => $this->factor->id,
+        ]);
+    }
+
+    private function makeReading(float $value, ?string $timestamp = null): TelemetryReading
+    {
+        return TelemetryReading::create([
+            'device_id'   => $this->device->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => $value,
+            'timestamp'   => $timestamp ?? now()->toDateTimeString(),
+        ]);
+    }
+
+    // ─── happy path ──────────────────────────────────────────────────────────
+
+    public function test_ingest_creates_carbon_emission_for_active_period()
+    {
+        $reading  = $this->makeReading(100.0);
+        $emission = $this->service->ingestReading($reading);
+
+        $this->assertNotNull($emission);
+        $this->assertEquals($this->period->id, $emission->period_id);
+        $this->assertEquals($this->factor->id, $emission->emission_factor_id);
+        $this->assertEqualsWithDelta(100.0, $emission->quantity, 0.01);
+        $this->assertEqualsWithDelta(0.0126, $emission->calculated_co2e, 0.0001);
+        $this->assertStringContainsString('IoT', $emission->notes);
+    }
+
+    public function test_ingest_is_idempotent_across_multiple_cron_runs()
+    {
+        // Simulate 3 cron runs each with one reading
+        $r1 = $this->makeReading(50.0);
+        $r2 = $this->makeReading(30.0);
+        $r3 = $this->makeReading(20.0);
+
+        $this->service->ingestReading($r1);
+        $this->service->ingestReading($r2);
+        $emission = $this->service->ingestReading($r3);
+
+        // Only ONE CarbonEmission should exist (upsert)
+        $this->assertEquals(1, CarbonEmission::count());
+        // Total should be sum of all 3 readings, not last-only
+        $this->assertEqualsWithDelta(100.0, $emission->quantity, 0.01);
+    }
+
+    // ─── skip conditions ─────────────────────────────────────────────────────
+
+    public function test_ingest_returns_null_when_device_has_no_company()
+    {
+        $unconfigured = IotDevice::create([
+            'thingsboard_id' => 'no-company',
+            'name'           => 'Sin empresa',
+            'type'           => 'energy',
+            'unit'           => 'kWh',
+        ]);
+        $reading = TelemetryReading::create([
+            'device_id'   => $unconfigured->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 50.0,
+            'timestamp'   => now()->toDateTimeString(),
+        ]);
+
+        $result = $this->service->ingestReading($reading);
+
+        $this->assertNull($result);
+        $this->assertEquals(0, CarbonEmission::count());
+    }
+
+    public function test_ingest_returns_null_when_device_has_no_emission_factor()
+    {
+        $unconfigured = IotDevice::create([
+            'thingsboard_id' => 'no-factor',
+            'name'           => 'Sin factor',
+            'type'           => 'energy',
+            'unit'           => 'kWh',
+            'company_id'     => $this->company->id,
+        ]);
+        $reading = TelemetryReading::create([
+            'device_id'   => $unconfigured->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 50.0,
+            'timestamp'   => now()->toDateTimeString(),
+        ]);
+
+        $result = $this->service->ingestReading($reading);
+
+        $this->assertNull($result);
+        $this->assertEquals(0, CarbonEmission::count());
+    }
+
+    public function test_ingest_returns_null_when_no_active_period()
+    {
+        $this->period->update(['status' => 'closed']);
+
+        $reading = $this->makeReading(100.0);
+        $result  = $this->service->ingestReading($reading);
+
+        $this->assertNull($result);
+        $this->assertEquals(0, CarbonEmission::count());
+    }
+
+    public function test_ingest_excludes_readings_outside_period_year()
+    {
+        // Reading from last year — should not be counted in current-year total
+        $oldReading = $this->makeReading(9999.0, (now()->year - 1) . '-06-15 12:00:00');
+        $newReading = $this->makeReading(100.0);
+
+        $this->service->ingestReading($oldReading);
+        $emission = $this->service->ingestReading($newReading);
+
+        // Only the current-year reading should be included
+        $this->assertEqualsWithDelta(100.0, $emission->quantity, 0.01);
+    }
+}

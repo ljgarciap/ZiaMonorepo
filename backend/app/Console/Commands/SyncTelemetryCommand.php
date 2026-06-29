@@ -7,6 +7,7 @@ use App\Models\IotDevice;
 use App\Models\TelemetryReading;
 use App\Services\ThingsBoardService;
 use App\Services\TelemetryAlertService;
+use App\Services\IoTCarbonIngestionService;
 use Illuminate\Support\Facades\Log;
 
 class SyncTelemetryCommand extends Command
@@ -27,12 +28,17 @@ class SyncTelemetryCommand extends Command
 
     protected $thingsBoardService;
     protected $alertService;
+    protected $ingestionService;
 
-    public function __construct(ThingsBoardService $thingsBoardService, TelemetryAlertService $alertService)
-    {
+    public function __construct(
+        ThingsBoardService $thingsBoardService,
+        TelemetryAlertService $alertService,
+        IoTCarbonIngestionService $ingestionService
+    ) {
         parent::__construct();
         $this->thingsBoardService = $thingsBoardService;
-        $this->alertService = $alertService;
+        $this->alertService       = $alertService;
+        $this->ingestionService   = $ingestionService;
     }
 
     /**
@@ -45,20 +51,29 @@ class SyncTelemetryCommand extends Command
         // 1. Auto-seed default IoT devices if none exist
         if (\Schema::hasTable('iot_devices') && \App\Models\IotDevice::count() === 0) {
             $this->info('Sembrando dispositivos IoT por defecto...');
+
+            $company       = \App\Models\Company::where('name', 'like', '%ECONOVA%')->first();
+            $energyFactor  = \App\Models\EmissionFactor::where('name', 'like', '%Interconectado%')->first();
+            $waterFactor   = \App\Models\EmissionFactor::where('name', 'like', '%Agua Potable Consumida%')->first();
+
             \App\Models\IotDevice::create([
-                'thingsboard_id' => env('THINGSBOARD_ENERGY_DEVICE_ID', 'energy_econova_device'),
-                'name' => 'Medidor Eléctrico General - ECONOVA',
-                'type' => 'energy',
-                'location' => 'Edificio ECONOVA - Tablero Principal',
-                'unit' => 'kWh'
+                'thingsboard_id'    => env('THINGSBOARD_ENERGY_DEVICE_ID', 'energy_econova_device'),
+                'name'              => 'Medidor Eléctrico General - ECONOVA',
+                'type'              => 'energy',
+                'location'          => 'Edificio ECONOVA - Tablero Principal',
+                'unit'              => 'kWh',
+                'company_id'        => $company?->id,
+                'emission_factor_id'=> $energyFactor?->id,
             ]);
 
             \App\Models\IotDevice::create([
-                'thingsboard_id' => env('THINGSBOARD_WATER_DEVICE_ID', 'water_econova_device'),
-                'name' => 'Medidor de Agua Principal - ECONOVA',
-                'type' => 'water',
-                'location' => 'Edificio ECONOVA - Entrada General de Agua',
-                'unit' => 'm3'
+                'thingsboard_id'    => env('THINGSBOARD_WATER_DEVICE_ID', 'water_econova_device'),
+                'name'              => 'Medidor de Agua Principal - ECONOVA',
+                'type'              => 'water',
+                'location'          => 'Edificio ECONOVA - Entrada General de Agua',
+                'unit'              => 'm3',
+                'company_id'        => $company?->id,
+                'emission_factor_id'=> $waterFactor?->id,
             ]);
         }
 
@@ -90,6 +105,12 @@ class SyncTelemetryCommand extends Command
 
             // 4. Evaluate alerts
             $this->alertService->checkReading($reading);
+
+            // 5. Ingest into carbon emissions (idempotent accumulation for the active period)
+            $emission = $this->ingestionService->ingestReading($reading);
+            if ($emission) {
+                $this->line("-> Emisión actualizada: {$emission->calculated_co2e} tCO2e (período {$emission->period->year ?? '?'})");
+            }
         }
 
         $this->info('Sincronización de telemetría completada con éxito.');
