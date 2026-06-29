@@ -20,6 +20,16 @@ describe('DashboardService', () => {
 
   afterEach(() => httpMock.verify());
 
+  it('getTrends() calls /dashboard/trends with company_id', () => {
+    service.getTrends(2).subscribe();
+    const req = httpMock.expectOne(r =>
+      r.url === `${API}/dashboard/trends` &&
+      r.params.get('company_id') === '2'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush({});
+  });
+
   it('getSummary() calls /dashboard/summary with company_id and period_id', () => {
     service.getSummary(3, 8).subscribe();
 

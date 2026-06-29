@@ -29,4 +29,31 @@ describe('ContextService', () => {
     service.setPeriod({ id: 2, year: 2026 });
     expect(service.selectedPeriod()).toEqual({ id: 2, year: 2026 });
   });
+
+  it('reset() clears both signals and localStorage', () => {
+    service.setCompany({ id: 1, name: 'ECONOVA' });
+    service.setPeriod({ id: 2, year: 2026 });
+
+    service.reset();
+
+    expect(service.selectedCompany()).toBeNull();
+    expect(service.selectedPeriod()).toBeNull();
+    expect(localStorage.getItem('zia_selected_company')).toBeNull();
+    expect(localStorage.getItem('zia_selected_period')).toBeNull();
+  });
+
+});
+
+describe('ContextService — constructor error recovery', () => {
+  afterEach(() => {
+    localStorage.clear();
+    TestBed.resetTestingModule();
+  });
+
+  it('handles corrupted localStorage data without throwing', () => {
+    localStorage.setItem('zia_selected_company', '{not-valid-json');
+    TestBed.configureTestingModule({});
+    expect(() => TestBed.inject(ContextService)).not.toThrow();
+    expect(localStorage.getItem('zia_selected_company')).toBeNull();
+  });
 });

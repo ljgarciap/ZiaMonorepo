@@ -77,4 +77,49 @@ class MasterDataControllerTest extends TestCase
         $response->assertStatus(200);
         $this->assertIsArray($response->json());
     }
+
+    public function test_emission_factors_hides_disabled_factor_for_company()
+    {
+        $scope    = \App\Models\Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
+        $category = \App\Models\EmissionCategory::factory()->create(['scope_id' => $scope->id, 'parent_id' => null]);
+        $company  = \App\Models\Company::factory()->create();
+
+        $enabled  = EmissionFactor::factory()->create(['emission_category_id' => $category->id, 'name' => 'Habilitado']);
+        $disabled = EmissionFactor::factory()->create(['emission_category_id' => $category->id, 'name' => 'Deshabilitado']);
+
+        // Attach both factors to the company; only $disabled has is_enabled=false
+        $company->factors()->attach($enabled->id,  ['is_enabled' => true]);
+        $company->factors()->attach($disabled->id, ['is_enabled' => false]);
+
+        $response = $this->getJson("/api/dictionaries/factors?company_id={$company->id}");
+
+        $response->assertStatus(200);
+
+        $allFactorNames = collect($response->json())
+            ->flatMap(fn($scope) => $scope['categories'])
+            ->flatMap(fn($cat) => $cat['factors'])
+            ->pluck('name');
+
+        $this->assertContains('Habilitado',    $allFactorNames->all());
+        $this->assertNotContains('Deshabilitado', $allFactorNames->all());
+    }
+
+    public function test_emission_factors_shows_all_when_no_company_id()
+    {
+        $scope    = \App\Models\Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
+        $category = \App\Models\EmissionCategory::factory()->create(['scope_id' => $scope->id, 'parent_id' => null]);
+
+        EmissionFactor::factory()->create(['emission_category_id' => $category->id, 'name' => 'FactorGlobal']);
+
+        $response = $this->getJson('/api/dictionaries/factors');
+
+        $response->assertStatus(200);
+
+        $allFactorNames = collect($response->json())
+            ->flatMap(fn($scope) => $scope['categories'])
+            ->flatMap(fn($cat) => $cat['factors'])
+            ->pluck('name');
+
+        $this->assertContains('FactorGlobal', $allFactorNames->all());
+    }
 }

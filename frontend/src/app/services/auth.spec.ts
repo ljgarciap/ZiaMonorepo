@@ -107,11 +107,48 @@ describe('AuthService', () => {
     expect(service.currentContext()).toEqual(ctx);
   });
 
+  it('selectContext() with navigate=true calls router.navigateByUrl', () => {
+    const service = TestBed.inject(AuthService);
+    const ctx = { type: 'company' as const, id: 5, label: 'Empresa XYZ', role: 'user' };
+    service.selectContext(ctx, true);
+    // router.url = '/' so it hits the navigateByUrl branch
+    expect(mockRouter.navigateByUrl).toHaveBeenCalledWith('/dashboard');
+  });
+
   it('availableContexts() returns stored contexts from localStorage', () => {
     const ctxs = [{ type: 'company', id: 1, label: 'ECONOVA', role: 'user' }];
     localStorage.setItem('user', JSON.stringify({ id: 1, name: 'Test' }));
     localStorage.setItem('available_contexts', JSON.stringify(ctxs));
     const service = TestBed.inject(AuthService);
     expect(service.availableContexts()).toEqual(ctxs);
+  });
+
+  it('register() makes POST to correct URL', () => {
+    const service = TestBed.inject(AuthService);
+    service.register({ name: 'Ana', email: 'ana@test.com', password: 'pass1234' }).subscribe();
+    const req = httpMock.expectOne(`${API}/register`);
+    expect(req.request.method).toBe('POST');
+    req.flush({ message: 'Created' });
+  });
+
+  it('isLoggedIn() returns false when no token is stored', () => {
+    const service = TestBed.inject(AuthService);
+    expect(service.isLoggedIn()).toBe(false);
+  });
+
+  it('isLoggedIn() returns true when a token is stored', () => {
+    localStorage.setItem('token', 'some-token');
+    const service = TestBed.inject(AuthService);
+    expect(service.isLoggedIn()).toBe(true);
+  });
+
+  it('login() stores available_contexts when require_selection is true', () => {
+    const service = TestBed.inject(AuthService);
+    const contexts = [{ type: 'company', id: 1, label: 'ECONOVA', role: 'user' }];
+    service.login({ email: 'a@b.com', password: 'secret' }).subscribe();
+    const req = httpMock.expectOne(`${API}/login`);
+    req.flush({ token: 'tok', require_selection: true, user: { id: 1, name: 'Ana' }, contexts });
+    expect(localStorage.getItem('token')).toBe('tok');
+    expect(service.availableContexts()).toEqual(contexts);
   });
 });
