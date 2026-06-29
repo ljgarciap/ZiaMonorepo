@@ -97,6 +97,34 @@ import { MatButtonModule } from '@angular/material/button';
             </div>
         </div>
 
+        <!-- Intensity KPIs -->
+        <div class="intensity-grid" *ngIf="summary?.intensidad_kpis">
+            <div class="glass-card intensity-card">
+                <mat-icon class="intensity-icon">square_foot</mat-icon>
+                <div class="intensity-body">
+                    <span class="card-title">Intensidad por Superficie</span>
+                    <div class="card-value">
+                        <span class="main-value">
+                            {{summary.intensidad_kpis.tco2e_por_m2 != null ? (summary.intensidad_kpis.tco2e_por_m2 | number:'1.4-4') : 'N/D'}}
+                        </span>
+                        <span class="unit" *ngIf="summary.intensidad_kpis.tco2e_por_m2 != null">tCO2e/m²</span>
+                    </div>
+                </div>
+            </div>
+            <div class="glass-card intensity-card">
+                <mat-icon class="intensity-icon">group</mat-icon>
+                <div class="intensity-body">
+                    <span class="card-title">Intensidad por Empleado</span>
+                    <div class="card-value">
+                        <span class="main-value">
+                            {{summary.intensidad_kpis.tco2e_por_empleado != null ? (summary.intensidad_kpis.tco2e_por_empleado | number:'1.4-4') : 'N/D'}}
+                        </span>
+                        <span class="unit" *ngIf="summary.intensidad_kpis.tco2e_por_empleado != null">tCO2e/empleado</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Middle Section -->
         <div class="middle-grid">
             <div class="glass-card chart-card">
@@ -179,6 +207,10 @@ import { MatButtonModule } from '@angular/material/button';
     .main-value { color: var(--zia-text); }
     .card-title { color: var(--zia-text-muted); }
     
+    .intensity-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px; }
+    .intensity-card { padding: 20px 24px; display: flex; align-items: center; gap: 16px; }
+    .intensity-icon { font-size: 32px; width: 32px; height: 32px; color: var(--prestige-primary); opacity: 0.8; }
+    .intensity-body { display: flex; flex-direction: column; }
     .middle-grid { display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 24px; margin-bottom: 32px; }
     .chart-card { padding: 24px; }
     .donut-wrap { height: 250px; position: relative; display: flex; align-items: center; justify-content: center; overflow: hidden; }

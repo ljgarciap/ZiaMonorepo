@@ -19,6 +19,8 @@ class DashboardController extends Controller
             return response()->json(['error' => 'Company and Period are required'], 400);
         }
 
+        $company = Company::find($companyId);
+
         // Fetch all emissions for the given period
         // We join with factors and categories to get names and scopes
         $emissions = \App\Models\CarbonEmission::where('period_id', $periodId)
@@ -69,8 +71,16 @@ class DashboardController extends Controller
         }
 
         // Equivalency Logic: ~0.5 tCO2e is what one person consumes annually in energy (typical factor)
-        $eqFactor = 0.5; 
+        $eqFactor = 0.5;
         $eqValue = $huellaTotal > 0 ? round($huellaTotal / $eqFactor, 1) : 0;
+
+        $floorSqm     = $company ? ($company->floor_sqm ?? 0) : 0;
+        $numEmployees = $company ? ($company->num_employees ?? 0) : 0;
+
+        $intensidadKpis = [
+            'tco2e_por_m2'        => ($floorSqm > 0)     ? round($huellaTotal / $floorSqm, 4)     : null,
+            'tco2e_por_empleado'  => ($numEmployees > 0)  ? round($huellaTotal / $numEmployees, 4) : null,
+        ];
 
         return response()->json([
             'huella_total' => round($huellaTotal, 2),
@@ -80,6 +90,7 @@ class DashboardController extends Controller
                 'value' => $eqValue,
                 'label' => 'Personas consumiendo energía eléctrica anualmente'
             ],
+            'intensidad_kpis' => $intensidadKpis,
             'chart_data' => [
                 'donut' => $donutData,
                 'details' => collect($details)->sortByDesc('total')->values()->all()

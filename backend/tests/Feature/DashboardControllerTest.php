@@ -116,6 +116,49 @@ class DashboardControllerTest extends TestCase
                  ->assertJsonPath('error', 'Company and Period are required');
     }
 
+    public function test_summary_returns_intensity_kpis_when_company_has_dimensions()
+    {
+        $company = Company::factory()->create([
+            'floor_sqm'     => 100,
+            'num_employees' => 10,
+        ]);
+        $period = Period::factory()->create(['company_id' => $company->id]);
+
+        $scope    = Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
+        $category = EmissionCategory::factory()->create(['scope_id' => $scope->id]);
+        $factor   = EmissionFactor::factory()->create(['emission_category_id' => $category->id]);
+
+        CarbonEmission::factory()->create([
+            'period_id'          => $period->id,
+            'emission_factor_id' => $factor->id,
+            'calculated_co2e'    => 10.0,
+        ]);
+
+        $response = $this->getJson(
+            "/api/dashboard/summary?company_id={$company->id}&period_id={$period->id}"
+        );
+
+        $response->assertStatus(200)
+                 ->assertJsonStructure(['intensidad_kpis' => ['tco2e_por_m2', 'tco2e_por_empleado']]);
+
+        $this->assertEqualsWithDelta(0.1,  $response->json('intensidad_kpis.tco2e_por_m2'),       0.001);
+        $this->assertEqualsWithDelta(1.0,  $response->json('intensidad_kpis.tco2e_por_empleado'),  0.001);
+    }
+
+    public function test_summary_intensity_kpis_null_when_company_has_no_dimensions()
+    {
+        $company = Company::factory()->create(['floor_sqm' => null, 'num_employees' => null]);
+        $period  = Period::factory()->create(['company_id' => $company->id]);
+
+        $response = $this->getJson(
+            "/api/dashboard/summary?company_id={$company->id}&period_id={$period->id}"
+        );
+
+        $response->assertStatus(200);
+        $this->assertNull($response->json('intensidad_kpis.tco2e_por_m2'));
+        $this->assertNull($response->json('intensidad_kpis.tco2e_por_empleado'));
+    }
+
     public function test_unauthenticated_request_returns_401()
     {
         $this->app['auth']->forgetGuards();
