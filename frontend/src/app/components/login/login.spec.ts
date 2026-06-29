@@ -44,7 +44,7 @@ describe('LoginComponent', () => {
   });
 
   it('onSubmit() calls authService.login() with form credentials', () => {
-    authMock.login.mockReturnValue(of({ token: 'tok', user: { id: 1 } }));
+    authMock.login.mockReturnValue(of({ token: 'tok', user: { id: 1, name: 'Test' } }));
     authMock.availableContexts.set([]);
 
     component.loginForm.setValue({ email: 'user@zia.com', password: 'secret123' });
@@ -59,7 +59,7 @@ describe('LoginComponent', () => {
       { type: 'global', id: undefined, label: 'Global', role: 'superadmin' },
     ];
     // login() tap sets availableContexts; we simulate by setting it before subscribe
-    authMock.login.mockReturnValue(of({ token: 'tok', require_selection: true }));
+    authMock.login.mockReturnValue(of({ token: 'tok', require_selection: true } as any));
     authMock.availableContexts.set(contexts as any);
 
     component.loginForm.setValue({ email: 'admin@zia.com', password: 'secret123' });

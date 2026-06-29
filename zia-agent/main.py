@@ -294,6 +294,9 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
                 ]
                 return json.dumps({"pending": pending, "total": len(all_questions), "remaining": len(pending)})
 
+            else:
+                return json.dumps({"error": f"Unknown tool: {tool_name}"})
+
         except Exception as e:
             return json.dumps({"error": str(e)})
 

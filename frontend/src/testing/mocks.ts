@@ -21,7 +21,7 @@ export function createMockAuthService() {
     availableContexts: signal<any[]>([]),
     login: vi.fn(() => of({ token: 'test-token', user: { id: 1, name: 'Test User' } })),
     logout: vi.fn(),
-    getToken: vi.fn(() => 'test-token'),
+    getToken: vi.fn<() => string | null>(() => 'test-token'),
     isLoggedIn: vi.fn(() => true),
     selectContext: vi.fn(),
   };

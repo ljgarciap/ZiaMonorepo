@@ -108,6 +108,14 @@ class DashboardControllerTest extends TestCase
             'Sum of all scope percentages must be approximately 100');
     }
 
+    public function test_summary_requires_company_id_and_period_id()
+    {
+        $response = $this->getJson('/api/dashboard/summary');
+
+        $response->assertStatus(400)
+                 ->assertJsonPath('error', 'Company and Period are required');
+    }
+
     public function test_unauthenticated_request_returns_401()
     {
         $this->app['auth']->forgetGuards();

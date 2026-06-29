@@ -177,3 +177,78 @@ async def test_agent_stream_yields_error_when_no_providers(auth_token, company_i
     assert "done" in types
     # error must come before done
     assert types.index("error") < types.index("done")
+
+
+# ─── agent_stream_mistral: happy-path ────────────────────────────────────────
+
+async def test_mistral_text_response_yields_text_and_done(auth_token, company_id):
+    """Mistral text-only response must emit text + done events."""
+    mock_mistral = make_mistral_mock(content="Hola desde Mistral", finish_reason="stop")
+    messages = [{"role": "user", "content": "Hola"}]
+
+    with patch("main.mistral_client", mock_mistral):
+        events = await collect_events(agent_stream_mistral(messages, auth_token, company_id))
+
+    types = [e["type"] for e in events]
+    assert "text" in types
+    assert "done" in types
+    text_events = [e for e in events if e["type"] == "text"]
+    assert text_events[0]["content"] == "Hola desde Mistral"
+    mock_mistral.chat.complete.assert_called_once()
+
+
+async def test_mistral_tool_call_executes_tool(auth_token, company_id):
+    """Mistral tool_call response must emit tool_start + tool_end events."""
+    import respx
+    import httpx as _httpx
+
+    # Build a tool_call mock response
+    tc = MagicMock()
+    tc.id = "tc_001"
+    tc.function.name = "get_company_profile"
+    tc.function.arguments = json.dumps({"company_id": 1})
+
+    first_msg = MagicMock()
+    first_msg.content = None
+    first_msg.tool_calls = [tc]
+
+    first_choice = MagicMock()
+    first_choice.message = first_msg
+    first_choice.finish_reason = "tool_calls"
+
+    first_resp = MagicMock()
+    first_resp.choices = [first_choice]
+
+    # Second call: text + stop
+    second_msg = MagicMock()
+    second_msg.content = "Perfil obtenido"
+    second_msg.tool_calls = None
+
+    second_choice = MagicMock()
+    second_choice.message = second_msg
+    second_choice.finish_reason = "stop"
+
+    second_resp = MagicMock()
+    second_resp.choices = [second_choice]
+
+    mock_mistral = MagicMock()
+    mock_mistral.chat.complete.side_effect = [first_resp, second_resp]
+
+    messages = [{"role": "user", "content": "Dame el perfil"}]
+
+    with respx.mock:
+        respx.get("http://test-backend:8000/api/companies").mock(
+            return_value=_httpx.Response(200, json=[{"id": 1, "name": "ECONOVA", "sector": {"code": "servicios"}}])
+        )
+        respx.get("http://test-backend:8000/api/companies/1/periods").mock(
+            return_value=_httpx.Response(200, json=[{"id": 10, "year": 2024, "status": "active"}])
+        )
+        with patch("main.mistral_client", mock_mistral):
+            events = await collect_events(agent_stream_mistral(messages, auth_token, company_id))
+
+    types = [e["type"] for e in events]
+    assert "tool_start" in types
+    assert "tool_end" in types
+    assert "done" in types
+    tool_start = next(e for e in events if e["type"] == "tool_start")
+    assert tool_start["tool"] == "get_company_profile"

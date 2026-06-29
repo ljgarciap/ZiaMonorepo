@@ -296,13 +296,14 @@ async def test_get_pending_questions_all_registered(backend_url, auth_token, com
 # ─── unknown tool ─────────────────────────────────────────────────────────────
 
 async def test_execute_tool_unknown_tool_returns_gracefully(auth_token, company_id):
-    """An unknown tool name must not raise an exception."""
+    """Unknown tool name returns a JSON error dict without raising."""
     with respx.mock:
-        result = await execute_tool(
+        raw = await execute_tool(
             "nonexistent_tool",
             {},
             auth_token=auth_token,
             company_id=company_id,
         )
-        # Function returns None implicitly when no branch matches — should not crash
-        assert result is None or isinstance(result, str)
+        result = json.loads(raw)
+        assert "error" in result
+        assert "nonexistent_tool" in result["error"]

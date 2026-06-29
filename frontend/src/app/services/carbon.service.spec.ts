@@ -56,15 +56,16 @@ describe('CarbonService', () => {
     req.flush({ data: [], total: 0 });
   });
 
-  it('HTTP error from storeEmission propagates as Observable error', (done) => {
-    service.storeEmission(1, { emission_factor_id: 999 }).subscribe({
-      error: (err) => {
-        expect(err.status).toBe(422);
-        done();
-      },
+  it('HTTP error from storeEmission propagates as Observable error', () => {
+    return new Promise<void>((resolve) => {
+      service.storeEmission(1, { emission_factor_id: 999 }).subscribe({
+        error: (err) => {
+          expect(err.status).toBe(422);
+          resolve();
+        },
+      });
+      const req = httpMock.expectOne(`${API}/periods/1/emissions`);
+      req.flush({ message: 'Validation error' }, { status: 422, statusText: 'Unprocessable Entity' });
     });
-
-    const req = httpMock.expectOne(`${API}/periods/1/emissions`);
-    req.flush({ message: 'Validation error' }, { status: 422, statusText: 'Unprocessable Entity' });
   });
 });

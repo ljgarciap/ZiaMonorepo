@@ -91,7 +91,7 @@ describe('FormComponent', () => {
     }));
   });
 
-  it('submitting flag is set to false after all requests complete', (done) => {
+  it('submitting flag is set to false after all requests complete', () => {
     component.selectedCompany = { id: 1, name: 'ECONOVA' };
     component.selectedPeriod = { id: 7, year: 2026 };
 
@@ -107,11 +107,12 @@ describe('FormComponent', () => {
     carbonMock.storeEmission.mockReturnValue(of({ id: 1, calculated_co2e: 0.5 }));
     component.onSubmit();
 
-    // submitting resets to false after forkJoin completes
-    setTimeout(() => {
-      expect(component.submitting).toBe(false);
-      done();
-    }, 0);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        expect(component.submitting).toBe(false);
+        resolve();
+      }, 0);
+    });
   });
 
   it('onSubmit() does not call carbonService when no company is selected', () => {
@@ -133,7 +134,7 @@ describe('FormComponent', () => {
     expect(carbonMock.storeEmission).not.toHaveBeenCalled();
   });
 
-  it('onSubmit() continues saving other items when one request fails', (done) => {
+  it('onSubmit() continues saving other items when one request fails', () => {
     component.selectedCompany = { id: 1, name: 'ECONOVA' };
     component.selectedPeriod = { id: 7, year: 2026 };
 
@@ -155,11 +156,12 @@ describe('FormComponent', () => {
 
     component.onSubmit();
 
-    setTimeout(() => {
-      // Both calls were made (forkJoin waits for all)
-      expect(carbonMock.storeEmission).toHaveBeenCalledTimes(2);
-      expect(component.submitting).toBe(false);
-      done();
-    }, 0);
+    return new Promise<void>((resolve) => {
+      setTimeout(() => {
+        expect(carbonMock.storeEmission).toHaveBeenCalledTimes(2);
+        expect(component.submitting).toBe(false);
+        resolve();
+      }, 0);
+    });
   });
 });

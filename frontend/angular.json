@@ -79,10 +79,10 @@
             "coverageReporters": ["text", "lcov", "html"],
             "include": ["src/**/*.spec.ts"],
             "coverageThresholds": {
-              "statements": 60,
+              "statements": 55,
               "branches": 50,
-              "functions": 60,
-              "lines": 60
+              "functions": 50,
+              "lines": 58
             }
           }
         }

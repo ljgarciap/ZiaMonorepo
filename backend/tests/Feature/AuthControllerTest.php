@@ -45,6 +45,17 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(422);
     }
 
+    public function test_register_fails_with_short_password()
+    {
+        $response = $this->postJson('/api/register', [
+            'name'     => 'User',
+            'email'    => 'valid@example.com',
+            'password' => '1234',
+        ]);
+
+        $response->assertStatus(422);
+    }
+
     public function test_register_fails_with_invalid_email()
     {
         $response = $this->postJson('/api/register', [
