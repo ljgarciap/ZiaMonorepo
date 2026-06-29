@@ -14,8 +14,7 @@ class CompanyGroup extends Model
     public function companies()
     {
         return $this->belongsToMany(Company::class, 'company_group_members', 'group_id', 'company_id')
-                    ->withPivot('joined_at')
-                    ->withTimestamps();
+                    ->withPivot('joined_at');
     }
 
     public function creator()

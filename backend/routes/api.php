@@ -48,6 +48,16 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/users/{user}', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'destroy']);
         Route::post('/users/{id}/restore', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'restore']);
 
+        // Company Groups — admin-only aggregate reporting (building / consortium)
+        Route::prefix('groups')->middleware(['role:superadmin'])->group(function () {
+            Route::get('/', [App\Http\Controllers\Api\CompanyGroupController::class, 'index']);
+            Route::post('/', [App\Http\Controllers\Api\CompanyGroupController::class, 'store']);
+            Route::get('/{group}/summary', [App\Http\Controllers\Api\CompanyGroupController::class, 'summary']);
+            Route::post('/{group}/companies', [App\Http\Controllers\Api\CompanyGroupController::class, 'addCompany']);
+            Route::delete('/{group}/companies', [App\Http\Controllers\Api\CompanyGroupController::class, 'removeCompany']);
+            Route::delete('/{group}', [App\Http\Controllers\Api\CompanyGroupController::class, 'destroy']);
+        });
+
         // Superadmin-only Master Data management
         Route::middleware(['role:superadmin'])->group(function () {
             // Sectores Management
@@ -99,15 +109,6 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/ai/recommendations', [\App\Http\Controllers\Api\AISidecarController::class, 'getRecommendations']);
         Route::post('/ai/chat', [\App\Http\Controllers\Api\AISidecarController::class, 'chat']);
 
-        // Company Groups (consorcio / agrupación multi-empresa)
-        Route::get('/groups', [App\Http\Controllers\Api\CompanyGroupController::class, 'index']);
-        Route::get('/groups/{group}/summary', [App\Http\Controllers\Api\CompanyGroupController::class, 'summary']);
-        Route::middleware(['role:superadmin,admin'])->group(function () {
-            Route::post('/groups', [App\Http\Controllers\Api\CompanyGroupController::class, 'store']);
-            Route::post('/groups/{group}/companies', [App\Http\Controllers\Api\CompanyGroupController::class, 'addCompany']);
-            Route::delete('/groups/{group}/companies', [App\Http\Controllers\Api\CompanyGroupController::class, 'removeCompany']);
-            Route::delete('/groups/{group}', [App\Http\Controllers\Api\CompanyGroupController::class, 'destroy']);
-        });
     });
 });
 

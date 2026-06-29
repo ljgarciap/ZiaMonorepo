@@ -34,7 +34,6 @@
             <!-- Controllers dependent on external services (PDF/Excel, AI, IoT) -->
             <file>app/Http/Controllers/Api/AISidecarController.php</file>
             <file>app/Http/Controllers/Api/CompanyController.php</file>
-            <file>app/Http/Controllers/Api/CompanyGroupController.php</file>
             <file>app/Http/Controllers/Api/ReportController.php</file>
             <!-- External service implementations — no CI API keys available -->
             <file>app/Services/AI/AIServiceInterface.php</file>
@@ -43,7 +42,6 @@
             <file>app/Services/ThingsBoardService.php</file>
             <!-- Models with no business logic (pure Eloquent boilerplate) -->
             <file>app/Models/ActivityLog.php</file>
-            <file>app/Models/CompanyGroup.php</file>
             <file>app/Models/IotDevice.php</file>
             <file>app/Models/MeasurementUnit.php</file>
         </exclude>
