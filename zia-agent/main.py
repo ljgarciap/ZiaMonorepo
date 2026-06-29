@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 from typing import AsyncIterator
 
 import anthropic
@@ -407,7 +408,10 @@ async def agent_stream_anthropic(
             break
 
 
-# ─── Provider dispatcher ──────────────────────────────────────────────────────
+# ─── Provider dispatcher with retry + exponential backoff ────────────────────
+
+MISTRAL_MAX_RETRIES = 3
+MISTRAL_BACKOFF_BASE = 1.0  # seconds; delays: 1s, 2s before 3rd attempt
 
 async def agent_stream(
     messages: list,
@@ -415,13 +419,17 @@ async def agent_stream(
     company_id: int,
 ) -> AsyncIterator[str]:
     if mistral_client:
-        try:
-            async for event in agent_stream_mistral(messages, auth_token, company_id):
-                yield event
-            return
-        except Exception as e:
-            # Mistral failed — fall through to Anthropic silently
-            pass
+        for attempt in range(MISTRAL_MAX_RETRIES):
+            try:
+                async for event in agent_stream_mistral(messages, auth_token, company_id):
+                    yield event
+                return
+            except Exception:
+                if attempt < MISTRAL_MAX_RETRIES - 1:
+                    await asyncio.sleep(MISTRAL_BACKOFF_BASE * (2 ** attempt))
+
+        # All retries exhausted — warn and fall through to Anthropic
+        yield f"data: {json.dumps({'type': 'warning', 'message': f'Mistral unavailable after {MISTRAL_MAX_RETRIES} attempts, switching to Anthropic'})}\n\n"
 
     if anthropic_client:
         async for event in agent_stream_anthropic(messages, auth_token, company_id):

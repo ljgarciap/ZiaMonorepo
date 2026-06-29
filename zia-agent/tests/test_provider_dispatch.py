@@ -2,7 +2,7 @@
 import json
 import sys
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, AsyncMock
 
 import pytest
 
@@ -108,3 +108,82 @@ async def test_dispatch_done_event_always_present(auth_token, company_id):
 
     done_events = [e for e in events if e.get("type") == "done"]
     assert len(done_events) >= 1
+
+
+# ─── retry + backoff tests ────────────────────────────────────────────────────
+
+async def test_retry_succeeds_on_second_attempt(auth_token, company_id):
+    """Mistral fails once then succeeds — Anthropic is never called."""
+    mock_anthropic = make_anthropic_mock()
+    call_count = 0
+
+    async def flaky_mistral(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count == 1:
+            raise RuntimeError("transient error")
+        yield f'data: {json.dumps({"type": "text", "content": "OK en retry"})}\n\n'
+        yield f'data: {json.dumps({"type": "done"})}\n\n'
+
+    messages = [{"role": "user", "content": "Hola"}]
+
+    with patch("main.mistral_client", MagicMock()), \
+         patch("main.anthropic_client", mock_anthropic), \
+         patch("main.agent_stream_mistral", flaky_mistral), \
+         patch("main.asyncio.sleep", AsyncMock()):
+        events = await collect_events(agent_stream(messages, auth_token, company_id))
+
+    assert call_count == 2
+    mock_anthropic.messages.create.assert_not_called()
+    types = [e["type"] for e in events]
+    assert "text" in types
+    assert "done" in types
+
+
+async def test_retry_exhausted_falls_back_to_anthropic(auth_token, company_id):
+    """All Mistral retries fail — Anthropic is used and a warning event is emitted."""
+    mock_anthropic = make_anthropic_mock("Fallback Anthropic")
+
+    async def always_fails(*args, **kwargs):
+        raise RuntimeError("Mistral down")
+        yield  # make it an async generator
+
+    messages = [{"role": "user", "content": "Hola"}]
+
+    with patch("main.mistral_client", MagicMock()), \
+         patch("main.anthropic_client", mock_anthropic), \
+         patch("main.agent_stream_mistral", always_fails), \
+         patch("main.asyncio.sleep", AsyncMock()):
+        events = await collect_events(agent_stream(messages, auth_token, company_id))
+
+    mock_anthropic.messages.create.assert_called_once()
+    types = [e["type"] for e in events]
+    assert "warning" in types
+    assert "text" in types
+    assert "done" in types
+    warning = next(e for e in events if e["type"] == "warning")
+    assert "Mistral" in warning["message"]
+    assert "Anthropic" in warning["message"]
+
+
+async def test_backoff_sleep_called_between_retries(auth_token, company_id):
+    """asyncio.sleep is called with exponential delays between Mistral retries."""
+    mock_sleep = AsyncMock()
+
+    async def always_fails(*args, **kwargs):
+        raise RuntimeError("fail")
+        yield
+
+    messages = [{"role": "user", "content": "Hola"}]
+
+    with patch("main.mistral_client", MagicMock()), \
+         patch("main.anthropic_client", None), \
+         patch("main.agent_stream_mistral", always_fails), \
+         patch("main.asyncio.sleep", mock_sleep):
+        await collect_events(agent_stream(messages, auth_token, company_id))
+
+    # MAX_RETRIES=3: sleep after attempt 0 (1.0s) and attempt 1 (2.0s); no sleep after attempt 2
+    assert mock_sleep.call_count == 2
+    delays = [call.args[0] for call in mock_sleep.call_args_list]
+    assert delays[0] == pytest.approx(1.0)
+    assert delays[1] == pytest.approx(2.0)
