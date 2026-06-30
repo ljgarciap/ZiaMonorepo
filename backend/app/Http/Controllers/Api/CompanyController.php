@@ -4,70 +4,35 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Company;
-use App\Models\Period;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CompanyController extends Controller
 {
-    /**
-     * @OA\Get(
-     *     path="/api/companies",
-     *     summary="List all companies",
-     *     tags={"Companies"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Response(
-     *         response=200,
-     *         description="List of companies",
-     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
-     *     )
-     * )
-     */
-    public function index(Request $request)
+    public function index(Request $request): JsonResponse
     {
         $user = $request->user();
-        $contextCompanyId = $request->attributes->get('current_company_id');
 
-        // If specific context is active, return only that company
-        if ($contextCompanyId) {
-            return response()->json(Company::where('id', $contextCompanyId)->get());
-        }
+        $companies = $user->role === 'superadmin'
+            ? Company::with('sector')->get()
+            : $user->companies()->with('sector')->wherePivot('is_active', true)->get();
 
-        $activeRole = $request->header('X-Context-Role') ?: $user->role;
-
-        // If Superadmin, return all
-        if ($activeRole === 'superadmin') {
-            return response()->json(Company::all());
-        }
-
-        // Otherwise return associated companies
-        return response()->json($user->companies);
+        return response()->json($companies);
     }
 
-    /**
-     * @OA\Get(
-     *     path="/api/companies/{company}/periods",
-     *     summary="Get periods for a specific company",
-     *     tags={"Companies"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(
-     *         name="company",
-     *         in="path",
-     *         required=true,
-     *         @OA\Schema(type="integer")
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="List of periods",
-     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
-     *     )
-     * )
-     */
-    public function periods($companyContext)
+    public function periods(Request $request, Company $company): JsonResponse
     {
-        // $companyContext can be ID or even NIT if needed. Assuming ID for now.
-        $periods = Period::where('company_id', $companyContext)
-                        ->orderBy('year', 'desc')
-                        ->get();
-        return response()->json($periods);
+        $user = $request->user();
+
+        $hasAccess = $user->role === 'superadmin'
+            || $user->companies()->where('companies.id', $company->id)->exists();
+
+        if (!$hasAccess) {
+            return response()->json(['error' => 'Unauthorized'], 403);
+        }
+
+        return response()->json(
+            $company->periods()->orderBy('year', 'desc')->get()
+        );
     }
 }

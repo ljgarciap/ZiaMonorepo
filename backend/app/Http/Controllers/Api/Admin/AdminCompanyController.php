@@ -52,18 +52,22 @@ class AdminCompanyController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'nit' => 'nullable|string|max:20',
-            'company_sector_id' => 'nullable|exists:company_sectors,id',
-            'logo_url' => 'nullable|url',
+            'name'              => 'required|string|max:255',
+            'nit'               => 'nullable|string|max:20',
+            'company_sector_id' => 'required|exists:company_sectors,id',
+            'logo_url'          => 'nullable|url',
+            'num_employees'     => 'nullable|integer|min:1',
+            'floor_sqm'         => 'nullable|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $company = Company::create($request->all());
-        return response()->json($company, 201);
+        $company = Company::create($request->only([
+            'name', 'nit', 'company_sector_id', 'logo_url', 'num_employees', 'floor_sqm',
+        ]));
+        return response()->json($company->load('sector'), 201);
     }
 
     /**

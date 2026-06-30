@@ -86,7 +86,7 @@ Route::middleware('auth:api')->group(function () {
     Route::middleware(['context.aware'])->group(function () {
         // Public Dictionaries (Master Data for usage in forms/dashboards)
         Route::get('/companies', [App\Http\Controllers\Api\CompanyController::class, 'index']);
-        Route::get('/companies/{id}/periods', [App\Http\Controllers\Api\CompanyController::class, 'periods']);
+        Route::get('/companies/{company}/periods', [App\Http\Controllers\Api\CompanyController::class, 'periods']);
         
         // Carbon Emissions Management
         Route::post('/periods/{period}/emissions', [App\Http\Controllers\Api\CarbonEmissionController::class, 'store']);
