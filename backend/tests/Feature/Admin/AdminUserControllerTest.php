@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Admin;
 
+use App\Mail\WelcomeCredentials;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 use App\Models\User;
 use App\Models\Company;
@@ -180,5 +182,43 @@ class AdminUserControllerTest extends TestCase
              ->assertOk();
 
         $this->assertDatabaseHas('users', ['id' => $user->id, 'deleted_at' => null]);
+    }
+
+    // ─── welcome email (10-1) ─────────────────────────────────────────────────
+
+    public function test_welcome_email_sent_when_new_user_created()
+    {
+        Mail::fake();
+
+        $this->actingAs($this->superadmin, 'api')
+             ->postJson('/api/admin/users', [
+                 'name'  => 'Nuevo Usuario',
+                 'email' => 'nuevo@empresa.co',
+                 'role'  => 'user',
+             ])
+             ->assertCreated();
+
+        Mail::assertSent(WelcomeCredentials::class, fn($mail) =>
+            $mail->hasTo('nuevo@empresa.co')
+        );
+    }
+
+    public function test_welcome_email_not_sent_when_restoring_existing_user()
+    {
+        Mail::fake();
+
+        $existing = User::factory()->create(['email' => 'existente@empresa.co']);
+        $existing->delete();
+
+        $this->actingAs($this->superadmin, 'api')
+             ->postJson('/api/admin/users', [
+                 'name'  => 'Restaurado',
+                 'email' => 'existente@empresa.co',
+                 'role'  => 'user',
+             ])
+             ->assertOk();
+
+        // Restore path does not create a new credential — no mail expected
+        Mail::assertNotSent(WelcomeCredentials::class);
     }
 }

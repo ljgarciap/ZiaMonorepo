@@ -8,6 +8,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Chart, registerables } from 'chart.js';
 import { ContextService } from '../../services/context.service';
 import { interval, Subscription } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 Chart.register(...registerables);
 
@@ -211,6 +212,7 @@ interface TelemetryAlert {
 export class ZiaLiveComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private context = inject(ContextService);
+  private apiUrl = environment.apiUrl;
 
   @ViewChild('telemetryChart') chartCanvas!: ElementRef;
 
@@ -258,63 +260,19 @@ export class ZiaLiveComponent implements OnInit, OnDestroy {
     const company = this.context.selectedCompany();
     if (!company) return;
 
-    // Simulate backend fetch from DB, providing realistic telemetry logs
-    // In production we query Laravel endpoints:
-    // Route::get('/telemetry/live', ...)
-    
-    // We mock values matching standard readings
-    const nowTime = new Date();
-    const energyData: TelemetryReading[] = [];
-    const waterData: TelemetryReading[] = [];
-
-    for (let i = 9; i >= 0; i--) {
-      const ts = new Date(nowTime.getTime() - i * 5 * 60 * 1000); // 5 min intervals
-      const hour = ts.getHours();
-      const isWorking = (hour >= 8 && hour < 18);
-      
-      // Energy
-      energyData.push({
-        metric_name: 'electricity_kwh',
-        value: isWorking ? 60 + Math.random() * 15 : 10 + Math.random() * 5,
-        timestamp: ts.toISOString(),
-        device_name: 'Medidor Eléctrico ECONOVA'
-      });
-
-      // Water
-      waterData.push({
-        metric_name: 'water_m3',
-        value: isWorking ? 1.2 + Math.random() * 0.4 : 0.05 + Math.random() * 0.08,
-        timestamp: ts.toISOString(),
-        device_name: 'Medidor de Agua Principal'
-      });
-    }
-
-    const merged = [...energyData, ...waterData];
-    this.liveTelemetry.set(merged);
-
-    // Filter dynamic alerts
-    // If night electricity was high, trigger warning
-    const currentHour = nowTime.getHours();
-    const currentDay = nowTime.getDay();
-    const isOffHours = (currentDay === 0 || currentDay === 6 || currentHour >= 20 || currentHour < 6);
-
-    const alerts: TelemetryAlert[] = [];
-    if (isOffHours && Math.random() > 0.7) {
-      alerts.push({
-        id: 1,
-        alert_type: 'off_hours_excess',
-        severity: 'warning',
-        message: 'Consumo eléctrico ineficiente detectado fuera de horario comercial en Edificio ECONOVA - Tablero Principal.',
-        threshold_value: 25.0,
-        actual_value: 38.5,
-        detected_at: nowTime.toISOString(),
-        resolved: false
-      });
-    }
-
-    this.activeAlerts.set(alerts);
-
-    setTimeout(() => this.updateChart(), 50);
+    this.http.get<{ readings: TelemetryReading[]; alerts: TelemetryAlert[] }>(
+      `${this.apiUrl}/telemetry/live`,
+      { headers: { 'X-Company-ID': String(company.id) } }
+    ).subscribe({
+      next: (res) => {
+        this.liveTelemetry.set(res.readings ?? []);
+        this.activeAlerts.set(res.alerts ?? []);
+        setTimeout(() => this.updateChart(), 50);
+      },
+      error: () => {
+        // Silently degrade — chart stays with last data
+      }
+    });
   }
 
   updateChart() {

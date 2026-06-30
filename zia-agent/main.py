@@ -520,7 +520,7 @@ async def agent_stream_anthropic(
 
     while True:
         response = anthropic_client.messages.create(
-            model="claude-haiku-4-5-20251001",
+            model="claude-haiku-4-5",
             max_tokens=4096,
             system=SYSTEM_PROMPT,
             tools=TOOLS,

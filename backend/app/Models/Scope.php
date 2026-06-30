@@ -11,7 +11,7 @@ class Scope extends Model
 {
     use SoftDeletes, LogsActivity;
 
-    protected $fillable = ['name', 'description', 'documentation_text'];
+    protected $fillable = ['name', 'number', 'description', 'documentation_text'];
 
     public function categories()
     {

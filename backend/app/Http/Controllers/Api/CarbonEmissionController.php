@@ -64,6 +64,10 @@ class CarbonEmissionController extends Controller
             'notes' => 'nullable|string'
         ]);
 
+        if ($period->status === 'closed') {
+            return response()->json(['error' => 'No se pueden registrar emisiones en un período cerrado.'], 422);
+        }
+
         $factor = EmissionFactor::with('formula')->findOrFail($validated['emission_factor_id']);
         
         // Prepare inputs for calculation
@@ -211,5 +215,45 @@ class CarbonEmissionController extends Controller
 
         $perPage = $request->input('per_page', 10);
         return response()->json($query->paginate($perPage));
+    }
+
+    /**
+     * GET /companies/{company}/comparison?years[]=2022&years[]=2023&scopes[]=1&scopes[]=2
+     * Multi-year CO2e breakdown by scope for a company.
+     */
+    public function comparison(Request $request, \App\Models\Company $company)
+    {
+        $years  = $request->input('years', []);
+        $scopes = $request->input('scopes', [1, 2, 3]);
+
+        $query = CarbonEmission::query()
+            ->select(
+                'periods.year',
+                DB::raw('SUM(CASE WHEN scopes.number = 1 THEN carbon_emissions.calculated_co2e ELSE 0 END) as scope1'),
+                DB::raw('SUM(CASE WHEN scopes.number = 2 THEN carbon_emissions.calculated_co2e ELSE 0 END) as scope2'),
+                DB::raw('SUM(CASE WHEN scopes.number = 3 THEN carbon_emissions.calculated_co2e ELSE 0 END) as scope3'),
+                DB::raw('SUM(carbon_emissions.calculated_co2e) as total'),
+                DB::raw('SUM(carbon_emissions.biogenic_co2e) as biogenic_total')
+            )
+            ->join('periods', 'carbon_emissions.period_id', '=', 'periods.id')
+            ->join('emission_factors', 'carbon_emissions.emission_factor_id', '=', 'emission_factors.id')
+            ->join('emission_categories', 'emission_factors.emission_category_id', '=', 'emission_categories.id')
+            ->join('scopes', 'emission_categories.scope_id', '=', 'scopes.id')
+            ->where('periods.company_id', $company->id)
+            ->when(!empty($years), fn($q) => $q->whereIn('periods.year', array_map('intval', $years)))
+            ->when(!empty($scopes), fn($q) => $q->whereIn('scopes.number', array_map('intval', $scopes)))
+            ->groupBy('periods.year')
+            ->orderBy('periods.year');
+
+        $rows = $query->get()->map(fn($r) => [
+            'year'           => (int) $r->year,
+            'scope1'         => round((float) $r->scope1, 4),
+            'scope2'         => round((float) $r->scope2, 4),
+            'scope3'         => round((float) $r->scope3, 4),
+            'total'          => round((float) $r->total, 4),
+            'biogenic_total' => round((float) $r->biogenic_total, 4),
+        ]);
+
+        return response()->json(['data' => $rows]);
     }
 }

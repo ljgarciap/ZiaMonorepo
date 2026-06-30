@@ -18,7 +18,8 @@ class AuthControllerTest extends TestCase
         \Laravel\Passport\Client::factory()->asPersonalAccessTokenClient()->create();
     }
 
-    public function test_user_can_register_with_valid_data()
+    // 10-6: public self-registration is disabled — users are created by admins via POST /admin/users
+    public function test_register_endpoint_is_disabled()
     {
         $response = $this->postJson('/api/register', [
             'name'     => 'Test User',
@@ -26,45 +27,8 @@ class AuthControllerTest extends TestCase
             'password' => 'password123',
         ]);
 
-        $response->assertStatus(201)
-                 ->assertJsonStructure(['user', 'token']);
-
-        $this->assertDatabaseHas('users', ['email' => 'newuser@example.com']);
-    }
-
-    public function test_register_fails_with_duplicate_email()
-    {
-        User::factory()->create(['email' => 'existing@example.com']);
-
-        $response = $this->postJson('/api/register', [
-            'name'     => 'Another User',
-            'email'    => 'existing@example.com',
-            'password' => 'password123',
-        ]);
-
-        $response->assertStatus(422);
-    }
-
-    public function test_register_fails_with_short_password()
-    {
-        $response = $this->postJson('/api/register', [
-            'name'     => 'User',
-            'email'    => 'valid@example.com',
-            'password' => '1234',
-        ]);
-
-        $response->assertStatus(422);
-    }
-
-    public function test_register_fails_with_invalid_email()
-    {
-        $response = $this->postJson('/api/register', [
-            'name'     => 'Bad Email User',
-            'email'    => 'not-an-email',
-            'password' => 'password123',
-        ]);
-
-        $response->assertStatus(422);
+        $response->assertStatus(404);
+        $this->assertDatabaseMissing('users', ['email' => 'newuser@example.com']);
     }
 
     public function test_user_can_login_with_correct_credentials()

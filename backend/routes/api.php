@@ -4,7 +4,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 
-Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 
 // Internal endpoint for zia-agent Python microservice (Docker network only)
@@ -92,7 +91,12 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/periods/{period}/emissions', [App\Http\Controllers\Api\CarbonEmissionController::class, 'store']);
         Route::get('/periods/{period}/emissions', [App\Http\Controllers\Api\CarbonEmissionController::class, 'index']);
         Route::get('/companies/{company}/emissions/history', [App\Http\Controllers\Api\CarbonEmissionController::class, 'history']);
+        Route::get('/companies/{company}/emissions/comparison', [App\Http\Controllers\Api\CarbonEmissionController::class, 'comparison']);
         Route::delete('/emissions/{emission}', [App\Http\Controllers\Api\CarbonEmissionController::class, 'destroy']);
+
+        // Telemetry IoT Routes
+        Route::get('/telemetry/live', [App\Http\Controllers\Api\TelemetryController::class, 'live']);
+        Route::get('/telemetry/history', [App\Http\Controllers\Api\TelemetryController::class, 'history']);
         
         Route::get('/dictionaries/factors', [App\Http\Controllers\Api\MasterDataController::class, 'emissionFactors']);
         Route::get('/dictionaries/questionnaire', [App\Http\Controllers\Api\MasterDataController::class, 'questionnaireRules']);

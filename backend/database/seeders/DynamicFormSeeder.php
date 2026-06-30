@@ -14,9 +14,9 @@ class DynamicFormSeeder extends Seeder
     {
         // 1. Seed Scopes
         $scopes = [
-            1 => ['name' => 'Alcance 1', 'description' => 'Emisiones directas de fuentes propias o controladas.', 'documentation_text' => 'Se refiere a las emisiones de GEI directas generadas dentro de la organización...'],
-            2 => ['name' => 'Alcance 2', 'description' => 'Emisiones indirectas por la generación de electricidad adquirida.', 'documentation_text' => 'Se refiere a las emisiones indirectas de GEI asociadas al consumo de electricidad...'],
-            3 => ['name' => 'Alcance 3', 'description' => 'Otras emisiones indirectas en la cadena de valor.', 'documentation_text' => 'Incluye todas las demás emisiones indirectas que ocurren en la cadena de valor...'],
+            1 => ['name' => 'Alcance 1', 'number' => 1, 'description' => 'Emisiones directas de fuentes propias o controladas.', 'documentation_text' => 'Se refiere a las emisiones de GEI directas generadas dentro de la organización...'],
+            2 => ['name' => 'Alcance 2', 'number' => 2, 'description' => 'Emisiones indirectas por la generación de electricidad adquirida.', 'documentation_text' => 'Se refiere a las emisiones indirectas de GEI asociadas al consumo de electricidad...'],
+            3 => ['name' => 'Alcance 3', 'number' => 3, 'description' => 'Otras emisiones indirectas en la cadena de valor.', 'documentation_text' => 'Incluye todas las demás emisiones indirectas que ocurren en la cadena de valor...'],
         ];
 
         foreach ($scopes as $id => $data) {

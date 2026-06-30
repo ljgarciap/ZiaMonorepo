@@ -227,4 +227,78 @@ class CarbonEmissionApiTest extends TestCase
         $this->assertEquals(2, $response->json('current_page'));
         $this->assertCount(2, $response->json('data'));
     }
+
+    // ─── 10-3: closed period validation ──────────────────────────────────────
+
+    public function test_store_in_closed_period_returns_422()
+    {
+        $this->period->update(['status' => 'closed']);
+
+        $response = $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ]);
+
+        $response->assertStatus(422)
+                 ->assertJsonFragment(['error' => 'No se pueden registrar emisiones en un período cerrado.']);
+    }
+
+    // ─── 10-4: multi-year comparison ─────────────────────────────────────────
+
+    public function test_comparison_returns_scoped_co2e_grouped_by_year()
+    {
+        $yearA      = (int) $this->period->year;
+        $yearB      = $yearA + 1;
+        $companyId  = $this->period->company_id;
+
+        $periodB = \App\Models\Period::factory()->create([
+            'company_id' => $companyId,
+            'year'       => $yearB,
+        ]);
+
+        // Emission in year A
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ]);
+
+        // Emission in year B
+        $this->postJson("/api/periods/{$periodB->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 200,
+        ]);
+
+        $response = $this->getJson(
+            "/api/companies/{$companyId}/emissions/comparison?years[]={$yearA}&years[]={$yearB}"
+        );
+
+        $response->assertOk()
+                 ->assertJsonStructure(['data' => [['year', 'scope1', 'scope2', 'scope3', 'total', 'biogenic_total']]]);
+
+        $data = collect($response->json('data'));
+        $this->assertCount(2, $data);
+
+        // Both years use the same factor (Alcance 1) — total should equal scope1
+        $rowA = $data->firstWhere('year', $yearA);
+        $rowB = $data->firstWhere('year', $yearB);
+        $this->assertNotNull($rowA);
+        $this->assertNotNull($rowB);
+        $this->assertEquals($rowA['total'], $rowA['scope1']);
+        $this->assertGreaterThan($rowA['total'], $rowB['total']);
+    }
+
+    public function test_comparison_with_no_years_filter_returns_all_years()
+    {
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 50,
+        ]);
+
+        $response = $this->getJson(
+            "/api/companies/{$this->period->company_id}/emissions/comparison"
+        );
+
+        $response->assertOk()->assertJsonStructure(['data']);
+        $this->assertGreaterThanOrEqual(1, count($response->json('data')));
+    }
 }

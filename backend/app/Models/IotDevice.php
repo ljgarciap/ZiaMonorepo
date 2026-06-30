@@ -18,6 +18,9 @@ class IotDevice extends Model
         'unit',
         'company_id',
         'emission_factor_id',
+        'baseline_kwh',
+        'office_hours_start',
+        'office_hours_end',
     ];
 
     public function readings()

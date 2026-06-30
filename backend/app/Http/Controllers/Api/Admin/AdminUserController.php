@@ -3,9 +3,12 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Mail\WelcomeCredentials;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class AdminUserController extends Controller
@@ -88,6 +91,12 @@ class AdminUserController extends Controller
                 $companies = array_intersect($companies, $myCompanyIds);
             }
             $user->companies()->sync($companies);
+        }
+
+        try {
+            Mail::to($user->email)->send(new WelcomeCredentials($user, $password));
+        } catch (\Exception $e) {
+            Log::warning("WelcomeCredentials mail failed for {$user->email}: " . $e->getMessage());
         }
 
         return response()->json($user->load('companies'), 201);

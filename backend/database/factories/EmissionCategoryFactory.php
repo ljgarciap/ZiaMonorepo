@@ -16,7 +16,7 @@ class EmissionCategoryFactory extends Factory
             'scope_id' => function () {
                 return \App\Models\Scope::firstOrCreate(
                     ['name' => 'Alcance 1'],
-                    ['description' => 'Test Scope']
+                    ['number' => 1, 'description' => 'Test Scope']
                 )->id;
             },
             'description' => 'Test Description',
