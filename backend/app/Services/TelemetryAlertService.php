@@ -53,6 +53,14 @@ class TelemetryAlertService
                     $message = "Consumo inusual de agua detectado en {$device->location} durante horario no laboral. " .
                                "Consumo actual: {$reading->value} m3, Umbral máximo permitido: {$threshold} m3. Posible fuga activa.";
                 }
+            } elseif ($device->type === 'waste') {
+                $threshold = 10.0; // Max 10 kg off-hours (smart scale — unexpected waste generation)
+                if ($reading->value > $threshold) {
+                    $triggerAlert = true;
+                    $severity = $reading->value > 50.0 ? 'critical' : 'warning';
+                    $message = "Generación inusual de residuos detectada en {$device->location} fuera de horario. " .
+                               "Peso registrado: {$reading->value} kg, Umbral máximo: {$threshold} kg.";
+                }
             }
 
             if ($triggerAlert) {

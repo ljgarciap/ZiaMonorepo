@@ -92,6 +92,7 @@ class CarbonEmissionController extends Controller
             'activity_data_total' => $results['activity_data_total'],
             'activity_data_stdev' => $results['activity_data_stdev'],
             'scope2_method'       => $request->input('scope2_method'),
+            'monthly_data'        => $validated['monthly_inputs'] ?? null,
             'notes'               => $validated['notes'] ?? null,
         ]);
 

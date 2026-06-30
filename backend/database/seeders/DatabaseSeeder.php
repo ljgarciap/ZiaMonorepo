@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             EmissionCategorySeeder::class, // Must run before EmissionFactorSeeder
             EmissionFactorSeeder::class,
             ElectricityFactorSeeder::class,
+            SubsectorSeeder::class,
             SectorQuestionnaireRuleSeeder::class, // Requires EmissionFactorSeeder
             UserSeeder::class,
             CompanySeeder::class,

@@ -8,6 +8,7 @@ class SectorQuestionnaireRule extends Model
 {
     protected $fillable = [
         'sector_code',
+        'subsector_code',
         'emission_factor_id',
         'questionnaire_label',
         'variable_name',

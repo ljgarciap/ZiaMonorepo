@@ -247,6 +247,160 @@ class EmissionFactorSeeder extends Seeder
             ]
         );
 
+        // ── Sprint 9: New emission sources ────────────────────────────────────────
+
+        // 9-1: GLP / Propano (fixed + mobile)
+        // IPCC 2006 Vol.2 Table 2.2 + GHG Protocol AR6 GWP
+        EmissionFactor::updateOrCreate(
+            ['name' => 'GLP / Propano (Fijo)', 'emission_category_id' => $cat('Fuentes Fijas - Combustibles Gaseosos')],
+            [
+                'measurement_unit_id'     => $unit('kg'),
+                'calculation_formula_id'  => $stdFormulaId,
+                'factor_co2'              => 3.000,
+                'factor_ch4'              => 0.0000473,
+                'factor_n2o'              => 0.00000473,
+                // factor_total_co2e = CO2×1 + CH4×29.8 + N2O×273 (AR6, kgCO2e/kg)
+                'factor_total_co2e'       => 3.00282,
+                'source_reference'        => 'IPCC 2006 Vol.2 Table 2.2 — LPG stationary combustion, AR6 GWP',
+            ]
+        );
+
+        EmissionFactor::updateOrCreate(
+            ['name' => 'GLP / Propano (Móvil)', 'emission_category_id' => $cat('Fuentes Móviles - Gases')],
+            [
+                'measurement_unit_id'     => $unit('kg'),
+                'calculation_formula_id'  => $mobileFormulaId,
+                'factor_co2'              => 3.000,
+                'factor_ch4'              => 0.0001419,  // higher for mobile combustion
+                'factor_n2o'              => 0.0002838,
+                'factor_total_co2e'       => 3.08155,
+                'source_reference'        => 'IPCC 2006 Vol.2 Table 2.2 — LPG road transport, AR6 GWP',
+            ]
+        );
+
+        // 9-1: Biogás genérico (is_biogenic = true — CO2 excluded from GEI total)
+        // Biogás combusted in boilers/generators; CO2 is biogenic (excluded), CH4/N2O counted.
+        EmissionFactor::updateOrCreate(
+            ['name' => 'Biogás Genérico (Fijo)', 'emission_category_id' => $cat('Fuentes Fijas - Combustibles Gaseosos')],
+            [
+                'measurement_unit_id'    => $unit('m3'),
+                'factor_co2'             => 1.63,      // biogenic CO2 from CH4 combustion, goes to biogenic_co2e
+                'factor_ch4'             => 0.000024,  // CH4 from incomplete combustion
+                'factor_n2o'             => 0.000010,
+                'factor_total_co2e'      => 1.63,
+                'is_biogenic'            => true,
+                'source_reference'       => 'IPCC 2006 Vol.2 — Biogas combustion (60% CH4 content)',
+            ]
+        );
+
+        // 9-2: SF6 aislante eléctrico (fugitive, Alcance 1)
+        EmissionFactor::updateOrCreate(
+            ['name' => 'SF6 Aislante Eléctrico', 'emission_category_id' => $cat('Emisiones Fugitivas - Gases Industriales')],
+            [
+                'measurement_unit_id'   => $unit('kg'),
+                'factor_sf6'            => 1.0,         // pure SF6 leak: 1 kg SF6 = GWP_SF6 kgCO2e
+                'factor_total_co2e'     => 25200,        // GWP AR6
+                'source_reference'      => 'IPCC AR6 / GHG Protocol Aug 2024 — SF6 GWP 100yr = 25200',
+            ]
+        );
+
+        // 9-2: HFC-227ea / FM-200 (fire suppression, fugitive)
+        EmissionFactor::updateOrCreate(
+            ['name' => 'HFC-227ea / FM-200 (Extintor)', 'emission_category_id' => $cat('Emisiones Fugitivas - Extintores')],
+            [
+                'measurement_unit_id'   => $unit('kg'),
+                'factor_total_co2e'     => 3560,         // IPCC AR6 estimate
+                'source_reference'      => 'IPCC AR6 WGI Annex II — HFC-227ea GWP 100yr ≈ 3560',
+            ]
+        );
+
+        // 9-3: Process emissions — enteric fermentation (livestock)
+        // IPCC 2006 Vol.4 Table 10.10 — non-dairy cattle, Latin America, Tier 1
+        EmissionFactor::updateOrCreate(
+            ['name' => 'Fermentación Entérica (Bovino)', 'emission_category_id' => $cat('Procesos - Fermentación Entérica')],
+            [
+                'measurement_unit_id'   => $unit('cabeza'),
+                'factor_ch4'            => 56.0,         // kgCH4/head/year, tropical Latin America (non-dairy)
+                'factor_total_co2e'     => 1668.8,       // 56 × GWP_CH4(29.8) kgCO2e/head/year
+                'source_reference'      => 'IPCC 2006 Vol.4 Table 10.10 — Non-dairy cattle, tropical Latin America, AR6 GWP',
+            ]
+        );
+
+        // 9-3: Process emissions — manure management
+        // IPCC 2006 Vol.4 Table 10.14 — cattle, default (simplified Tier 1)
+        EmissionFactor::updateOrCreate(
+            ['name' => 'Gestión de Estiércol (Bovino)', 'emission_category_id' => $cat('Procesos - Gestión de Estiércol')],
+            [
+                'measurement_unit_id'   => $unit('cabeza'),
+                'factor_ch4'            => 4.5,          // kgCH4/head/year, cattle manure management
+                'factor_n2o'            => 0.9,          // kgN2O/head/year (IPCC Tier 1 default)
+                'factor_total_co2e'     => 379.5,        // 4.5×29.8 + 0.9×273 = 134.1 + 245.7 = 379.8 ≈ 379.5
+                'source_reference'      => 'IPCC 2006 Vol.4 Tables 10.14 & 11.1 — Cattle manure, AR6 GWP',
+            ]
+        );
+
+        // 9-4: Scope 3 Cat.1 — Purchased goods & services (spend-based, M COP)
+        // Source: EXIOBASE 3.8.2 / DEFRA 2023 spend-based, converted at ~4000 COP/USD (2024 avg).
+        // These are rough estimates; validated EEIO Colombia factors pending.
+        $spendFactors = [
+            ['name' => 'Compras - Servicios Profesionales (M COP)', 'cat' => 'Compras - Servicios Profesionales', 'fe' => 45.0],
+            ['name' => 'Compras - Tecnología y Equipos (M COP)',    'cat' => 'Compras - Tecnología y Equipos',    'fe' => 120.0],
+            ['name' => 'Compras - Materiales y Suministros (M COP)','cat' => 'Compras - Materiales y Suministros','fe' => 180.0],
+            ['name' => 'Compras - Alimentos y Bebidas (M COP)',     'cat' => 'Compras - Alimentos y Bebidas',     'fe' => 60.0],
+            ['name' => 'Compras - Papel y Materiales (M COP)',      'cat' => 'Compras - Papel y Materiales',      'fe' => 80.0],
+        ];
+
+        foreach ($spendFactors as $sf) {
+            EmissionFactor::updateOrCreate(
+                ['name' => $sf['name'], 'emission_category_id' => $cat($sf['cat'])],
+                [
+                    'measurement_unit_id' => $unit('M COP'),
+                    'factor_total_co2e'   => $sf['fe'],
+                    'source_reference'    => 'EXIOBASE 3.8.2 / DEFRA 2023 spend-based, converted COP (4000 COP/USD avg 2024)',
+                ]
+            );
+        }
+
+        // 9-5: Scope 3 Cat.4 — Upstream freight transport (ton-km)
+        // Source: DEFRA 2023 Greenhouse Gas Reporting: Conversion Factors
+        $freightFactors = [
+            ['name' => 'Carga Terrestre (ton·km)',  'cat' => 'Carga - Terrestre', 'fe' => 0.062],
+            ['name' => 'Carga Aérea (ton·km)',      'cat' => 'Carga - Aéreo',     'fe' => 0.602],
+            ['name' => 'Carga Marítima (ton·km)',   'cat' => 'Carga - Marítimo',  'fe' => 0.016],
+        ];
+
+        foreach ($freightFactors as $ff) {
+            EmissionFactor::updateOrCreate(
+                ['name' => $ff['name'], 'emission_category_id' => $cat($ff['cat'])],
+                [
+                    'measurement_unit_id' => $unit('ton·km'),
+                    'factor_total_co2e'   => $ff['fe'],
+                    'source_reference'    => 'DEFRA 2023 Conversion Factors — Freight transport (kgCO2e/ton-km)',
+                ]
+            );
+        }
+
+        // 9-6: Scope 3 Cat.7 — Employee commuting (km-person)
+        // Activity data = total km-person for all employees in the period.
+        // Source: DEFRA 2023 Conversion Factors
+        $commutingFactors = [
+            ['name' => 'Commuting - Vehículo Propio (km)', 'cat' => 'Commuting - Vehículo Propio', 'fe' => 0.189],
+            ['name' => 'Commuting - Bus Urbano (km)',       'cat' => 'Commuting - Bus Urbano',       'fe' => 0.089],
+            ['name' => 'Commuting - Metro y Tren (km)',     'cat' => 'Commuting - Metro y Tren',     'fe' => 0.041],
+            ['name' => 'Commuting - Motocicleta (km)',      'cat' => 'Commuting - Motocicleta',      'fe' => 0.113],
+        ];
+
+        foreach ($commutingFactors as $cf) {
+            EmissionFactor::updateOrCreate(
+                ['name' => $cf['name'], 'emission_category_id' => $cat($cf['cat'])],
+                [
+                    'measurement_unit_id' => $unit('km'),
+                    'factor_total_co2e'   => $cf['fe'],
+                    'source_reference'    => 'DEFRA 2023 Conversion Factors — Passenger transport (kgCO2e/km)',
+                ]
+            );
+        }
+
         $this->command->info('✅ Emission factors created successfully with proper relationships');
     }
 }

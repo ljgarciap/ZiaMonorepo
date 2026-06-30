@@ -35,13 +35,17 @@ class MasterDataSeeder extends Seeder
 
         // 2. Seed Units
         $units = [
-            ['name' => 'Galones', 'symbol' => 'Gal'],
-            ['name' => 'Kilogramos', 'symbol' => 'kg'],
-            ['name' => 'Metros Cúbicos', 'symbol' => 'm3'],
-            ['name' => 'Kilovatios-hora', 'symbol' => 'kWh'],
-            ['name' => 'Kilómetros', 'symbol' => 'km'],
-            ['name' => 'Toneladas', 'symbol' => 'Ton'],
-            ['name' => 'Días', 'symbol' => 'día'],
+            ['name' => 'Galones',                   'symbol' => 'Gal'],
+            ['name' => 'Kilogramos',                 'symbol' => 'kg'],
+            ['name' => 'Metros Cúbicos',             'symbol' => 'm3'],
+            ['name' => 'Kilovatios-hora',            'symbol' => 'kWh'],
+            ['name' => 'Kilómetros',                 'symbol' => 'km'],
+            ['name' => 'Toneladas',                  'symbol' => 'Ton'],
+            ['name' => 'Días',                       'symbol' => 'día'],
+            // Sprint 9: new units for expanded emission sources
+            ['name' => 'Millones de Pesos (COP)',    'symbol' => 'M COP'],
+            ['name' => 'Tonelada-Kilómetro',         'symbol' => 'ton·km'],
+            ['name' => 'Cabeza de Ganado',           'symbol' => 'cabeza'],
         ];
 
         foreach ($units as $unit) {

@@ -182,6 +182,61 @@ class TelemetryAlertTest extends TestCase
         $this->assertDatabaseCount('telemetry_alerts', 1);
     }
 
+    // ─── waste device (Sprint 9) ──────────────────────────────────────────────
+
+    public function test_waste_device_off_hours_excessive_reading_triggers_warning()
+    {
+        $device = IotDevice::create([
+            'thingsboard_id' => 'bascula_01',
+            'name'           => 'Báscula Residuos P1',
+            'type'           => 'waste',
+            'location'       => 'ECONOVA Piso 1',
+            'unit'           => 'kg',
+        ]);
+
+        // Sunday 2:00 AM — off hours
+        $ts = Carbon::create(2026, 6, 7, 2, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $device->id,
+            'metric_name' => 'waste_kg',
+            'value'       => 25.0,  // above 10 kg threshold
+            'timestamp'   => $ts,
+        ]);
+
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNotNull($alert);
+        $this->assertEquals('warning', $alert->severity);
+        $this->assertEquals(10.0, $alert->threshold_value);
+        $this->assertEquals(25.0, $alert->actual_value);
+    }
+
+    public function test_waste_device_off_hours_critical_triggers_critical()
+    {
+        $device = IotDevice::create([
+            'thingsboard_id' => 'bascula_02',
+            'name'           => 'Báscula Residuos P2',
+            'type'           => 'waste',
+            'location'       => 'ECONOVA Piso 2',
+            'unit'           => 'kg',
+        ]);
+
+        $ts = Carbon::create(2026, 6, 7, 3, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $device->id,
+            'metric_name' => 'waste_kg',
+            'value'       => 75.0,  // above 50 kg → critical
+            'timestamp'   => $ts,
+        ]);
+
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNotNull($alert);
+        $this->assertEquals('critical', $alert->severity);
+    }
+
     /**
      * A device with an unrecognized type must be handled gracefully — no exception, no alert.
      */

@@ -30,6 +30,11 @@ class CarbonEmission extends Model
         'activity_data_total',
         'activity_data_stdev',
         'notes',
+        'monthly_data',
+    ];
+
+    protected $casts = [
+        'monthly_data' => 'array',
     ];
 
     public function period()

@@ -13,12 +13,25 @@ class EmissionCategorySeeder extends Seeder
     public function run(): void
     {
         // Scope 3 category numbers per GHG Protocol Corporate Value Chain Standard (15 categories).
-        // Subcategories carry the number of their parent GHG Protocol category.
         $scope3Numbers = [
-            'Viajes Aéreos'   => 6,  // Cat. 6 — Business Travel
-            'Trabajo Remoto'  => 7,  // Cat. 7 — Employee Commuting (home-working subset)
-            'Consumo de Agua' => 5,  // Cat. 5 — Waste Generated in Operations (water treatment)
-            'Residuos Sólidos' => 5, // Cat. 5 — Waste Generated in Operations
+            // Existing
+            'Viajes Aéreos'                      => 6,
+            'Trabajo Remoto'                     => 7,
+            'Consumo de Agua'                    => 5,
+            'Residuos Sólidos'                   => 5,
+            // Sprint 9 — new categories
+            'Compras - Servicios Profesionales'  => 1,
+            'Compras - Tecnología y Equipos'     => 1,
+            'Compras - Materiales y Suministros' => 1,
+            'Compras - Alimentos y Bebidas'      => 1,
+            'Compras - Papel y Materiales'       => 1,
+            'Carga - Terrestre'                  => 4,
+            'Carga - Aéreo'                      => 4,
+            'Carga - Marítimo'                   => 4,
+            'Commuting - Vehículo Propio'        => 7,
+            'Commuting - Bus Urbano'             => 7,
+            'Commuting - Metro y Tren'           => 7,
+            'Commuting - Motocicleta'            => 7,
         ];
 
         $hierarchy = [
@@ -29,15 +42,19 @@ class EmissionCategorySeeder extends Seeder
                     'Fuentes Móviles - Lubricantes',
                 ],
                 'Emisiones Fugitivas' => [
-                    // Split by source type: buildings A/C vs. refrigerated fleets
                     'Emisiones Fugitivas - Refrigerantes Fijas',
                     'Emisiones Fugitivas - Refrigerantes Móviles',
                     'Emisiones Fugitivas - Extintores',
+                    'Emisiones Fugitivas - Gases Industriales', // SF6, HFC suppressants
                 ],
                 'Fuentes Fijas' => [
                     'Fuentes Fijas - Combustibles Sólidos',
                     'Fuentes Fijas - Combustibles Líquidos',
                     'Fuentes Fijas - Combustibles Gaseosos',
+                ],
+                'Emisiones de Proceso' => [   // GHG from industrial/agricultural processes
+                    'Procesos - Fermentación Entérica',
+                    'Procesos - Gestión de Estiércol',
                 ],
             ],
             2 => [ // Alcance 2
@@ -53,6 +70,24 @@ class EmissionCategorySeeder extends Seeder
                 'Agua y Residuos' => [
                     'Consumo de Agua',
                     'Residuos Sólidos',
+                ],
+                'Bienes y Servicios Adquiridos' => [  // Cat. 1 — spend-based method
+                    'Compras - Servicios Profesionales',
+                    'Compras - Tecnología y Equipos',
+                    'Compras - Materiales y Suministros',
+                    'Compras - Alimentos y Bebidas',
+                    'Compras - Papel y Materiales',
+                ],
+                'Transporte de Carga' => [            // Cat. 4 — upstream T&D
+                    'Carga - Terrestre',
+                    'Carga - Aéreo',
+                    'Carga - Marítimo',
+                ],
+                'Transporte de Empleados' => [        // Cat. 7 — employee commuting
+                    'Commuting - Vehículo Propio',
+                    'Commuting - Bus Urbano',
+                    'Commuting - Metro y Tren',
+                    'Commuting - Motocicleta',
                 ],
             ],
         ];
