@@ -24,6 +24,7 @@ class DatabaseSeeder extends Seeder
             CompanySeeder::class,
             CompanyFactorSeeder::class,
             CarbonEmissionSeeder::class,
+            SimulatorScenarioSeeder::class,
         ]);
     }
 }

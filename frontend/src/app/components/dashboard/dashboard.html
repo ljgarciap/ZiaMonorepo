@@ -10,6 +10,18 @@
                 <mat-icon matListItemIcon>assignment</mat-icon>
                 <div matListItemTitle>Huella de Carbono</div>
             </a>
+            <a mat-list-item routerLink="/smart-intake" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>quiz</mat-icon>
+                <div matListItemTitle>Smart Intake</div>
+            </a>
+            <a mat-list-item routerLink="/live" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>sensors</mat-icon>
+                <div matListItemTitle>Zia Live</div>
+            </a>
+            <a mat-list-item routerLink="/simulator" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>science</mat-icon>
+                <div matListItemTitle>Simulador</div>
+            </a>
             <a *ngIf="authService.currentContext()?.role === 'user'" mat-list-item routerLink="/history"
                 routerLinkActive="active-link">
                 <mat-icon matListItemIcon>history</mat-icon>

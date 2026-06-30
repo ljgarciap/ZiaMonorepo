@@ -33,6 +33,10 @@ export const routes: Routes = [
                 path: 'live',
                 loadComponent: () => import('./components/zia-live/zia-live').then(m => m.ZiaLiveComponent)
             },
+            {
+                path: 'simulator',
+                loadComponent: () => import('./components/simulator/simulator').then(m => m.SimulatorComponent)
+            },
 
 
             // Admin Routes

@@ -113,6 +113,10 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/ai/recommendations', [\App\Http\Controllers\Api\AISidecarController::class, 'getRecommendations']);
         Route::post('/ai/chat', [\App\Http\Controllers\Api\AISidecarController::class, 'chat']);
 
+        // Simulator — What-if Gemelo Digital
+        Route::get('/simulator/scenarios', [\App\Http\Controllers\Api\SimulatorController::class, 'index']);
+        Route::post('/simulator/calculate', [\App\Http\Controllers\Api\SimulatorController::class, 'calculate']);
+
     });
 });
 
