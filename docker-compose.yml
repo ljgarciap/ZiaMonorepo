@@ -58,6 +58,9 @@ services:
       MISTRAL_API_KEY: ${MISTRAL_API_KEY}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
     ports:
       - "8001:8001"
     depends_on:

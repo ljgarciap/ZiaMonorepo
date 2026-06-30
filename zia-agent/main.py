@@ -15,6 +15,11 @@ try:
 except ImportError:
     Mistral = None
 
+try:
+    from langfuse import Langfuse
+except ImportError:
+    Langfuse = None
+
 app = FastAPI(title="ZIA Agent", version="2.0.0")
 
 app.add_middleware(
@@ -32,6 +37,18 @@ MISTRAL_MODEL   = os.getenv("MISTRAL_MODEL", "mistral-small-latest")
 
 anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_KEY) if ANTHROPIC_KEY else None
 mistral_client   = Mistral(api_key=MISTRAL_KEY) if (Mistral and MISTRAL_KEY) else None
+
+LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
+LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
+LANGFUSE_HOST       = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
+
+langfuse_client: "Langfuse | None" = None
+if Langfuse and LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY:
+    langfuse_client = Langfuse(
+        public_key=LANGFUSE_PUBLIC_KEY,
+        secret_key=LANGFUSE_SECRET_KEY,
+        host=LANGFUSE_HOST,
+    )
 
 # ─── Tool definitions (Anthropic format) ─────────────────────────────────────
 
@@ -452,6 +469,7 @@ async def agent_stream_mistral(
     messages: list,
     auth_token: str,
     company_id: int,
+    trace=None,
 ) -> AsyncIterator[str]:
     history = [{"role": "system", "content": SYSTEM_PROMPT}]
     for m in normalize_history_for_mistral(messages):
@@ -462,6 +480,12 @@ async def agent_stream_mistral(
             history.append({"role": m["role"], "content": content})
 
     while True:
+        generation = trace.generation(
+            name="mistral-completion",
+            model=MISTRAL_MODEL,
+            input=history,
+        ) if trace else None
+
         response = mistral_client.chat.complete(
             model=MISTRAL_MODEL,
             messages=history,
@@ -471,6 +495,13 @@ async def agent_stream_mistral(
 
         msg    = response.choices[0].message
         finish = response.choices[0].finish_reason
+
+        if generation:
+            usage = response.usage
+            generation.end(
+                output=msg.content or "",
+                usage={"input": usage.prompt_tokens, "output": usage.completion_tokens} if usage else None,
+            )
 
         if msg.content:
             yield f"data: {json.dumps({'type': 'text', 'content': msg.content})}\n\n"
@@ -501,6 +532,13 @@ async def agent_stream_mistral(
             result = await execute_tool(name, tool_input, auth_token, company_id)
             yield f"data: {json.dumps({'type': 'tool_end', 'tool': name})}\n\n"
 
+            if trace:
+                trace.event(
+                    name="tool_call",
+                    input={"tool": name, "input": tool_input},
+                    output=result,
+                )
+
             history.append({
                 "role":         "tool",
                 "content":      result,
@@ -515,17 +553,32 @@ async def agent_stream_anthropic(
     messages: list,
     auth_token: str,
     company_id: int,
+    trace=None,
 ) -> AsyncIterator[str]:
     history = normalize_history_for_anthropic(list(messages))
 
     while True:
+        _model = "claude-haiku-4-5"
+        generation = trace.generation(
+            name="anthropic-completion",
+            model=_model,
+            input=history,
+        ) if trace else None
+
         response = anthropic_client.messages.create(
-            model="claude-haiku-4-5",
+            model=_model,
             max_tokens=4096,
             system=SYSTEM_PROMPT,
             tools=TOOLS,
             messages=history,
         )
+
+        output_text = " ".join(b.text for b in response.content if hasattr(b, "text") and b.text)
+        if generation:
+            generation.end(
+                output=output_text,
+                usage={"input": response.usage.input_tokens, "output": response.usage.output_tokens},
+            )
 
         for block in response.content:
             if hasattr(block, "text") and block.text:
@@ -542,6 +595,14 @@ async def agent_stream_anthropic(
                     yield f"data: {json.dumps({'type': 'tool_start', 'tool': block.name, 'input': block.input})}\n\n"
                     result = await execute_tool(block.name, block.input, auth_token, company_id)
                     yield f"data: {json.dumps({'type': 'tool_end', 'tool': block.name})}\n\n"
+
+                    if trace:
+                        trace.event(
+                            name="tool_call",
+                            input={"tool": block.name, "input": block.input},
+                            output=result,
+                        )
+
                     tool_results.append({
                         "type":        "tool_result",
                         "tool_use_id": block.id,
@@ -565,26 +626,53 @@ async def agent_stream(
     auth_token: str,
     company_id: int,
 ) -> AsyncIterator[str]:
-    if mistral_client:
-        for attempt in range(MISTRAL_MAX_RETRIES):
-            try:
-                async for event in agent_stream_mistral(messages, auth_token, company_id):
-                    yield event
-                return
-            except Exception:
-                if attempt < MISTRAL_MAX_RETRIES - 1:
-                    await asyncio.sleep(MISTRAL_BACKOFF_BASE * (2 ** attempt))
+    last_user_msg = next(
+        (m["content"] for m in reversed(messages) if m.get("role") == "user"), ""
+    )
+    trace = langfuse_client.trace(
+        name="zia-chat",
+        user_id=str(company_id),
+        input=last_user_msg,
+        metadata={"history_len": len(messages)},
+    ) if langfuse_client else None
 
-        # All retries exhausted — warn and fall through to Anthropic
-        yield f"data: {json.dumps({'type': 'warning', 'message': f'Mistral unavailable after {MISTRAL_MAX_RETRIES} attempts, switching to Anthropic'})}\n\n"
+    collected_output: list[str] = []
 
-    if anthropic_client:
-        async for event in agent_stream_anthropic(messages, auth_token, company_id):
-            yield event
-        return
+    try:
+        if mistral_client:
+            for attempt in range(MISTRAL_MAX_RETRIES):
+                try:
+                    async for event in agent_stream_mistral(messages, auth_token, company_id, trace):
+                        if trace and '"type": "text"' in event:
+                            try:
+                                collected_output.append(json.loads(event[6:])["content"])
+                            except Exception:
+                                pass
+                        yield event
+                    return
+                except Exception:
+                    if attempt < MISTRAL_MAX_RETRIES - 1:
+                        await asyncio.sleep(MISTRAL_BACKOFF_BASE * (2 ** attempt))
 
-    yield f"data: {json.dumps({'type': 'error', 'message': 'No AI provider configured'})}\n\n"
-    yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            yield f"data: {json.dumps({'type': 'warning', 'message': f'Mistral unavailable after {MISTRAL_MAX_RETRIES} attempts, switching to Anthropic'})}\n\n"
+
+        if anthropic_client:
+            async for event in agent_stream_anthropic(messages, auth_token, company_id, trace):
+                if trace and '"type": "text"' in event:
+                    try:
+                        collected_output.append(json.loads(event[6:])["content"])
+                    except Exception:
+                        pass
+                yield event
+            return
+
+        yield f"data: {json.dumps({'type': 'error', 'message': 'No AI provider configured'})}\n\n"
+        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+
+    finally:
+        if trace:
+            trace.update(output=" ".join(collected_output))
+            langfuse_client.flush()
 
 
 # ─── FastAPI endpoints ────────────────────────────────────────────────────────
@@ -628,4 +716,6 @@ async def health():
         "primary":         providers[0] if providers else None,
         "fallback":        providers[1] if len(providers) > 1 else None,
         "providers_ready": providers,
+        "observability":   "langfuse" if langfuse_client else "disabled",
+        "langfuse_host":   LANGFUSE_HOST if langfuse_client else None,
     }
