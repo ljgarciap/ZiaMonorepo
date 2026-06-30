@@ -82,8 +82,10 @@ class AdminCompanyController extends Controller
      */
     public function update(Request $request, Company $company)
     {
-        $company->update($request->all());
-        return response()->json($company);
+        $company->update($request->only([
+            'name', 'nit', 'company_sector_id', 'logo_url', 'num_employees', 'floor_sqm',
+        ]));
+        return response()->json($company->load('sector'));
     }
 
     /**

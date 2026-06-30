@@ -11,7 +11,7 @@ class CompanySector extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['name', 'description'];
+    protected $fillable = ['name', 'code', 'description'];
 
     public function companies()
     {
