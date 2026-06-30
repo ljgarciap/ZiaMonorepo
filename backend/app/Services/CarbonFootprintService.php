@@ -135,6 +135,19 @@ class CarbonFootprintService
             $totalCO2e = ($totalActivityData * $factor->factor_total_co2e) / 1000;
         }
 
+        // Biogenic CO2: per GHG Protocol, CO2 from biomass combustion is excluded from the GEI
+        // total and reported separately. CH4 and N2O from biogenic combustion ARE still counted.
+        $biogenicCO2e = 0.0;
+        if ($factor->is_biogenic ?? false) {
+            $biogenicCO2e = $co2e_CO2;
+            $totalCO2e    = $totalCO2e - $co2e_CO2;
+        }
+
+        // Carbon removals produce negative CO2e (sequestration sinks).
+        if ($factor->is_removal ?? false) {
+            $totalCO2e = -abs($totalCO2e);
+        }
+
         // 4. Uncertainty Calculation (Root Sum Squares of Absolute Uncertainties)
         // Excel Logic: U_total = Sqrt( Sum( (Ui * Ei)^2 ) ) / Total_E
         
@@ -172,13 +185,14 @@ class CarbonFootprintService
         $combinedUncertainty = $totalCO2e > 0 ? ($total_abs_uncertainty / $totalCO2e) : 0.0;
 
         return [
-            'emissions_co2' => $emissionsCO2,
-            'emissions_ch4' => $emissionsCH4,
-            'emissions_n2o' => $emissionsN2O,
-            'emissions_nf3' => $emissionsNF3,
-            'emissions_sf6' => $emissionsSF6,
-            'calculated_co2e' => $totalCO2e,
-            'uncertainty_result' => $combinedUncertainty * 100, // Convert to %
+            'emissions_co2'      => $emissionsCO2,
+            'emissions_ch4'      => $emissionsCH4,
+            'emissions_n2o'      => $emissionsN2O,
+            'emissions_nf3'      => $emissionsNF3,
+            'emissions_sf6'      => $emissionsSF6,
+            'calculated_co2e'    => $totalCO2e,
+            'biogenic_co2e'      => $biogenicCO2e,
+            'uncertainty_result' => $combinedUncertainty * 100,
             'activity_data_total' => $totalActivityData,
             'activity_data_stdev' => $stdev,
         ];

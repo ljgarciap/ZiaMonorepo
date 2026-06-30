@@ -55,9 +55,10 @@ class EmissionFactorSeeder extends Seeder
             ]
         );
 
-        // 3. Fugitive Emissions (Refrigerants) — GWP from IPCC AR6 / GHG Protocol August 2024
-        // R-410A, R-404A, R-123: AR6 values pending confirmation from GHG Protocol blends table.
-        $fugitiveId = $cat('Emisiones Fugitivas - Refrigerantes');
+        // 3. Fugitive Emissions (Refrigerants — Fixed Sources: building A/C, cold storage)
+        // GWP from IPCC AR6 / GHG Protocol August 2024. R-410A, R-404A, R-123: AR6 blend values pending.
+        // Mobile-source refrigerants (refrigerated fleets) go under 'Emisiones Fugitivas - Refrigerantes Móviles'.
+        $fugitiveId = $cat('Emisiones Fugitivas - Refrigerantes Fijas');
 
         $refrigerants = [
             ['name' => 'R-410A (HFC)',      'factor_total_co2e' => 2088, 'source' => 'IPCC AR5 — AR6 blend value pending'],

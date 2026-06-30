@@ -11,7 +11,11 @@ class Period extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['company_id', 'year', 'status'];
+    protected $fillable = ['company_id', 'year', 'status', 'is_base_year'];
+
+    protected $casts = [
+        'is_base_year' => 'boolean',
+    ];
 
     public function company()
     {

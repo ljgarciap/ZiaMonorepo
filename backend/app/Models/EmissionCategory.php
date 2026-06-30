@@ -13,7 +13,7 @@ class EmissionCategory extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['name', 'scope_id', 'parent_id', 'description'];
+    protected $fillable = ['name', 'scope_id', 'parent_id', 'description', 'scope3_category_number'];
 
     public function scope()
     {

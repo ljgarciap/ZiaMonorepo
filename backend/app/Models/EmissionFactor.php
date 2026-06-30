@@ -18,7 +18,6 @@ class EmissionFactor extends Model
         'calculation_formula_id',
         'measurement_unit_id',
         'name',
-        // 'unit', // Removed in favor of relation
         'factor_co2',
         'factor_ch4',
         'factor_n2o',
@@ -28,7 +27,14 @@ class EmissionFactor extends Model
         'uncertainty_lower',
         'uncertainty_upper',
         'uncertainty_distribution',
-        'source_reference'
+        'source_reference',
+        'is_removal',
+        'is_biogenic',
+    ];
+
+    protected $casts = [
+        'is_removal'  => 'boolean',
+        'is_biogenic' => 'boolean',
     ];
 
     public function unit()

@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             CalculationFormulaSeeder::class,
             EmissionCategorySeeder::class, // Must run before EmissionFactorSeeder
             EmissionFactorSeeder::class,
+            ElectricityFactorSeeder::class,
             SectorQuestionnaireRuleSeeder::class, // Requires EmissionFactorSeeder
             UserSeeder::class,
             CompanySeeder::class,

@@ -12,6 +12,15 @@ class EmissionCategorySeeder extends Seeder
      */
     public function run(): void
     {
+        // Scope 3 category numbers per GHG Protocol Corporate Value Chain Standard (15 categories).
+        // Subcategories carry the number of their parent GHG Protocol category.
+        $scope3Numbers = [
+            'Viajes Aéreos'   => 6,  // Cat. 6 — Business Travel
+            'Trabajo Remoto'  => 7,  // Cat. 7 — Employee Commuting (home-working subset)
+            'Consumo de Agua' => 5,  // Cat. 5 — Waste Generated in Operations (water treatment)
+            'Residuos Sólidos' => 5, // Cat. 5 — Waste Generated in Operations
+        ];
+
         $hierarchy = [
             1 => [ // Alcance 1
                 'Fuentes Móviles' => [
@@ -20,7 +29,9 @@ class EmissionCategorySeeder extends Seeder
                     'Fuentes Móviles - Lubricantes',
                 ],
                 'Emisiones Fugitivas' => [
-                    'Emisiones Fugitivas - Refrigerantes',
+                    // Split by source type: buildings A/C vs. refrigerated fleets
+                    'Emisiones Fugitivas - Refrigerantes Fijas',
+                    'Emisiones Fugitivas - Refrigerantes Móviles',
                     'Emisiones Fugitivas - Extintores',
                 ],
                 'Fuentes Fijas' => [
@@ -48,17 +59,19 @@ class EmissionCategorySeeder extends Seeder
 
         foreach ($hierarchy as $scopeId => $parents) {
             foreach ($parents as $parentName => $subcategories) {
-                // Create or find parent
                 $parent = EmissionCategory::updateOrCreate(
                     ['name' => $parentName, 'scope_id' => $scopeId],
                     ['description' => "Categoría principal de $parentName"]
                 );
 
                 foreach ($subcategories as $subName) {
-                    // Create or find subcategory exactly as named originally
                     EmissionCategory::updateOrCreate(
                         ['name' => $subName],
-                        ['parent_id' => $parent->id, 'scope_id' => $scopeId]
+                        [
+                            'parent_id'              => $parent->id,
+                            'scope_id'               => $scopeId,
+                            'scope3_category_number' => $scope3Numbers[$subName] ?? null,
+                        ]
                     );
                 }
             }

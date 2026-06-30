@@ -317,6 +317,99 @@ class CarbonFootprintServiceTest extends TestCase
         $this->assertEqualsWithDelta(0.5,   $result['activity_data_total'], 0.0001);
     }
 
+    // ─── is_biogenic flag (Sprint 8) ─────────────────────────────────────────
+
+    public function test_biogenic_co2_excluded_from_total_but_reported_separately(): void
+    {
+        // Per GHG Protocol: biogenic CO2 does NOT count toward the GEI total.
+        // CH4 and N2O from biogenic combustion DO count.
+        $factor = EmissionFactor::factory()->create([
+            'factor_co2'        => 2.0,
+            'factor_ch4'        => 0.1,
+            'factor_n2o'        => 0.0,
+            'factor_nf3'        => 0.0,
+            'factor_sf6'        => 0.0,
+            'factor_total_co2e' => 0.0,
+            'uncertainty_upper' => 0.0,
+            'is_biogenic'       => true,
+            'is_removal'        => false,
+        ]);
+
+        $result = $this->service->calculate([1000], $factor);
+
+        // emissions_co2 = (1000 * 2.0) / 1000 = 2.0 tCO2
+        // emissions_ch4 = (1000 * 0.1)  / 1000 = 0.1 tCH4
+        // co2e_CO2 = 2.0 * 1     = 2.0 (biogenic → goes to biogenic_co2e, NOT calculated_co2e)
+        // co2e_CH4 = 0.1 * 29.8  = 2.98
+        // calculated_co2e = 2.98 (CH4 only, CO2 excluded)
+        // biogenic_co2e   = 2.0
+        $this->assertEqualsWithDelta(2.98, $result['calculated_co2e'], 0.001);
+        $this->assertEqualsWithDelta(2.0,  $result['biogenic_co2e'],   0.001);
+    }
+
+    public function test_non_biogenic_factor_has_zero_biogenic_co2e(): void
+    {
+        $factor = EmissionFactor::factory()->create([
+            'factor_co2'        => 1.0,
+            'factor_ch4'        => 0.0,
+            'factor_n2o'        => 0.0,
+            'factor_nf3'        => 0.0,
+            'factor_sf6'        => 0.0,
+            'factor_total_co2e' => 0.0,
+            'uncertainty_upper' => 0.0,
+            'is_biogenic'       => false,
+            'is_removal'        => false,
+        ]);
+
+        $result = $this->service->calculate([1000], $factor);
+
+        $this->assertEqualsWithDelta(1.0, $result['calculated_co2e'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $result['biogenic_co2e'],   0.001);
+    }
+
+    // ─── is_removal flag (Sprint 8) ──────────────────────────────────────────
+
+    public function test_removal_factor_produces_negative_co2e(): void
+    {
+        // Carbon removal sources (reforestation, soil sequestration) produce negative CO2e.
+        $factor = EmissionFactor::factory()->create([
+            'factor_co2'        => 1.0,
+            'factor_ch4'        => 0.0,
+            'factor_n2o'        => 0.0,
+            'factor_nf3'        => 0.0,
+            'factor_sf6'        => 0.0,
+            'factor_total_co2e' => 0.0,
+            'uncertainty_upper' => 0.0,
+            'is_biogenic'       => false,
+            'is_removal'        => true,
+        ]);
+
+        $result = $this->service->calculate([1000], $factor);
+
+        // Standard: (1000 * 1.0) / 1000 * 1 = 1.0 tCO2e
+        // is_removal → negate → -1.0 tCO2e
+        $this->assertEqualsWithDelta(-1.0, $result['calculated_co2e'], 0.001);
+    }
+
+    public function test_removal_flag_returns_result_key_in_response(): void
+    {
+        $factor = EmissionFactor::factory()->create([
+            'factor_co2'        => 2.0,
+            'factor_ch4'        => 0.0,
+            'factor_n2o'        => 0.0,
+            'factor_nf3'        => 0.0,
+            'factor_sf6'        => 0.0,
+            'factor_total_co2e' => 0.0,
+            'uncertainty_upper' => 0.0,
+            'is_removal'        => true,
+        ]);
+
+        $result = $this->service->calculate([500], $factor);
+
+        $this->assertArrayHasKey('biogenic_co2e', $result);
+        $this->assertLessThan(0, $result['calculated_co2e']);
+    }
+
     // ─── custom formula branch (P0.3 regression) ─────────────────────────────
 
     public function test_custom_formula_overrides_standard_gwp_sum()

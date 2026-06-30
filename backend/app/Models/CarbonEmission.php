@@ -22,10 +22,14 @@ class CarbonEmission extends Model
         'emissions_nf3',
         'emissions_sf6',
         'calculated_co2e',
+        'biogenic_co2e',
+        'carbon_stored',
+        'avoided_emissions',
+        'scope2_method',
         'uncertainty_result',
         'activity_data_total',
         'activity_data_stdev',
-        'notes'
+        'notes',
     ];
 
     public function period()

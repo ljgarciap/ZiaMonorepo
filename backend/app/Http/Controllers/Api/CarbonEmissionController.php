@@ -81,16 +81,18 @@ class CarbonEmissionController extends Controller
 
         // Create Record
         $emission = $period->emissions()->create([
-            'emission_factor_id' => $factor->id,
-            'quantity' => $results['activity_data_total'],
-            'emissions_co2' => $results['emissions_co2'],
-            'emissions_ch4' => $results['emissions_ch4'],
-            'emissions_n2o' => $results['emissions_n2o'],
-            'calculated_co2e' => $results['calculated_co2e'],
-            'uncertainty_result' => $results['uncertainty_result'],
+            'emission_factor_id'  => $factor->id,
+            'quantity'            => $results['activity_data_total'],
+            'emissions_co2'       => $results['emissions_co2'],
+            'emissions_ch4'       => $results['emissions_ch4'],
+            'emissions_n2o'       => $results['emissions_n2o'],
+            'calculated_co2e'     => $results['calculated_co2e'],
+            'biogenic_co2e'       => $results['biogenic_co2e'],
+            'uncertainty_result'  => $results['uncertainty_result'],
             'activity_data_total' => $results['activity_data_total'],
             'activity_data_stdev' => $results['activity_data_stdev'],
-            'notes' => $validated['notes'] ?? null,
+            'scope2_method'       => $request->input('scope2_method'),
+            'notes'               => $validated['notes'] ?? null,
         ]);
 
         return response()->json($emission, 201);
