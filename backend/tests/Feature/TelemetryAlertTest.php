@@ -7,6 +7,7 @@ use App\Models\IotDevice;
 use App\Models\TelemetryReading;
 use App\Models\TelemetryAlert;
 use App\Services\TelemetryAlertService;
+use App\Services\BaseloadDeviationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Carbon\Carbon;
 
@@ -22,7 +23,7 @@ class TelemetryAlertTest extends TestCase
     {
         parent::setUp();
         
-        $this->alertService = new TelemetryAlertService();
+        $this->alertService = new TelemetryAlertService(new BaseloadDeviationService());
 
         // Setup test devices
         $this->energyDevice = IotDevice::create([
@@ -235,6 +236,101 @@ class TelemetryAlertTest extends TestCase
 
         $this->assertNotNull($alert);
         $this->assertEquals('critical', $alert->severity);
+    }
+
+    // ─── T2: baseload deviation alerts ───────────────────────────────────────
+
+    public function test_baseload_excess_triggers_warning_during_working_hours(): void
+    {
+        $device = IotDevice::create([
+            'thingsboard_id'    => 'energy_baseline_01',
+            'name'              => 'Medidor con Baseline',
+            'type'              => 'energy',
+            'location'          => 'Piso 3',
+            'unit'              => 'kWh',
+            'baseline_kwh'      => 50.0,   // 50 kWh baseline
+            'office_hours_start'=> '08:00:00',
+            'office_hours_end'  => '18:00:00',
+        ]);
+
+        // Tuesday 10:00 AM — working hours, 65 kWh = 30% above baseline
+        $ts = Carbon::create(2026, 6, 9, 10, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $device->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 65.0,
+            'timestamp'   => $ts,
+        ]);
+
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNotNull($alert);
+        $this->assertEquals('baseload_excess', $alert->alert_type);
+        $this->assertEquals('warning', $alert->severity);
+        $this->assertEquals(50.0, $alert->threshold_value);
+        $this->assertEquals(65.0, $alert->actual_value);
+        $this->assertStringContainsString('30%', $alert->message);
+    }
+
+    public function test_baseload_excess_no_alert_during_off_hours(): void
+    {
+        $device = IotDevice::create([
+            'thingsboard_id'    => 'energy_baseline_02',
+            'name'              => 'Medidor con Baseline 2',
+            'type'              => 'energy',
+            'location'          => 'Piso 3',
+            'unit'              => 'kWh',
+            'baseline_kwh'      => 10.0,   // small baseline so value can be 30% above but still < 25 kWh off-hours threshold
+            'office_hours_start'=> '08:00:00',
+            'office_hours_end'  => '18:00:00',
+        ]);
+
+        // Saturday 10:00 AM — off-hours (weekend).
+        // value=13: 30% above baseline=10, but 13 < 25 off_hours_excess threshold → no off_hours alert.
+        // BaseloadDeviationService.isOffHours() → weekend=true → is_off_hours=true → no baseload alert.
+        $ts = Carbon::create(2026, 6, 6, 10, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $device->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 13.0,
+            'timestamp'   => $ts,
+        ]);
+
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNull($alert);
+        $this->assertDatabaseCount('telemetry_alerts', 0);
+    }
+
+    public function test_no_baseload_alert_when_deviation_below_threshold(): void
+    {
+        $device = IotDevice::create([
+            'thingsboard_id'    => 'energy_baseline_03',
+            'name'              => 'Medidor con Baseline 3',
+            'type'              => 'energy',
+            'location'          => 'Piso 3',
+            'unit'              => 'kWh',
+            'baseline_kwh'      => 50.0,
+            'office_hours_start'=> '08:00:00',
+            'office_hours_end'  => '18:00:00',
+        ]);
+
+        // Tuesday 10:00 AM — working hours, 55 kWh = only 10% above baseline (threshold is 20%)
+        $ts = Carbon::create(2026, 6, 9, 10, 0, 0);
+
+        $reading = TelemetryReading::create([
+            'device_id'   => $device->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 55.0,
+            'timestamp'   => $ts,
+        ]);
+
+        $alert = $this->alertService->checkReading($reading);
+
+        $this->assertNull($alert);
+        $this->assertDatabaseCount('telemetry_alerts', 0);
     }
 
     /**

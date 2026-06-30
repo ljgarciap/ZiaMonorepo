@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\EmissionFactor;
 use App\Models\CalculationFormula;
+use App\Models\ElectricityFactor;
 use Exception;
 
 class CarbonFootprintService
@@ -49,7 +50,7 @@ class CarbonFootprintService
      * @param EmissionFactor $factor The emission factor to apply.
      * @return array Result with detailed breakdowns.
      */
-    public function calculate(array $inputs, EmissionFactor $factor): array
+    public function calculate(array $inputs, EmissionFactor $factor, ?int $year = null): array
     {
         // 1. Activity Data Statistics
         $count = count($inputs);
@@ -88,15 +89,27 @@ class CarbonFootprintService
         $emissionsCO2 = 0;
         $emissionsCH4 = 0;
         $emissionsN2O = 0;
-        
-        // Convert Activity Data to correct unit if needed? 
-        // Excel: (Sum * Factor) / 1000. 
+
+        // FECOC override: for Colombian electricity grid factors (Alcance 2) replace
+        // the seeded factor_co2 with the year-specific value from electricity_factors table.
+        // Detection: category scope number=2 (not FK id) AND factor name contains 'colombia'.
+        if ($year !== null && ($factor->category?->scope?->number === 2) && stripos($factor->name ?? '', 'colombia') !== false) {
+            $fecoc = ElectricityFactor::forYear($year);
+            if ($fecoc !== null) {
+                $factor->factor_co2 = (float) $fecoc->value_kgco2e;
+                $factor->factor_ch4 = 0.0;
+                $factor->factor_n2o = 0.0;
+            }
+        }
+
+        // Convert Activity Data to correct unit if needed?
+        // Excel: (Sum * Factor) / 1000.
         // Factor is usually kg/unit, we want Tonnes.
-        
+
         // We will calculate Mass of Gas first (kg or tonnes?)
         // Factors in Excel row 16 were like 7.618 (X16).
         // AA16 = (Q16 * X16) / 1000. Q16 is Gal. X16 is kg CO2/Gal. Result AA16 is Tonnes CO2.
-        
+
         $vars = [
             'activity_data' => $totalActivityData,
             'factor_co2' => $factor->factor_co2,

@@ -6,7 +6,10 @@ use Tests\TestCase;
 use App\Services\CarbonFootprintService;
 use App\Services\FormulaEvaluationService;
 use App\Models\EmissionFactor;
+use App\Models\EmissionCategory;
+use App\Models\ElectricityFactor;
 use App\Models\CalculationFormula;
+use App\Models\Scope;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
 class CarbonFootprintServiceTest extends TestCase
@@ -408,6 +411,87 @@ class CarbonFootprintServiceTest extends TestCase
 
         $this->assertArrayHasKey('biogenic_co2e', $result);
         $this->assertLessThan(0, $result['calculated_co2e']);
+    }
+
+    // ─── FECOC year-lookup (T1) ──────────────────────────────────────────────
+
+    public function test_electricity_factor_uses_fecoc_for_year(): void
+    {
+        $scope2 = Scope::firstOrCreate(['name' => 'Alcance 2'], ['number' => 2, 'description' => 'Electricidad']);
+        $category = EmissionCategory::create(['name' => 'Electricidad Red', 'scope_id' => $scope2->id]);
+
+        ElectricityFactor::create(['year' => 2024, 'region_code' => 'CO', 'value_kgco2e' => 0.1083, 'source' => 'FECOC']);
+
+        $factor = EmissionFactor::factory()->create([
+            'name'                 => 'FE Colombia (Interconectado)',
+            'emission_category_id' => $category->id,
+            'factor_co2'           => 0.9999, // should be overridden by FECOC
+            'factor_ch4'           => 0.0,
+            'factor_n2o'           => 0.0,
+            'factor_nf3'           => 0.0,
+            'factor_sf6'           => 0.0,
+            'factor_total_co2e'    => 0.0,
+            'uncertainty_upper'    => 0.0,
+        ]);
+        $factor->load('category.scope');
+
+        // 1 000 kWh × 0.1083 kgCO2e/kWh / 1 000 = 0.1083 tCO2e
+        $result = $this->service->calculate([1000], $factor, 2024);
+
+        $this->assertEqualsWithDelta(0.1083, $result['calculated_co2e'], 0.0001);
+    }
+
+    public function test_non_electricity_factor_ignores_fecoc(): void
+    {
+        // Scope 1 factor — FECOC lookup must NOT fire
+        $scope1 = Scope::firstOrCreate(['name' => 'Alcance 1'], ['number' => 1, 'description' => 'Combustión']);
+        $category = EmissionCategory::create(['name' => 'Fuentes Fijas', 'scope_id' => $scope1->id]);
+
+        ElectricityFactor::create(['year' => 2024, 'region_code' => 'CO', 'value_kgco2e' => 0.1083, 'source' => 'FECOC']);
+
+        $factor = EmissionFactor::factory()->create([
+            'name'                 => 'Gas Natural',
+            'emission_category_id' => $category->id,
+            'factor_co2'           => 2.0,
+            'factor_ch4'           => 0.0,
+            'factor_n2o'           => 0.0,
+            'factor_nf3'           => 0.0,
+            'factor_sf6'           => 0.0,
+            'factor_total_co2e'    => 0.0,
+            'uncertainty_upper'    => 0.0,
+        ]);
+        $factor->load('category.scope');
+
+        $result = $this->service->calculate([1000], $factor, 2024);
+
+        // (1 000 × 2.0) / 1 000 = 2.0 — original value, not FECOC
+        $this->assertEqualsWithDelta(2.0, $result['calculated_co2e'], 0.0001);
+    }
+
+    public function test_electricity_factor_falls_back_when_no_fecoc_for_year(): void
+    {
+        $scope2 = Scope::firstOrCreate(['name' => 'Alcance 2'], ['number' => 2, 'description' => 'Electricidad']);
+        $category = EmissionCategory::create(['name' => 'Electricidad Red', 'scope_id' => $scope2->id]);
+
+        // No FECOC record for year 2099
+
+        $factor = EmissionFactor::factory()->create([
+            'name'                 => 'FE Colombia (Interconectado)',
+            'emission_category_id' => $category->id,
+            'factor_co2'           => 0.1260, // original seeded value
+            'factor_ch4'           => 0.0,
+            'factor_n2o'           => 0.0,
+            'factor_nf3'           => 0.0,
+            'factor_sf6'           => 0.0,
+            'factor_total_co2e'    => 0.0,
+            'uncertainty_upper'    => 0.0,
+        ]);
+        $factor->load('category.scope');
+
+        $result = $this->service->calculate([1000], $factor, 2099);
+
+        // Falls back to original factor_co2 = 0.1260
+        $this->assertEqualsWithDelta(0.1260, $result['calculated_co2e'], 0.0001);
     }
 
     // ─── custom formula branch (P0.3 regression) ─────────────────────────────

@@ -68,7 +68,7 @@ class CarbonEmissionController extends Controller
             return response()->json(['error' => 'No se pueden registrar emisiones en un período cerrado.'], 422);
         }
 
-        $factor = EmissionFactor::with('formula')->findOrFail($validated['emission_factor_id']);
+        $factor = EmissionFactor::with(['formula', 'category.scope'])->findOrFail($validated['emission_factor_id']);
         
         // Prepare inputs for calculation
         if (isset($validated['monthly_inputs']) && is_array($validated['monthly_inputs'])) {
@@ -80,8 +80,8 @@ class CarbonEmissionController extends Controller
         // Ensure inputs are numeric
         $inputs = array_map('floatval', $inputs);
 
-        // Calculate
-        $results = $this->carbonService->calculate($inputs, $factor);
+        // Calculate — pass period year so FECOC lookup can override electricity grid factor
+        $results = $this->carbonService->calculate($inputs, $factor, $period->year);
 
         // Create Record
         $emission = $period->emissions()->create([

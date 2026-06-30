@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\Log;
 
 class TelemetryAlertService
 {
+    public function __construct(
+        private readonly BaseloadDeviationService $deviationService = new BaseloadDeviationService()
+    ) {}
+
     /**
      * Evaluate a new telemetry reading for operational inefficiencies.
      *
@@ -75,6 +79,33 @@ class TelemetryAlertService
                     'actual_value' => $reading->value,
                     'detected_at' => $timestamp,
                     'resolved' => false
+                ]);
+            }
+        }
+
+        // Baseload deviation: detect in-hours excess for energy devices with a configured baseline.
+        // Fires only when no off-hours alert was already triggered for this reading.
+        if ($device->type === 'energy') {
+            $deviation = $this->deviationService->analyze($device, $reading);
+            if ($deviation !== null && $deviation['deviation_pct'] > 20.0 && !$deviation['is_off_hours']) {
+                $deviationPct = $deviation['deviation_pct'];
+                $excessKwh    = $deviation['excess_kwh'];
+                $baseline     = $deviation['baseline_kwh'];
+                $severity     = $deviationPct > 50.0 ? 'critical' : 'warning';
+                $message      = "Consumo eléctrico {$deviationPct}% por encima del baseline ({$baseline} kWh) "
+                              . "en {$device->location}. Exceso: {$excessKwh} kWh.";
+
+                Log::warning("ALERTA BASELOAD: {$message}");
+
+                return TelemetryAlert::create([
+                    'device_id'       => $device->id,
+                    'alert_type'      => 'baseload_excess',
+                    'severity'        => $severity,
+                    'message'         => $message,
+                    'threshold_value' => $baseline,
+                    'actual_value'    => (float) $reading->value,
+                    'detected_at'     => $timestamp,
+                    'resolved'        => false,
                 ]);
             }
         }
