@@ -54,18 +54,18 @@ class CarbonFootprintServiceTest extends TestCase
         // N2O: (744 * 0.0000255)/1000 = 0.000018972
         $this->assertEqualsWithDelta(0.000019, $result['emissions_n2o'], 0.000001, 'N2O Emission mismatch');
 
-        // Total CO2e (Using new GWP: CH4=28, N2O=265, NF3=16100, SF6=23500)
+        // Total CO2e (AR6 GWP: CH4=29.8, N2O=273, NF3=17400, SF6=25200)
         // CO2e_CO2 = 5.667792 * 1 = 5.667792
-        // CO2e_CH4 = 0.0001954488 * 28 = 0.005472566
-        // CO2e_N2O = 0.000018972 * 265 = 0.00502758
-        // CO2e_NF3 = (744*0.0000010/1000) * 16100 = 0.0119784
-        // CO2e_SF6 = (744*0.0000020/1000) * 23500 = 0.034968
-        // Total = 5.667792 + 0.005472566 + 0.00502758 + 0.0119784 + 0.034968 = 5.725238...
-        $this->assertEqualsWithDelta(5.725238, $result['calculated_co2e'], 0.0001, 'Total CO2e mismatch');
+        // CO2e_CH4 = 0.000195449 * 29.8 = 0.005824
+        // CO2e_N2O = 0.000018972 * 273 = 0.005181
+        // CO2e_NF3 = (744*0.0000010/1000) * 17400 = 0.012946
+        // CO2e_SF6 = (744*0.0000020/1000) * 25200 = 0.037498
+        // Total = 5.667792 + 0.005824 + 0.005181 + 0.012946 + 0.037498 = 5.729241
+        $this->assertEqualsWithDelta(5.729241, $result['calculated_co2e'], 0.0001, 'Total CO2e mismatch');
 
-        // 5. Verify Uncertainty (Weights and results slightly shifted due to GWP)
-        // Relative Combined calculated as ~0.2643%
-        $this->assertEqualsWithDelta(0.2643, $result['uncertainty_result'], 0.001, 'Uncertainty mismatch');
+        // 5. Verify Uncertainty (Weights and results shifted due to AR6 GWP)
+        // Relative Combined calculated as ~0.2683%
+        $this->assertEqualsWithDelta(0.2683, $result['uncertainty_result'], 0.001, 'Uncertainty mismatch');
     }
 
     public function test_co2_gwp_factor_is_1()
@@ -88,7 +88,7 @@ class CarbonFootprintServiceTest extends TestCase
         $this->assertEqualsWithDelta(1.0, $result['calculated_co2e'], 0.0001);
     }
 
-    public function test_ch4_gwp_factor_is_28()
+    public function test_ch4_gwp_factor_is_29_8()
     {
         $factor = EmissionFactor::factory()->create([
             'factor_co2'        => 0.0,
@@ -103,12 +103,12 @@ class CarbonFootprintServiceTest extends TestCase
         $result = $this->service->calculate([1000], $factor);
 
         // emissions_ch4 = (1000 * 1.0) / 1000 = 1.0
-        // co2e = 1.0 * GWP_CH4(28) = 28.0
+        // co2e = 1.0 * GWP_CH4(29.8) = 29.8 [AR6 fossil combustion]
         $this->assertEqualsWithDelta(1.0, $result['emissions_ch4'], 0.0001);
-        $this->assertEqualsWithDelta(28.0, $result['calculated_co2e'], 0.0001);
+        $this->assertEqualsWithDelta(29.8, $result['calculated_co2e'], 0.0001);
     }
 
-    public function test_n2o_gwp_factor_is_265()
+    public function test_n2o_gwp_factor_is_273()
     {
         $factor = EmissionFactor::factory()->create([
             'factor_co2'        => 0.0,
@@ -123,12 +123,12 @@ class CarbonFootprintServiceTest extends TestCase
         $result = $this->service->calculate([1000], $factor);
 
         // emissions_n2o = (1000 * 1.0) / 1000 = 1.0
-        // co2e = 1.0 * GWP_N2O(265) = 265.0
+        // co2e = 1.0 * GWP_N2O(273) = 273.0 [AR6]
         $this->assertEqualsWithDelta(1.0, $result['emissions_n2o'], 0.0001);
-        $this->assertEqualsWithDelta(265.0, $result['calculated_co2e'], 0.0001);
+        $this->assertEqualsWithDelta(273.0, $result['calculated_co2e'], 0.0001);
     }
 
-    public function test_sf6_gwp_factor_is_23500()
+    public function test_sf6_gwp_factor_is_25200()
     {
         $factor = EmissionFactor::factory()->create([
             'factor_co2'        => 0.0,
@@ -143,12 +143,12 @@ class CarbonFootprintServiceTest extends TestCase
         $result = $this->service->calculate([1000], $factor);
 
         // emissions_sf6 = (1000 * 1.0) / 1000 = 1.0
-        // co2e = 1.0 * GWP_SF6(23500) = 23500.0
+        // co2e = 1.0 * GWP_SF6(25200) = 25200.0 [AR6]
         $this->assertEqualsWithDelta(1.0, $result['emissions_sf6'], 0.0001);
-        $this->assertEqualsWithDelta(23500.0, $result['calculated_co2e'], 0.0001);
+        $this->assertEqualsWithDelta(25200.0, $result['calculated_co2e'], 0.0001);
     }
 
-    public function test_nf3_gwp_factor_is_16100()
+    public function test_nf3_gwp_factor_is_17400()
     {
         $factor = EmissionFactor::factory()->create([
             'factor_co2'        => 0.0,
@@ -163,9 +163,9 @@ class CarbonFootprintServiceTest extends TestCase
         $result = $this->service->calculate([1000], $factor);
 
         // emissions_nf3 = (1000 * 1.0) / 1000 = 1.0
-        // co2e = 1.0 * GWP_NF3(16100) = 16100.0
+        // co2e = 1.0 * GWP_NF3(17400) = 17400.0 [AR6]
         $this->assertEqualsWithDelta(1.0, $result['emissions_nf3'], 0.0001);
-        $this->assertEqualsWithDelta(16100.0, $result['calculated_co2e'], 0.0001);
+        $this->assertEqualsWithDelta(17400.0, $result['calculated_co2e'], 0.0001);
     }
 
     public function test_fallback_to_factor_total_co2e_when_no_gwp()

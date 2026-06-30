@@ -10,12 +10,14 @@ class CarbonFootprintService
 {
     protected $formulaService;
 
-    // GWP Values from Excel (AR6 likely)
+    // GWP Values — IPCC AR6 / GHG Protocol August 2024
+    // Source: "Global Warming Potential Values (August 2024)" — GHG Protocol
+    // CH4: 29.8 for fossil combustion (27.9 for biogenic); ZIA primarily handles fossil sources.
     const GWP_CO2 = 1.0;
-    const GWP_CH4 = 28.0;
-    const GWP_N2O = 265.0;
-    const GWP_NF3 = 16100.0;
-    const GWP_SF6 = 23500.0;
+    const GWP_CH4 = 29.8;
+    const GWP_N2O = 273.0;
+    const GWP_NF3 = 17400.0;
+    const GWP_SF6 = 25200.0;
 
     // T-Distribution Table (2-tailed, 95% confidence?, based on Excel extraction)
     // Key: Count (Sample Size), Value: T-Factor

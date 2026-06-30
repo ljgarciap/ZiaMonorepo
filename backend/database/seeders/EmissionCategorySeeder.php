@@ -17,11 +17,11 @@ class EmissionCategorySeeder extends Seeder
                 'Fuentes Móviles' => [
                     'Fuentes Móviles - Combustibles',
                     'Fuentes Móviles - Gases',
-                    'Fuentes Móviles - Extintores',
                     'Fuentes Móviles - Lubricantes',
                 ],
                 'Emisiones Fugitivas' => [
                     'Emisiones Fugitivas - Refrigerantes',
+                    'Emisiones Fugitivas - Extintores',
                 ],
                 'Fuentes Fijas' => [
                     'Fuentes Fijas - Combustibles Sólidos',

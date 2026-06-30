@@ -32,9 +32,10 @@ class EmissionFactorSeeder extends Seeder
                 'factor_co2' => 7.618,
                 'factor_ch4' => 0.0002627,
                 'factor_n2o' => 0.0000255,
-                'factor_total_co2e' => 7.63323,
+                // factor_total_co2e = CO2×1 + CH4×29.8 + N2O×273 (AR6, kgCO2e/Gal)
+                'factor_total_co2e' => 7.63279,
                 'uncertainty_lower' => 0.234,
-                'uncertainty_upper' => 0.234, 
+                'uncertainty_upper' => 0.234,
                 'uncertainty_distribution' => 'normal',
                 'source_reference' => 'Calculo MVP Zia - Excel Definitiva (Row 16)'
             ]
@@ -48,21 +49,23 @@ class EmissionFactorSeeder extends Seeder
                 'factor_co2' => 8.812,
                 'factor_ch4' => 0.000028,
                 'factor_n2o' => 0.00003,
-                'factor_total_co2e' => 8.825,
+                // factor_total_co2e = CO2×1 + CH4×29.8 + N2O×273 (AR6, kgCO2e/Gal)
+                'factor_total_co2e' => 8.82102,
                 'source_reference' => 'Estimado (Pending Excel Extraction)'
             ]
         );
 
-        // 3. Fugitive Emissions (Refrigerants) — GWP from IPCC AR5
+        // 3. Fugitive Emissions (Refrigerants) — GWP from IPCC AR6 / GHG Protocol August 2024
+        // R-410A, R-404A, R-123: AR6 values pending confirmation from GHG Protocol blends table.
         $fugitiveId = $cat('Emisiones Fugitivas - Refrigerantes');
 
         $refrigerants = [
-            ['name' => 'R-410A (HFC)',      'factor_total_co2e' => 2088, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
-            ['name' => 'R-22 (HCFC-22)',    'factor_total_co2e' => 1810, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
-            ['name' => 'R-134a (HFC-134a)', 'factor_total_co2e' => 1430, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
-            ['name' => 'R-404A (HFC)',       'factor_total_co2e' => 3922, 'source' => 'IPCC AR5 WG1 Table 8.A.1'],
-            ['name' => 'R-32 (HFC-32)',      'factor_total_co2e' => 675,  'source' => 'IPCC AR5 WG1 Table 8.A.1'],
-            ['name' => 'R-123 (HCFC-123)',   'factor_total_co2e' => 77,   'source' => 'IPCC AR5 WG1 Table 8.A.1'],
+            ['name' => 'R-410A (HFC)',      'factor_total_co2e' => 2088, 'source' => 'IPCC AR5 — AR6 blend value pending'],
+            ['name' => 'R-22 (HCFC-22)',    'factor_total_co2e' => 1960, 'source' => 'IPCC AR6 / GHG Protocol Aug 2024'],
+            ['name' => 'R-134a (HFC-134a)', 'factor_total_co2e' => 1526, 'source' => 'IPCC AR6 / GHG Protocol Aug 2024'],
+            ['name' => 'R-404A (HFC)',       'factor_total_co2e' => 3922, 'source' => 'IPCC AR5 — AR6 blend value pending'],
+            ['name' => 'R-32 (HFC-32)',      'factor_total_co2e' => 771,  'source' => 'IPCC AR6 / GHG Protocol Aug 2024'],
+            ['name' => 'R-123 (HCFC-123)',   'factor_total_co2e' => 77,   'source' => 'IPCC AR5 — AR6 value pending'],
         ];
 
         foreach ($refrigerants as $r) {
@@ -91,8 +94,8 @@ class EmissionFactorSeeder extends Seeder
             ]
         );
 
-        // 5. Extinguishers
-        $extinguishersId = $cat('Fuentes Móviles - Extintores');
+        // 5. Extinguishers — classified as fugitive emissions per GHG Protocol, not mobile combustion
+        $extinguishersId = $cat('Emisiones Fugitivas - Extintores');
 
         EmissionFactor::updateOrCreate(
             ['name' => 'CO2 (Extintor)', 'emission_category_id' => $extinguishersId],
@@ -208,8 +211,9 @@ class EmissionFactorSeeder extends Seeder
             ['name' => 'Agua Potable Consumida (m3)', 'emission_category_id' => $waterCatId],
             [
                 'measurement_unit_id' => $unit('m3'),
-                'factor_total_co2e' => 0.00035,
-                'source_reference' => 'EcoAct 2020 - Water supply emissions (kgCO2e/m3 → tCO2e/m3)',
+                // 0.35 kgCO2e/m³ (EcoAct 2020). Motor aplica /1000 → 0.00035 tCO2e/m³.
+                'factor_total_co2e' => 0.35,
+                'source_reference' => 'EcoAct 2020 - Water supply emissions (kgCO2e/m3)',
             ]
         );
 
@@ -217,8 +221,9 @@ class EmissionFactorSeeder extends Seeder
             ['name' => 'Aguas Residuales Tratadas (m3)', 'emission_category_id' => $waterCatId],
             [
                 'measurement_unit_id' => $unit('m3'),
-                'factor_total_co2e' => 0.00078,
-                'source_reference' => 'EcoAct 2020 - Wastewater treatment emissions (kgCO2e/m3 → tCO2e/m3)',
+                // 0.78 kgCO2e/m³ (EcoAct 2020). Motor aplica /1000 → 0.00078 tCO2e/m³.
+                'factor_total_co2e' => 0.78,
+                'source_reference' => 'EcoAct 2020 - Wastewater treatment emissions (kgCO2e/m3)',
             ]
         );
 
@@ -226,7 +231,8 @@ class EmissionFactorSeeder extends Seeder
             ['name' => 'Residuos Sólidos en Vertedero (ton)', 'emission_category_id' => $wasteCatId],
             [
                 'measurement_unit_id' => $unit('Ton'),
-                'factor_total_co2e' => 0.5,
+                // 140 kgCO2e/ton (IPCC 2006 Vol. 5, conservative). Motor aplica /1000 → 0.14 tCO2e/ton.
+                'factor_total_co2e' => 140,
                 'source_reference' => 'IPCC 2006 Vol. 5 - Solid waste disposal (conservative estimate)',
             ]
         );

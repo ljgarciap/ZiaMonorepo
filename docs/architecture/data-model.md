@@ -272,7 +272,7 @@ El núcleo del motor de cálculo. Cada factor almacena coeficientes por gas (GWP
 | `uncertainty_lower/upper` | Rango de incertidumbre en % |
 
 Cálculo estándar: `CO2e = Σ(factor_gas × GWP_gas) × activity_data / 1000`
-GWP AR6: CO₂=1, CH₄=28, N₂O=265, NF₃=16100, SF₆=23500
+GWP AR6 (GHG Protocol Aug 2024): CO₂=1, CH₄=29.8 (fossil), N₂O=273, NF₃=17400, SF₆=25200
 
 ---
 
