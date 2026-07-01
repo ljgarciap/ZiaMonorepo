@@ -28,6 +28,16 @@ class DashboardController extends Controller
             ->get();
 
         $huellaTotal = $emissions->sum('calculated_co2e');
+
+        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        $myEmissions = null;
+        if ($activeRole === 'user') {
+            $myTotal = $emissions->where('user_id', auth()->id())->sum('calculated_co2e');
+            $myEmissions = [
+                'total'      => round($myTotal, 2),
+                'percentage' => $huellaTotal > 0 ? round(($myTotal / $huellaTotal) * 100, 2) : 0,
+            ];
+        }
         
         // Group by Scope
         $scopes = [
@@ -84,7 +94,8 @@ class DashboardController extends Controller
 
         return response()->json([
             'huella_total' => round($huellaTotal, 2),
-            'neutralizados' => 0, // Placeholder
+            'neutralizados' => 0,
+            'my_emissions' => $myEmissions,
             'alcances' => $alcancesRes,
             'equivalency' => [
                 'value' => $eqValue,

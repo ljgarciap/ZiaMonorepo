@@ -14,6 +14,7 @@ class CarbonEmission extends Model
 
     protected $fillable = [
         'period_id',
+        'user_id',
         'emission_factor_id',
         'quantity',
         'emissions_co2',

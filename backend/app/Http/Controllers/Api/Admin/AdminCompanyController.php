@@ -168,4 +168,16 @@ class AdminCompanyController extends Controller
         $period->delete();
         return response()->json(null, 204);
     }
+
+    public function closePeriod(Period $period)
+    {
+        $period->update(['status' => 'closed']);
+        return response()->json($period);
+    }
+
+    public function reopenPeriod(Period $period)
+    {
+        $period->update(['status' => 'active']);
+        return response()->json($period);
+    }
 }

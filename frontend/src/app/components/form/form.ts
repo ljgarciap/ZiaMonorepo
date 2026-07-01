@@ -12,6 +12,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule, MatPaginatorIntl } from '@angular/material/paginator';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { HttpClient } from '@angular/common/http';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
@@ -57,7 +59,9 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
     MatCardModule,
     MatTableModule,
     MatPaginatorModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    MatProgressBarModule,
+    MatTooltipModule
   ],
   providers: [
     { provide: MatPaginatorIntl, useClass: CustomPaginatorIntl }
@@ -143,6 +147,29 @@ export class FormComponent implements AfterViewInit {
   get isAdminOrAbove(): boolean {
     const role = this.authService.currentContext()?.role || this.authService.currentUser()?.role;
     return role === 'admin' || role === 'superadmin';
+  }
+
+  get isPeriodClosed(): boolean {
+    return this.selectedPeriod?.status === 'closed';
+  }
+
+  get totalSources(): number {
+    let count = 0;
+    this.scopes.forEach(scope => {
+      scope.categories.forEach((cat: any) => {
+        if (cat.children?.length > 0) count += cat.children.length;
+        else count++;
+      });
+    });
+    return count;
+  }
+
+  get loadedSources(): number {
+    return Object.values(this.dataSources).reduce((sum, ds) => sum + ds.data.length, 0);
+  }
+
+  get progressPercent(): number {
+    return this.totalSources > 0 ? Math.min(100, Math.round((this.loadedSources / this.totalSources) * 100)) : 0;
   }
 
   // Data Store (Dynamic)

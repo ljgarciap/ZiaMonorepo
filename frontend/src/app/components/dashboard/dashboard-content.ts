@@ -97,6 +97,21 @@ import { MatButtonModule } from '@angular/material/button';
             </div>
         </div>
 
+        <!-- H08: Tarjeta de contribución personal (solo rol Usuario) -->
+        <div class="my-contribution-card glass-card" *ngIf="activeRole === 'user' && summary?.my_emissions">
+            <div class="my-contribution-inner">
+                <mat-icon class="my-icon">person</mat-icon>
+                <div>
+                    <span class="card-title">Mis Contribuciones</span>
+                    <div class="card-value">
+                        <span class="main-value">{{summary.my_emissions.total | number:'1.2-2'}}</span>
+                        <span class="unit">tCO₂e</span>
+                    </div>
+                    <span class="my-pct">{{summary.my_emissions.percentage}}% del total corporativo</span>
+                </div>
+            </div>
+        </div>
+
         <!-- Intensity KPIs -->
         <div class="intensity-grid" *ngIf="summary?.intensidad_kpis">
             <div class="glass-card intensity-card">
@@ -230,6 +245,10 @@ import { MatButtonModule } from '@angular/material/button';
     .spinner-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; }
     .empty-state-card { padding: 60px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 40px; color: var(--prestige-text-muted); }
     .empty-state-card mat-icon { font-size: 48px; width: 48px; height: 48px; opacity: 0.5; }
+    .my-contribution-card { padding: 20px 24px; margin-bottom: 24px; border-left: 4px solid var(--prestige-primary); }
+    .my-contribution-inner { display: flex; align-items: center; gap: 16px; }
+    .my-icon { font-size: 36px; width: 36px; height: 36px; color: var(--prestige-primary); opacity: 0.8; }
+    .my-pct { font-size: 12px; color: var(--prestige-text-muted); margin-top: 4px; display: block; }
     @media (max-width: 1200px) { .summary-grid { grid-template-columns: 1fr 1fr; } .middle-grid { grid-template-columns: 1fr; } }
     @media (max-width: 768px) { .summary-grid { grid-template-columns: 1fr; } .bottom-grid { grid-template-columns: 1fr; } }
   `]
@@ -253,6 +272,10 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
 
   get isSuperAdmin(): boolean {
     return this.authService.currentUser()?.role === 'superadmin';
+  }
+
+  get activeRole(): string {
+    return this.authService.currentContext()?.role || this.authService.currentUser()?.role || '';
   }
 
   goToAudit() {

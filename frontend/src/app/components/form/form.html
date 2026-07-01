@@ -2,6 +2,21 @@
     <div class="header">
         <h1>Huella de Carbono</h1>
         <p class="subtitle">Formulario de Registro</p>
+
+        <!-- H01: Indicador de progreso de captura -->
+        <div class="progress-section" *ngIf="totalSources > 0">
+            <div class="progress-label">
+                <span>{{loadedSources}} / {{totalSources}} fuentes cargadas</span>
+                <span class="progress-pct">{{progressPercent}}%</span>
+            </div>
+            <mat-progress-bar mode="determinate" [value]="progressPercent" color="accent"></mat-progress-bar>
+        </div>
+    </div>
+
+    <!-- H05: Alerta de período cerrado -->
+    <div class="period-closed-alert" *ngIf="isPeriodClosed">
+        <mat-icon>lock</mat-icon>
+        Este período está <strong>cerrado</strong>. No se pueden registrar nuevas emisiones.
     </div>
 
     <div class="main-inputs">
@@ -28,6 +43,14 @@
             <mat-label>Nombre de huella (Oficina/Planta/Unidad operativa)</mat-label>
             <input matInput [(ngModel)]="huella" placeholder="Ej: Planta Principal">
         </mat-form-field>
+
+        <!-- H02: Contexto del período seleccionado -->
+        <div class="period-context" *ngIf="selectedPeriod">
+            <mat-icon>calendar_today</mat-icon>
+            Registrando datos para: <strong>Período {{selectedPeriod.year}} (Anual)</strong>
+            <span class="status-closed" *ngIf="isPeriodClosed">&nbsp;— CERRADO</span>
+            <span class="status-open" *ngIf="!isPeriodClosed">&nbsp;— Abierto</span>
+        </div>
     </div>
 
     <!-- Dynamic Scopes Section -->
@@ -53,7 +76,14 @@
                                     <!-- Sub-Group Panel -->
                                     <mat-expansion-panel class="sub-panel">
                                         <mat-expansion-panel-header>
-                                            <mat-panel-title>{{ category.name }}</mat-panel-title>
+                                            <mat-panel-title>
+                                                {{ category.name }}
+                                                <!-- H03: tooltip contextual si la categoría tiene descripción -->
+                                                <mat-icon *ngIf="category.description"
+                                                    [matTooltip]="category.description"
+                                                    matTooltipPosition="right"
+                                                    class="help-icon">info_outline</mat-icon>
+                                            </mat-panel-title>
                                         </mat-expansion-panel-header>
                                         <p class="description" *ngIf="category.description">{{ category.description }}
                                         </p>
@@ -63,7 +93,13 @@
                                             <mat-expansion-panel *ngFor="let subcat of category.children"
                                                 class="input-panel">
                                                 <mat-expansion-panel-header>
-                                                    <mat-panel-title>{{ subcat.name }}</mat-panel-title>
+                                                    <mat-panel-title>
+                                                        {{ subcat.name }}
+                                                        <mat-icon *ngIf="subcat.description"
+                                                            [matTooltip]="subcat.description"
+                                                            matTooltipPosition="right"
+                                                            class="help-icon">info_outline</mat-icon>
+                                                    </mat-panel-title>
                                                 </mat-expansion-panel-header>
 
                                                 <div class="input-row">
@@ -119,7 +155,13 @@
                                     <!-- Direct Input Panel -->
                                     <mat-expansion-panel class="sub-panel">
                                         <mat-expansion-panel-header>
-                                            <mat-panel-title>{{ category.name }}</mat-panel-title>
+                                            <mat-panel-title>
+                                                {{ category.name }}
+                                                <mat-icon *ngIf="category.description"
+                                                    [matTooltip]="category.description"
+                                                    matTooltipPosition="right"
+                                                    class="help-icon">info_outline</mat-icon>
+                                            </mat-panel-title>
                                         </mat-expansion-panel-header>
 
                                         <div class="input-row">
@@ -230,6 +272,7 @@
         <button *ngIf="isAdminOrAbove"
             mat-raised-button color="accent"
             style="width: 100%; height: 50px; font-size: 18px;"
+            [disabled]="isPeriodClosed || submitting"
             (click)="onSubmit()">
             CALCULAR HUELLA DE CARBONO
         </button>
@@ -237,6 +280,7 @@
         <button *ngIf="!isAdminOrAbove"
             mat-raised-button color="primary"
             style="width: 100%; height: 50px; font-size: 18px;"
+            [disabled]="isPeriodClosed || submitting"
             (click)="onSubmit()">
             GUARDAR DATOS DE EMISIÓN
         </button>

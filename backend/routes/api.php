@@ -45,10 +45,12 @@ Route::middleware('auth:api')->group(function () {
 
         // Superadmin-only operations
         Route::middleware(['role:superadmin'])->group(function () {
-            // Period lifecycle (create / update / delete) — matrix: admin = R only
+            // Period lifecycle (create / update / delete / close) — matrix: admin = R only
             Route::post('/companies/{company}/periods', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'addPeriod']);
             Route::put('/periods/{period}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'updatePeriod']);
             Route::delete('/periods/{period}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'deletePeriod']);
+            Route::post('/periods/{period}/close', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'closePeriod']);
+            Route::post('/periods/{period}/reopen', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'reopenPeriod']);
 
             // Company Groups
             Route::prefix('groups')->group(function () {

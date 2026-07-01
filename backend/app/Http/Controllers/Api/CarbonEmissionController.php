@@ -85,6 +85,7 @@ class CarbonEmissionController extends Controller
 
         // Create Record
         $emission = $period->emissions()->create([
+            'user_id'             => auth()->id(),
             'emission_factor_id'  => $factor->id,
             'quantity'            => $results['activity_data_total'],
             'emissions_co2'       => $results['emissions_co2'],
