@@ -33,28 +33,57 @@
                 <mat-divider></mat-divider>
                 <div mat-subheader class="admin-header">Administración</div>
 
-                <a mat-list-item routerLink="/admin/companies" routerLinkActive="active-link">
+                <!-- A02: Superadmin ve gestión completa de empresas; Admin ve solo su empresa (read-only) -->
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'"
+                    mat-list-item routerLink="/admin/companies" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>business</mat-icon>
                     <div matListItemTitle>Empresas</div>
                 </a>
-                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item routerLink="/admin/sectors" routerLinkActive="active-link">
-                    <mat-icon matListItemIcon>account_tree</mat-icon>
-                    <div matListItemTitle>Sectores</div>
+                <a *ngIf="authService.currentContext()?.role === 'admin'"
+                    mat-list-item routerLink="/admin/my-company" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>domain</mat-icon>
+                    <div matListItemTitle>Mi Empresa</div>
                 </a>
+
+                <!-- A03: Admin ve y gestiona sus Unidades Operativas -->
+                <a mat-list-item routerLink="/admin/operational-units" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>account_tree</mat-icon>
+                    <div matListItemTitle>Unidades Operativas</div>
+                </a>
+
+                <!-- A11: Admin gestiona períodos (abrir/cerrar) -->
+                <a mat-list-item routerLink="/admin/periods" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>calendar_month</mat-icon>
+                    <div matListItemTitle>Gestión de Períodos</div>
+                </a>
+
+                <!-- Usuarios — Admin ve solo su empresa, Superadmin ve todos -->
                 <a mat-list-item routerLink="/admin/users" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>people_outline</mat-icon>
                     <div matListItemTitle>Usuarios</div>
                 </a>
 
+                <!-- Auditoría de actividad — ambos roles -->
+                <a mat-list-item routerLink="/admin/audit" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>manage_search</mat-icon>
+                    <div matListItemTitle>Auditoría</div>
+                </a>
+
+                <!-- Superadmin-only: catálogos metodológicos globales (A04/A05/A06/A07) -->
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'"
+                    mat-list-item routerLink="/admin/sectors" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>workspaces</mat-icon>
+                    <div matListItemTitle>Sectores</div>
+                </a>
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/metadata" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>settings_suggest</mat-icon>
-                    <div matListItemTitle>Factores</div>
+                    <div matListItemTitle>Factores de Emisión</div>
                 </a>
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/units" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>straighten</mat-icon>
-                    <div matListItemTitle>Unidades</div>
+                    <div matListItemTitle>Unidades de Medida</div>
                 </a>
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/scopes" routerLinkActive="active-link">

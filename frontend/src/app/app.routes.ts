@@ -10,6 +10,9 @@ import { CompanyManagementComponent } from './components/admin/company-managemen
 import { UserManagementComponent } from './components/admin/user-management/user-management';
 import { SectorManagementComponent } from './components/admin/sector-management/sector-management';
 import { MetadataManagementComponent } from './components/admin/metadata-management/metadata-management';
+import { AdminPeriodsComponent } from './components/admin/admin-periods/admin-periods';
+import { AdminMyCompanyComponent } from './components/admin/admin-my-company/admin-my-company';
+import { OperationalUnitManagementComponent } from './components/admin/operational-unit-management/operational-unit-management';
 
 export const routes: Routes = [
     { path: 'login', component: LoginComponent },
@@ -44,7 +47,25 @@ export const routes: Routes = [
                 path: 'admin/companies',
                 component: CompanyManagementComponent,
                 canActivate: [roleGuard],
-                data: { roles: ['superadmin', 'admin'] }
+                data: { roles: ['superadmin'] }          // A02: write-capable view — superadmin only
+            },
+            {
+                path: 'admin/my-company',
+                component: AdminMyCompanyComponent,
+                canActivate: [roleGuard],
+                data: { roles: ['admin'] }               // A02: read-only view for admin
+            },
+            {
+                path: 'admin/periods',
+                component: AdminPeriodsComponent,
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin', 'admin'] } // A11: period close/reopen
+            },
+            {
+                path: 'admin/operational-units',
+                component: OperationalUnitManagementComponent,
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin', 'admin'] } // A03: manage operational units
             },
             {
                 path: 'admin/sectors',
@@ -80,7 +101,7 @@ export const routes: Routes = [
                 path: 'admin/audit',
                 loadComponent: () => import('./components/admin/audit-logs/audit-logs').then(m => m.AuditLogsComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['superadmin'] }
+                data: { roles: ['superadmin', 'admin'] }
             },
 
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },

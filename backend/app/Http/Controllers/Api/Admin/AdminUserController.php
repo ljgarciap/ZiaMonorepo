@@ -24,7 +24,9 @@ class AdminUserController extends Controller
         $companyIds = $user->companies->pluck('id');
         $users = User::whereHas('companies', function($query) use ($companyIds) {
             $query->whereIn('companies.id', $companyIds);
-        })->with('companies')->withTrashed()->get();
+        })
+        ->whereNotIn('role', ['superadmin', 'admin']) // A08: admin no ve roles iguales o superiores
+        ->with('companies')->withTrashed()->get();
 
         return response()->json($users);
     }
@@ -104,9 +106,13 @@ class AdminUserController extends Controller
 
     public function update(Request $request, User $user)
     {
-        // Enforce Role Restrictions
         $currentUser = auth()->user();
         $activeRole = $request->header('X-Context-Role') ?: $currentUser->role;
+
+        // A08: admin no puede editar usuarios de rol igual o superior al suyo
+        if ($activeRole === 'admin' && in_array($user->role, ['superadmin', 'admin'])) {
+            return response()->json(['error' => 'No puedes editar usuarios con rol igual o superior al tuyo.'], 403);
+        }
 
         if ($activeRole === 'admin' && $request->has('role') && $request->role !== 'user') {
              return response()->json(['error' => 'Admins can only update Users.'], 403);

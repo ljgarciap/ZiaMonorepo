@@ -161,6 +161,40 @@ export class AdminService {
         return this.http.delete(`${this.apiUrl}/scopes/${id}`);
     }
 
+    // Period close / reopen (A11)
+    closePeriod(periodId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/periods/${periodId}/close`, {});
+    }
+
+    reopenPeriod(periodId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/periods/${periodId}/reopen`, {});
+    }
+
+    // Operational Units (A03)
+    getOperationalUnits(companyId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${environment.apiUrl}/companies/${companyId}/units`);
+    }
+
+    createOperationalUnit(companyId: number, data: any): Observable<any> {
+        return this.http.post(`${this.apiUrl}/companies/${companyId}/units`, data);
+    }
+
+    updateOperationalUnit(companyId: number, unitId: number, data: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/companies/${companyId}/units/${unitId}`, data);
+    }
+
+    deleteOperationalUnit(companyId: number, unitId: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/companies/${companyId}/units/${unitId}`);
+    }
+
+    assignUserToUnit(companyId: number, unitId: number, userId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/companies/${companyId}/units/${unitId}/assign`, { user_id: userId });
+    }
+
+    unassignUserFromUnit(companyId: number, unitId: number, userId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/companies/${companyId}/units/${unitId}/unassign`, { user_id: userId });
+    }
+
     // Audit Logs
     getAuditLogs(params: any = {}): Observable<any> {
         return this.http.get(`${this.apiUrl}/audit-logs`, { params });

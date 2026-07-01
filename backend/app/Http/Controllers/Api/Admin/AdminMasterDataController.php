@@ -45,11 +45,25 @@ class AdminMasterDataController extends Controller
             'emission_category_id' => 'required|exists:emission_categories,id',
             'name' => 'required|string|max:255',
             'measurement_unit_id' => 'required|exists:measurement_units,id',
-            'factor_total_co2e' => 'required|numeric',
+            'factor_total_co2e' => 'required|numeric|min:0',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
+        }
+
+        // A05: bloquear factores con todos los gases en cero (sin justificación)
+        $gasValues = array_filter([
+            $request->input('factor_co2', 0),
+            $request->input('factor_ch4', 0),
+            $request->input('factor_n2o', 0),
+            $request->input('factor_total_co2e', 0),
+        ], fn($v) => floatval($v) > 0);
+
+        if (empty($gasValues)) {
+            return response()->json([
+                'error' => 'El factor no puede tener todos los valores de gases en cero. Complete al menos un valor de emisión antes de guardar.',
+            ], 422);
         }
 
         $factor = EmissionFactor::create($request->only([
@@ -63,6 +77,18 @@ class AdminMasterDataController extends Controller
 
     public function updateFactor(Request $request, EmissionFactor $factor)
     {
+        // A05: bloquear actualización si todos los gases quedan en cero
+        $co2  = floatval($request->input('factor_co2',  $factor->factor_co2));
+        $ch4  = floatval($request->input('factor_ch4',  $factor->factor_ch4));
+        $n2o  = floatval($request->input('factor_n2o',  $factor->factor_n2o));
+        $tot  = floatval($request->input('factor_total_co2e', $factor->factor_total_co2e));
+
+        if ($co2 === 0.0 && $ch4 === 0.0 && $n2o === 0.0 && $tot === 0.0) {
+            return response()->json([
+                'error' => 'No se puede guardar un factor con todos los valores de gases en cero.',
+            ], 422);
+        }
+
         $factor->update($request->only([
             'emission_category_id', 'calculation_formula_id', 'measurement_unit_id',
             'name', 'factor_co2', 'factor_ch4', 'factor_n2o', 'factor_nf3', 'factor_sf6',

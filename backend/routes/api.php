@@ -26,11 +26,8 @@ Route::middleware('auth:api')->group(function () {
         // Audit Logs — superadmin sees all; admin sees only users of their companies
         Route::get('/audit-logs', [\App\Http\Controllers\Api\Admin\AdminAuditController::class, 'index']);
 
-        // Companies Management (admin can read; write is superadmin-only below)
+        // Companies Management — admin: R solo (A02: write es exclusivo del superadmin)
         Route::get('/companies', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'index']);
-        Route::post('/companies', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'store']);
-        Route::put('/companies/{company}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'update']);
-        Route::delete('/companies/{company}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'destroy']);
 
         // Company Specific Factors
         Route::get('/companies/{company}/factors', [\App\Http\Controllers\Api\Admin\AdminCompanyFactorController::class, 'index']);
@@ -52,6 +49,11 @@ Route::middleware('auth:api')->group(function () {
 
         // Superadmin-only operations
         Route::middleware(['role:superadmin'])->group(function () {
+            // Companies write — superadmin only (A02)
+            Route::post('/companies', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'store']);
+            Route::put('/companies/{company}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'update']);
+            Route::delete('/companies/{company}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'destroy']);
+
             // Period lifecycle (create / update / delete / close) — matrix: admin = R only
             Route::post('/companies/{company}/periods', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'addPeriod']);
             Route::put('/periods/{period}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'updatePeriod']);
