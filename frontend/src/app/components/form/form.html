@@ -20,12 +20,27 @@
     </div>
 
     <div class="main-inputs">
-        <mat-form-field appearance="outline">
+        <!-- H09: Admin/Superadmin ven el selector de empresa; Usuario ve su unidad asignada -->
+        <mat-form-field appearance="outline" *ngIf="isAdminOrAbove">
             <mat-label>Empresa</mat-label>
             <mat-select [(ngModel)]="selectedCompany" (selectionChange)="onCompanyChange($event.value)"
                 [compareWith]="compareObjects" [disabled]="hasData">
                 <mat-option *ngFor="let company of companies" [value]="company">
                     {{ company.name }}
+                </mat-option>
+            </mat-select>
+        </mat-form-field>
+
+        <!-- H09: Usuario ve su unidad operativa asignada (solo lectura si hay una) -->
+        <mat-form-field appearance="outline" *ngIf="!isAdminOrAbove">
+            <mat-label>Unidad Operativa</mat-label>
+            <mat-select [(ngModel)]="selectedUnit" [compareWith]="compareObjects"
+                [disabled]="hasData || units.length <= 1">
+                <mat-option *ngFor="let unit of units" [value]="unit">
+                    {{ unit.name }}
+                </mat-option>
+                <mat-option *ngIf="units.length === 0" [value]="null" disabled>
+                    Sin unidad asignada — contacte al administrador
                 </mat-option>
             </mat-select>
         </mat-form-field>

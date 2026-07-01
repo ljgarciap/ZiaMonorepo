@@ -10,9 +10,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { FormsModule } from '@angular/forms';
 import { CarbonService } from '../../services/carbon.service';
 import { ContextService } from '../../services/context.service';
+import { AuthService } from '../../services/auth';
+import { HttpClient } from '@angular/common/http';
 import { debounceTime, distinctUntilChanged, Subject, tap } from 'rxjs';
 
 @Injectable()
@@ -48,6 +51,7 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
     MatButtonModule,
     MatCardModule,
     MatProgressBarModule,
+    MatTooltipModule,
     FormsModule
   ],
   providers: [{ provide: MatPaginatorIntl, useClass: CustomPaginatorIntl }],
@@ -129,6 +133,38 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
               <ng-template #notModified>
                 <span class="original-badge">Original</span>
               </ng-template>
+            </td>
+          </ng-container>
+
+          <!-- Evidences Column (H06) -->
+          <ng-container matColumnDef="evidences">
+            <th mat-header-cell *matHeaderCellDef> Evidencias </th>
+            <td mat-cell *matCellDef="let row">
+              <div class="evidence-cell">
+                <button mat-icon-button
+                  [matTooltip]="(row._evidenceCount || 0) + ' evidencia(s) adjunta(s)'"
+                  (click)="toggleEvidences(row)"
+                  [class.has-evidence]="row._evidenceCount > 0">
+                  <mat-icon>{{ row._evidenceCount > 0 ? 'attach_file' : 'add_circle_outline' }}</mat-icon>
+                </button>
+                <span class="evidence-count" *ngIf="row._evidenceCount > 0">{{row._evidenceCount}}</span>
+              </div>
+              <!-- Inline evidence list -->
+              <div class="evidence-list" *ngIf="row._showEvidences">
+                <div *ngFor="let ev of row._evidences" class="evidence-item">
+                  <mat-icon>description</mat-icon>
+                  <span class="ev-name">{{ev.file_name}}</span>
+                  <span class="ev-meta">{{ev.user?.name}} · {{ev.created_at | date:'dd/MM/yy'}}</span>
+                  <button mat-icon-button (click)="downloadEvidence(row.id, ev.id, ev.file_name)" matTooltip="Descargar">
+                    <mat-icon>download</mat-icon>
+                  </button>
+                </div>
+                <label class="upload-label">
+                  <mat-icon>upload</mat-icon> Subir soporte (PDF, Excel, imagen)
+                  <input type="file" hidden accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp"
+                    (change)="uploadEvidence($event, row)">
+                </label>
+              </div>
             </td>
           </ng-container>
 
@@ -217,10 +253,21 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
     .modified-badge { color: #f59e0b; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
     .original-badge { color: #9ca3af; font-size: 12px; font-style: italic; }
     :host-context(.dark-theme) .modified-badge { color: #fbbf24; }
+
+    .evidence-cell { display: flex; align-items: center; gap: 4px; }
+    .evidence-count { font-size: 11px; font-weight: 700; color: var(--prestige-primary); }
+    .has-evidence { color: var(--prestige-primary) !important; }
+    .evidence-list { margin-top: 8px; padding: 8px; background: rgba(0,0,0,0.03); border-radius: 8px; border: 1px solid var(--prestige-border); }
+    :host-context(.dark-theme) .evidence-list { background: rgba(255,255,255,0.05); }
+    .evidence-item { display: flex; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; color: var(--prestige-text); }
+    .ev-name { flex: 1; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+    .ev-meta { color: var(--prestige-text-muted); font-size: 11px; }
+    .upload-label { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 0; font-size: 12px; color: var(--prestige-primary); border-top: 1px dashed var(--prestige-border); margin-top: 6px; }
+    .upload-label mat-icon { font-size: 16px; width: 16px; height: 16px; }
   `]
 })
 export class HistoryComponent implements OnInit, AfterViewInit {
-  displayedColumns: string[] = ['created_at', 'period_year', 'scope', 'source', 'quantity', 'calculated_co2e', 'updated_at'];
+  displayedColumns: string[] = ['created_at', 'period_year', 'scope', 'source', 'quantity', 'calculated_co2e', 'updated_at', 'evidences'];
   dataSource = new MatTableDataSource<any>([]);
 
   totalResults = 0;
@@ -237,6 +284,8 @@ export class HistoryComponent implements OnInit, AfterViewInit {
 
   private carbonService = inject(CarbonService);
   private contextService = inject(ContextService);
+  private authService = inject(AuthService);
+  private http = inject(HttpClient);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -306,5 +355,47 @@ export class HistoryComponent implements OnInit, AfterViewInit {
   wasModified(row: any): boolean {
     if (!row.updated_at || !row.created_at) return false;
     return new Date(row.updated_at).getTime() - new Date(row.created_at).getTime() > 1000;
+  }
+
+  toggleEvidences(row: any) {
+    row._showEvidences = !row._showEvidences;
+    if (row._showEvidences && !row._evidences) {
+      this.http.get<any[]>(`/api/emissions/${row.id}/evidences`).subscribe({
+        next: (evs) => {
+          row._evidences = evs;
+          row._evidenceCount = evs.length;
+        },
+        error: () => { row._evidences = []; }
+      });
+    }
+  }
+
+  uploadEvidence(event: Event, row: any) {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+
+    const form = new FormData();
+    form.append('file', file);
+
+    this.http.post<any>(`/api/emissions/${row.id}/evidences`, form).subscribe({
+      next: (ev) => {
+        row._evidences = [...(row._evidences || []), ev];
+        row._evidenceCount = (row._evidenceCount || 0) + 1;
+      },
+      error: (err) => console.error('Error subiendo evidencia:', err)
+    });
+  }
+
+  downloadEvidence(emissionId: number, evidenceId: number, fileName: string) {
+    this.http.get(`/api/emissions/${emissionId}/evidences/${evidenceId}/download`,
+      { responseType: 'blob' }
+    ).subscribe(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
   }
 }

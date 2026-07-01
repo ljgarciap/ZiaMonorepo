@@ -134,8 +134,10 @@ export class FormComponent implements AfterViewInit {
   // Context Selection
   companies: any[] = [];
   periods: any[] = [];
+  units: any[] = [];
   selectedCompany: any;
   selectedPeriod: any;
+  selectedUnit: any;
 
   // Dynamic Data
   scopes: any[] = [];
@@ -196,12 +198,11 @@ export class FormComponent implements AfterViewInit {
     const initialCompany = this.contextService.selectedCompany();
 
     if (context && context.type === 'company') {
-      // Lock to this company
       this.selectedCompany = { id: context.id, name: context.label };
       this.companies = [this.selectedCompany];
-      // Load data immediately for this context
       this.loadPeriods(context.id!);
       this.loadMasterData(context.id);
+      if (!this.isAdminOrAbove) this.loadUnits(context.id!);
     } else {
       // Global admin or no context - load all
       this.loadCompanies();
@@ -239,10 +240,24 @@ export class FormComponent implements AfterViewInit {
   onCompanyChange(company: any) {
     this.selectedPeriod = null;
     this.periods = [];
+    this.units = [];
+    this.selectedUnit = null;
     if (company) {
       this.loadPeriods(company.id);
       this.loadMasterData(company.id);
+      if (!this.isAdminOrAbove) this.loadUnits(company.id);
     }
+  }
+
+  loadUnits(companyId: number) {
+    this.http.get<any[]>(`/api/companies/${companyId}/units`).subscribe({
+      next: (data) => {
+        this.units = data;
+        if (data.length === 1) this.selectedUnit = data[0];
+        this.cdr.detectChanges();
+      },
+      error: () => { this.units = []; }
+    });
   }
 
   loadPeriods(companyId: number) {

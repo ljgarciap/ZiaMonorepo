@@ -83,9 +83,17 @@ class CarbonEmissionController extends Controller
         // Calculate — pass period year so FECOC lookup can override electricity grid factor
         $results = $this->carbonService->calculate($inputs, $factor, $period->year);
 
+        // Resolve user's assigned unit for this company (from company_user pivot)
+        $companyId = $period->company_id;
+        $unitId = \Illuminate\Support\Facades\DB::table('company_user')
+            ->where('user_id', auth()->id())
+            ->where('company_id', $companyId)
+            ->value('unit_id');
+
         // Create Record
         $emission = $period->emissions()->create([
             'user_id'             => auth()->id(),
+            'unit_id'             => $unitId,
             'emission_factor_id'  => $factor->id,
             'quantity'            => $results['activity_data_total'],
             'emissions_co2'       => $results['emissions_co2'],

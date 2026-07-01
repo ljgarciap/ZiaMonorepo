@@ -36,6 +36,13 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/companies/{company}/factors', [\App\Http\Controllers\Api\Admin\AdminCompanyFactorController::class, 'index']);
         Route::put('/companies/{company}/factors', [\App\Http\Controllers\Api\Admin\AdminCompanyFactorController::class, 'update']);
 
+        // Operational Units — admin writes + user assignment
+        Route::post('/companies/{company}/units', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'store']);
+        Route::put('/companies/{company}/units/{unit}', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'update']);
+        Route::delete('/companies/{company}/units/{unit}', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'destroy']);
+        Route::post('/companies/{company}/units/{unit}/assign', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'assignUser']);
+        Route::post('/companies/{company}/units/{unit}/unassign', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'unassignUser']);
+
         // Users Management (admin: CRU only — destroy is superadmin-only, enforced in controller)
         Route::get('/users', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'index']);
         Route::post('/users', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'store']);
@@ -82,6 +89,7 @@ Route::middleware('auth:api')->group(function () {
         // ── Datos compartidos de lectura: todos los roles ──────────────────
         Route::get('/companies', [App\Http\Controllers\Api\CompanyController::class, 'index']);
         Route::get('/companies/{company}/periods', [App\Http\Controllers\Api\CompanyController::class, 'periods']);
+        Route::get('/companies/{company}/units', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'index']);
         Route::get('/dictionaries/factors', [App\Http\Controllers\Api\MasterDataController::class, 'emissionFactors']);
         Route::get('/dictionaries/questionnaire', [App\Http\Controllers\Api\MasterDataController::class, 'questionnaireRules']);
 
@@ -98,6 +106,15 @@ Route::middleware('auth:api')->group(function () {
             Route::get('/companies/{company}/emissions/comparison', [App\Http\Controllers\Api\CarbonEmissionController::class, 'comparison']);
             Route::get('/reports/periods/{period}/pdf', [App\Http\Controllers\Api\ReportController::class, 'pdfSummary']);
             Route::get('/reports/periods/{period}/excel', [App\Http\Controllers\Api\ReportController::class, 'excelExport']);
+            // Evidencias: lectura para todos los roles operativos + auditor
+            Route::get('/emissions/{emission}/evidences', [App\Http\Controllers\Api\EmissionEvidenceController::class, 'index']);
+            Route::get('/emissions/{emission}/evidences/{evidence}/download', [App\Http\Controllers\Api\EmissionEvidenceController::class, 'download']);
+        });
+
+        // ── Evidencias: carga (user/admin/superadmin) y eliminación ───────
+        Route::middleware(['role:superadmin,admin,user'])->group(function () {
+            Route::post('/emissions/{emission}/evidences', [App\Http\Controllers\Api\EmissionEvidenceController::class, 'store']);
+            Route::delete('/emissions/{emission}/evidences/{evidence}', [App\Http\Controllers\Api\EmissionEvidenceController::class, 'destroy']);
         });
 
         // ── Emisiones escritura: roles operativos (no Auditor, no IoT) ────

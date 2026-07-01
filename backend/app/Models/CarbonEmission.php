@@ -15,6 +15,7 @@ class CarbonEmission extends Model
     protected $fillable = [
         'period_id',
         'user_id',
+        'unit_id',
         'emission_factor_id',
         'quantity',
         'emissions_co2',
@@ -41,6 +42,11 @@ class CarbonEmission extends Model
     public function period()
     {
         return $this->belongsTo(Period::class);
+    }
+
+    public function evidences()
+    {
+        return $this->hasMany(EmissionEvidence::class, 'carbon_emission_id');
     }
 
     public function factor()

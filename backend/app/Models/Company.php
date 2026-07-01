@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 use App\Traits\LogsActivity;
 use App\Models\User;
+use App\Models\OperationalUnit;
 
 class Company extends Model
 {
@@ -35,6 +36,11 @@ class Company extends Model
     public function periods()
     {
         return $this->hasMany(Period::class);
+    }
+
+    public function operationalUnits()
+    {
+        return $this->hasMany(OperationalUnit::class);
     }
 
     public function factors()
