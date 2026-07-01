@@ -33,6 +33,10 @@ class CarbonEmission extends Model
         'activity_data_stdev',
         'notes',
         'monthly_data',
+        'validation_status',
+        'validation_notes',
+        'validated_by',
+        'validated_at',
     ];
 
     protected $casts = [

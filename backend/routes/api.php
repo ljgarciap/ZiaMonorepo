@@ -124,9 +124,13 @@ Route::middleware('auth:api')->group(function () {
             Route::post('/periods/{period}/emissions', [App\Http\Controllers\Api\CarbonEmissionController::class, 'store']);
         });
 
-        // ── Emisiones eliminación: solo Admin y Superadmin ─────────────────
+        // ── Emisiones eliminación y validación: solo Admin y Superadmin ───
         Route::middleware(['role:superadmin,admin'])->group(function () {
             Route::delete('/emissions/{emission}', [App\Http\Controllers\Api\CarbonEmissionController::class, 'destroy']);
+            // A09: revisión de calidad de datos
+            Route::post('/emissions/{emission}/validate', [App\Http\Controllers\Api\CarbonEmissionController::class, 'validate']);
+            Route::post('/emissions/{emission}/flag', [App\Http\Controllers\Api\CarbonEmissionController::class, 'flag']);
+            Route::post('/emissions/{emission}/reset-validation', [App\Http\Controllers\Api\CarbonEmissionController::class, 'resetValidation']);
         });
 
         // ── Dashboard + IA + Simulador: roles operativos únicamente ───────

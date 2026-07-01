@@ -168,6 +168,54 @@ class CarbonEmissionController extends Controller
         return response()->json(null, 204);
     }
 
+    // A09: Admin marca una emisión como validada
+    public function validate(\Illuminate\Http\Request $request, CarbonEmission $emission)
+    {
+        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        if (!in_array($activeRole, ['admin', 'superadmin'])) {
+            return response()->json(['error' => 'Sin permiso.'], 403);
+        }
+        $emission->update([
+            'validation_status' => 'validated',
+            'validation_notes'  => $request->input('notes'),
+            'validated_by'      => auth()->id(),
+            'validated_at'      => now(),
+        ]);
+        return response()->json($emission);
+    }
+
+    // A09: Admin observa una emisión (requiere revisión)
+    public function flag(\Illuminate\Http\Request $request, CarbonEmission $emission)
+    {
+        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        if (!in_array($activeRole, ['admin', 'superadmin'])) {
+            return response()->json(['error' => 'Sin permiso.'], 403);
+        }
+        $emission->update([
+            'validation_status' => 'needs_review',
+            'validation_notes'  => $request->input('notes'),
+            'validated_by'      => auth()->id(),
+            'validated_at'      => now(),
+        ]);
+        return response()->json($emission);
+    }
+
+    // A09: Admin resetea estado de validación a pendiente
+    public function resetValidation(\Illuminate\Http\Request $request, CarbonEmission $emission)
+    {
+        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        if (!in_array($activeRole, ['admin', 'superadmin'])) {
+            return response()->json(['error' => 'Sin permiso.'], 403);
+        }
+        $emission->update([
+            'validation_status' => 'pending',
+            'validation_notes'  => null,
+            'validated_by'      => null,
+            'validated_at'      => null,
+        ]);
+        return response()->json($emission);
+    }
+
     /**
      * @OA\Get(
      *     path="/api/companies/{company}/emissions/history",

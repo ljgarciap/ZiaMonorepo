@@ -136,6 +136,46 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
             </td>
           </ng-container>
 
+          <!-- A09: Columna de estado de validación (solo admin/superadmin) -->
+          <ng-container matColumnDef="validation_status">
+            <th mat-header-cell *matHeaderCellDef>Validación</th>
+            <td mat-cell *matCellDef="let row">
+              <div class="validation-cell">
+                <!-- Status chip -->
+                <span class="vstatus-chip"
+                  [class.vstatus-pending]="!row.validation_status || row.validation_status === 'pending'"
+                  [class.vstatus-ok]="row.validation_status === 'validated'"
+                  [class.vstatus-flag]="row.validation_status === 'needs_review'">
+                  <mat-icon class="vstatus-icon">
+                    {{ row.validation_status === 'validated' ? 'verified' : row.validation_status === 'needs_review' ? 'flag' : 'pending' }}
+                  </mat-icon>
+                  {{ row.validation_status === 'validated' ? 'Validado' : row.validation_status === 'needs_review' ? 'Observado' : 'Pendiente' }}
+                </span>
+                <!-- Action buttons -->
+                <div class="vaction-row">
+                  <button mat-icon-button class="vbtn-validate"
+                    *ngIf="row.validation_status !== 'validated'"
+                    (click)="validateEmission(row)"
+                    matTooltip="Marcar como validado">
+                    <mat-icon>check_circle</mat-icon>
+                  </button>
+                  <button mat-icon-button class="vbtn-flag"
+                    *ngIf="row.validation_status !== 'needs_review'"
+                    (click)="flagEmission(row)"
+                    matTooltip="Marcar como requiere revisión">
+                    <mat-icon>flag</mat-icon>
+                  </button>
+                  <button mat-icon-button class="vbtn-reset"
+                    *ngIf="row.validation_status && row.validation_status !== 'pending'"
+                    (click)="resetValidation(row)"
+                    matTooltip="Restablecer a pendiente">
+                    <mat-icon>replay</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </td>
+          </ng-container>
+
           <!-- Evidences Column (H06) -->
           <ng-container matColumnDef="evidences">
             <th mat-header-cell *matHeaderCellDef> Evidencias </th>
@@ -264,10 +304,30 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
     .ev-meta { color: var(--prestige-text-muted); font-size: 11px; }
     .upload-label { display: flex; align-items: center; gap: 6px; cursor: pointer; padding: 6px 0; font-size: 12px; color: var(--prestige-primary); border-top: 1px dashed var(--prestige-border); margin-top: 6px; }
     .upload-label mat-icon { font-size: 16px; width: 16px; height: 16px; }
+
+    /* A09: validation column */
+    .validation-cell { display: flex; flex-direction: column; gap: 4px; min-width: 120px; }
+    .vaction-row { display: flex; gap: 0; }
+    .vstatus-chip {
+      display: inline-flex; align-items: center; gap: 3px;
+      padding: 3px 8px; border-radius: 20px; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; white-space: nowrap;
+    }
+    .vstatus-icon { font-size: 12px; width: 12px; height: 12px; }
+    .vstatus-pending { background: rgba(0,0,0,0.07); color: #666; }
+    .vstatus-ok { background: var(--status-success-bg); color: var(--status-success-text); }
+    .vstatus-flag { background: #fff3e0; color: #e65100; }
+    :host-context(.dark-theme) .vstatus-pending { background: rgba(255,255,255,0.08); color: var(--prestige-text-muted); }
+    :host-context(.dark-theme) .vstatus-flag { background: rgba(230,81,0,0.15); color: #ffb74d; }
+    .vbtn-validate { color: #2e7d32; width: 28px; height: 28px; }
+    .vbtn-flag { color: #e65100; width: 28px; height: 28px; }
+    .vbtn-reset { color: var(--prestige-text-muted); width: 28px; height: 28px; }
+    .vbtn-validate:hover { background: rgba(46,125,50,0.1) !important; }
+    .vbtn-flag:hover { background: rgba(230,81,0,0.1) !important; }
   `]
 })
 export class HistoryComponent implements OnInit, AfterViewInit {
-  displayedColumns: string[] = ['created_at', 'period_year', 'scope', 'source', 'quantity', 'calculated_co2e', 'updated_at', 'evidences'];
+  displayedColumns: string[] = [];
   dataSource = new MatTableDataSource<any>([]);
 
   totalResults = 0;
@@ -290,7 +350,18 @@ export class HistoryComponent implements OnInit, AfterViewInit {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
+  get isAdmin(): boolean {
+    const role = this.authService.currentContext()?.role || this.authService.currentUser()?.role || '';
+    return role === 'admin' || role === 'superadmin';
+  }
+
   ngOnInit() {
+    // A09: columnas dinámicas según rol
+    const base = ['created_at', 'period_year', 'scope', 'source', 'quantity', 'calculated_co2e', 'updated_at'];
+    this.displayedColumns = this.isAdmin
+      ? [...base, 'validation_status', 'evidences']
+      : [...base, 'evidences'];
+
     // Debounce search input
     this.searchSubject.pipe(
       debounceTime(500),
@@ -383,6 +454,31 @@ export class HistoryComponent implements OnInit, AfterViewInit {
         row._evidenceCount = (row._evidenceCount || 0) + 1;
       },
       error: (err) => console.error('Error subiendo evidencia:', err)
+    });
+  }
+
+  // A09: acciones de validación para admin
+  validateEmission(row: any) {
+    const prev = row.validation_status;
+    row.validation_status = 'validated';
+    this.http.post(`/api/emissions/${row.id}/validate`, {}).subscribe({
+      error: () => { row.validation_status = prev; }
+    });
+  }
+
+  flagEmission(row: any) {
+    const prev = row.validation_status;
+    row.validation_status = 'needs_review';
+    this.http.post(`/api/emissions/${row.id}/flag`, {}).subscribe({
+      error: () => { row.validation_status = prev; }
+    });
+  }
+
+  resetValidation(row: any) {
+    const prev = row.validation_status;
+    row.validation_status = 'pending';
+    this.http.post(`/api/emissions/${row.id}/reset-validation`, {}).subscribe({
+      error: () => { row.validation_status = prev; }
     });
   }
 

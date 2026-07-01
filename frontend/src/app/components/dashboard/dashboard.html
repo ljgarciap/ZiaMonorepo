@@ -22,10 +22,13 @@
                 <mat-icon matListItemIcon>science</mat-icon>
                 <div matListItemTitle>Simulador</div>
             </a>
-            <a *ngIf="authService.currentContext()?.role === 'user'" mat-list-item routerLink="/history"
-                routerLinkActive="active-link">
+            <!-- Historial: usuario ve sus propios registros; admin ve historial con panel de validación (A09) -->
+            <a *ngIf="['user','admin','superadmin'].includes(authService.currentContext()?.role || '')"
+                mat-list-item routerLink="/history" routerLinkActive="active-link">
                 <mat-icon matListItemIcon>history</mat-icon>
-                <div matListItemTitle>Historial</div>
+                <div matListItemTitle>
+                    {{ authService.currentContext()?.role === 'user' ? 'Mi Historial' : 'Revisión de Datos' }}
+                </div>
             </a>
 
             <!-- Admin Section -->

@@ -189,6 +189,30 @@ export class FormComponent implements AfterViewInit {
   Object = Object; // Expose Object to template
   displayedColumns: string[] = ['source', 'quantity', 'totalCO2e', 'actions'];
 
+  // A09: columnas para tabla de staging — admin ve columna extra de validación
+  get stagedColumns(): string[] {
+    return this.isAdminOrAbove
+      ? ['validation', 'source', 'quantity', 'totalCO2e', 'actions']
+      : ['source', 'quantity', 'totalCO2e', 'actions'];
+  }
+
+  // A09: calcula estado de validación para un ítem staged (validación local, pre-envío)
+  getStagedItemValidation(item: any): { status: 'ok' | 'warning' | 'error'; message: string } {
+    if (!item.quantity || item.quantity <= 0) {
+      return { status: 'error', message: 'Cantidad igual a cero o inválida' };
+    }
+    if (item.totalCO2e <= 0) {
+      return { status: 'error', message: 'Factor de emisión produce resultado cero' };
+    }
+    if (item.totalCO2e > 500) {
+      return { status: 'warning', message: 'Valor mayor a 500 tCO₂e — verificar cantidad' };
+    }
+    if (item.quantity > 100000) {
+      return { status: 'warning', message: 'Cantidad inusualmente alta — verificar unidad' };
+    }
+    return { status: 'ok', message: 'Datos dentro de rangos esperados' };
+  }
+
   @ViewChildren(MatPaginator) paginators!: QueryList<MatPaginator>;
 
   ngOnInit() {
