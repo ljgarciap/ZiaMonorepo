@@ -30,4 +30,12 @@ export class DashboardService {
     downloadExcel(periodId: number): Observable<Blob> {
         return this.http.get(`${environment.apiUrl}/reports/periods/${periodId}/excel`, { responseType: 'blob' });
     }
+
+    downloadProgress(periodId: number): Observable<Blob> {
+        return this.http.get(`${environment.apiUrl}/reports/periods/${periodId}/progress`, { responseType: 'blob' });
+    }
+
+    downloadIot(periodId: number): Observable<Blob> {
+        return this.http.get(`${environment.apiUrl}/reports/periods/${periodId}/iot`, { responseType: 'blob' });
+    }
 }

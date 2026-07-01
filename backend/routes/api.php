@@ -108,6 +108,9 @@ Route::middleware('auth:api')->group(function () {
             Route::get('/companies/{company}/emissions/comparison', [App\Http\Controllers\Api\CarbonEmissionController::class, 'comparison']);
             Route::get('/reports/periods/{period}/pdf', [App\Http\Controllers\Api\ReportController::class, 'pdfSummary']);
             Route::get('/reports/periods/{period}/excel', [App\Http\Controllers\Api\ReportController::class, 'excelExport']);
+            // A10: Reporte de Avance y Reporte IoT
+            Route::get('/reports/periods/{period}/progress', [App\Http\Controllers\Api\ReportController::class, 'progressReport']);
+            Route::get('/reports/periods/{period}/iot', [App\Http\Controllers\Api\ReportController::class, 'iotReport']);
             // Evidencias: lectura para todos los roles operativos + auditor
             Route::get('/emissions/{emission}/evidences', [App\Http\Controllers\Api\EmissionEvidenceController::class, 'index']);
             Route::get('/emissions/{emission}/evidences/{evidence}/download', [App\Http\Controllers\Api\EmissionEvidenceController::class, 'download']);

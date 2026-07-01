@@ -51,13 +51,26 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
                     GENERAR REPORTES
                 </button>
                 <mat-menu #reportMenu="matMenu" class="prestige-menu">
+                    <div mat-subheader style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;">Reporte de Medición</div>
                     <button mat-menu-item (click)="onDownloadPdf()">
                         <mat-icon>picture_as_pdf</mat-icon>
-                        <span>Resumen Ejecutivo (PDF)</span>
+                        <span>Inventario GHG — Resumen Ejecutivo (PDF)</span>
                     </button>
                     <button mat-menu-item (click)="onDownloadExcel()">
                         <mat-icon>table_view</mat-icon>
-                        <span>Detalle Científico (Excel)</span>
+                        <span>Inventario GHG — Datos Completos (Excel)</span>
+                    </button>
+                    <mat-divider></mat-divider>
+                    <div mat-subheader style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;">Reporte de Avance</div>
+                    <button mat-menu-item (click)="onDownloadProgress()">
+                        <mat-icon>trending_down</mat-icon>
+                        <span>Progreso de Reducción vs. Año Base (PDF)</span>
+                    </button>
+                    <mat-divider></mat-divider>
+                    <div mat-subheader style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;">Reporte IoT</div>
+                    <button mat-menu-item (click)="onDownloadIot()">
+                        <mat-icon>sensors</mat-icon>
+                        <span>Telemetría y Datos IoT del Período (PDF)</span>
                     </button>
                 </mat-menu>
                 <app-context-selector></app-context-selector>
@@ -574,6 +587,34 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
         link.href = url;
         const dateStr = new Date().toISOString().split('T')[0];
         link.download = `zia_datos_${this.selectedCompany.name.toLowerCase().replace(/ /g, '_')}_${this.selectedPeriod.year}_${dateStr}.xlsx`;
+        link.click();
+      }
+    });
+  }
+
+  onDownloadProgress() {
+    if (!this.selectedPeriod) return;
+    this.dashboardService.downloadProgress(this.selectedPeriod.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.download = `zia_avance_${this.selectedCompany.name.toLowerCase().replace(/ /g, '_')}_${this.selectedPeriod.year}_${dateStr}.pdf`;
+        link.click();
+      }
+    });
+  }
+
+  onDownloadIot() {
+    if (!this.selectedPeriod) return;
+    this.dashboardService.downloadIot(this.selectedPeriod.id).subscribe({
+      next: (blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        const dateStr = new Date().toISOString().split('T')[0];
+        link.download = `zia_iot_${this.selectedCompany.name.toLowerCase().replace(/ /g, '_')}_${this.selectedPeriod.year}_${dateStr}.pdf`;
         link.click();
       }
     });
