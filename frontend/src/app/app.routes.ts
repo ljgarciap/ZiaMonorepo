@@ -13,6 +13,7 @@ import { MetadataManagementComponent } from './components/admin/metadata-managem
 import { AdminPeriodsComponent } from './components/admin/admin-periods/admin-periods';
 import { AdminMyCompanyComponent } from './components/admin/admin-my-company/admin-my-company';
 import { OperationalUnitManagementComponent } from './components/admin/operational-unit-management/operational-unit-management';
+import { SuperadminDashboardComponent } from './components/admin/superadmin-dashboard/superadmin-dashboard';
 
 export const routes: Routes = [
     { path: 'login', component: LoginComponent },
@@ -27,10 +28,17 @@ export const routes: Routes = [
                 path: 'history',
                 loadComponent: () => import('./components/history/history').then(m => m.HistoryComponent)
             },
-            { path: 'form', component: FormComponent },
+            {
+                path: 'form',
+                component: FormComponent,
+                canActivate: [roleGuard],
+                data: { roles: ['admin', 'user', 'auditor', 'iot_tech'] } // SA-01: superadmin no captura datos operativos
+            },
             {
                 path: 'smart-intake',
-                loadComponent: () => import('./components/smart-intake/smart-intake').then(m => m.SmartIntakeComponent)
+                loadComponent: () => import('./components/smart-intake/smart-intake').then(m => m.SmartIntakeComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['admin', 'user', 'auditor', 'iot_tech'] } // SA-01: superadmin no captura datos operativos
             },
             {
                 path: 'live',
@@ -43,6 +51,12 @@ export const routes: Routes = [
 
 
             // Admin Routes
+            {
+                path: 'admin/platform',
+                component: SuperadminDashboardComponent,
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin'] } // SA-17: dashboard ejecutivo global
+            },
             {
                 path: 'admin/companies',
                 component: CompanyManagementComponent,

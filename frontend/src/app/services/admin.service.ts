@@ -208,4 +208,9 @@ export class AdminService {
     updateCompanyFactors(companyId: number, factors: any[]): Observable<any> {
         return this.http.put(`${this.apiUrl}/companies/${companyId}/factors`, { factors });
     }
+
+    // SA-17: estadísticas globales de plataforma
+    getPlatformStats(): Observable<any> {
+        return this.http.get(`${this.apiUrl}/platform-stats`);
+    }
 }

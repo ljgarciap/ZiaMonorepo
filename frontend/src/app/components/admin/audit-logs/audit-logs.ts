@@ -38,8 +38,12 @@ import { AdminService } from '../../../services/admin.service';
       <div class="header-section">
         <div class="title-group">
           <h1>Auditoría del Sistema</h1>
-          <p class="subtitle">Registro detallado de actividades y cambios</p>
+          <p class="subtitle">Registro detallado de actividades y cambios. Entidades auditadas: usuarios, empresas, períodos, factores de emisión, alcances, unidades y categorías.</p>
         </div>
+        <!-- SA-13: exportar log a CSV -->
+        <button mat-stroked-button (click)="exportCsv()" [disabled]="dataSource.data.length === 0">
+          <mat-icon>download</mat-icon> Exportar CSV
+        </button>
       </div>
 
       <div class="filters-card glass-card">
@@ -62,6 +66,19 @@ import { AdminService } from '../../../services/admin.service';
                 <mat-option value="created">Creación</mat-option>
                 <mat-option value="updated">Actualización</mat-option>
                 <mat-option value="deleted">Eliminación</mat-option>
+              </mat-select>
+            </mat-form-field>
+
+            <!-- SA-13: filtro por evento crítico -->
+            <mat-form-field appearance="outline">
+              <mat-label>Evento Crítico</mat-label>
+              <mat-select formControlName="critical_event">
+                <mat-option value="">Todos</mat-option>
+                <mat-option value="factor_change">Cambio de Factor de Emisión</mat-option>
+                <mat-option value="role_change">Cambio de Rol de Usuario</mat-option>
+                <mat-option value="deletion">Cualquier Eliminación</mat-option>
+                <mat-option value="company_change">Cambio en Empresa</mat-option>
+                <mat-option value="period_change">Cambio de Período</mat-option>
               </mat-select>
             </mat-form-field>
 
@@ -124,7 +141,18 @@ import { AdminService } from '../../../services/admin.service';
                   <span class="model-name">{{ getModelName(log.model) }}</span>
                   <span class="model-id">#{{ log.model_id }}</span>
                 </div>
-                <div class="changes-json" *ngIf="log.details">
+                <!-- SA-13: vista diff antes/después en lugar de JSON crudo -->
+                <div class="diff-view" *ngIf="log.details && log.action === 'updated'">
+                  <ng-container *ngFor="let key of getChangedKeys(log.details)">
+                    <div class="diff-row" *ngIf="log.details.old?.[key] !== undefined || log.details.new?.[key] !== undefined">
+                      <span class="diff-field">{{ key }}</span>
+                      <span class="diff-old" *ngIf="log.details.old?.[key] !== undefined">{{ log.details.old[key] }}</span>
+                      <mat-icon class="diff-arrow">arrow_forward</mat-icon>
+                      <span class="diff-new" *ngIf="log.details.new?.[key] !== undefined">{{ log.details.new[key] }}</span>
+                    </div>
+                  </ng-container>
+                </div>
+                <div class="changes-json" *ngIf="log.details && log.action !== 'updated'">
                   <pre>{{ log.details | json }}</pre>
                 </div>
               </td>
@@ -162,10 +190,17 @@ import { AdminService } from '../../../services/admin.service';
   `,
     styles: [`
     .audit-page { padding: 24px; max-width: 1400px; margin: 0 auto; }
-    
-    .header-section { margin-bottom: 24px; }
+
+    .header-section { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
     .title-group h1 { font-size: 28px; font-weight: 600; color: var(--prestige-primary); margin: 0; }
-    .subtitle { color: var(--prestige-text-muted); margin: 0; }
+    .subtitle { color: var(--prestige-text-muted); margin: 0; max-width: 700px; font-size: 13px; }
+    /* SA-13: diff view */
+    .diff-view { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+    .diff-row { display: flex; align-items: center; gap: 6px; font-size: 11px; flex-wrap: wrap; }
+    .diff-field { font-weight: 700; color: var(--prestige-text-muted); min-width: 100px; }
+    .diff-old { background: #fee2e2; color: #991b1b; padding: 1px 6px; border-radius: 4px; text-decoration: line-through; }
+    .diff-new { background: #dcfce7; color: #166534; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+    .diff-arrow { font-size: 14px; width: 14px; height: 14px; color: var(--prestige-text-muted); }
 
     .glass-card { 
       background: rgba(255, 255, 255, 0.9); border: 1px solid var(--prestige-border); 
@@ -230,6 +265,7 @@ export class AuditLogsComponent implements OnInit {
             user_id: [''],
             model: [''],
             action: [''],
+            critical_event: [''],
             date_from: [''],
             date_to: ['']
         });
@@ -254,7 +290,7 @@ export class AuditLogsComponent implements OnInit {
 
         this.adminService.getAuditLogs(params).subscribe({
             next: (res) => {
-                this.dataSource.data = res.data;
+                this.dataSource.data = this.applyCriticalEventFilter(res.data);
                 this.totalLogs = res.total;
                 this.loading = false;
             },
@@ -284,5 +320,51 @@ export class AuditLogsComponent implements OnInit {
 
     getModelName(fullClass: string): string {
         return fullClass.split('\\').pop() || fullClass;
+    }
+
+    // SA-13: devuelve las claves que cambiaron entre old y new
+    getChangedKeys(details: any): string[] {
+        const oldKeys = Object.keys(details?.old || {});
+        const newKeys = Object.keys(details?.new || {});
+        return [...new Set([...oldKeys, ...newKeys])];
+    }
+
+    // SA-13: filtra por evento crítico del lado del cliente después de cargar
+    applyCriticalEventFilter(logs: any[]): any[] {
+        const ev = this.filterForm.value.critical_event;
+        if (!ev) return logs;
+        const modelMap: Record<string, string[]> = {
+            factor_change:  ['EmissionFactor'],
+            role_change:    ['User'],
+            company_change: ['Company'],
+            period_change:  ['Period'],
+        };
+        if (ev === 'deletion') return logs.filter(l => l.action === 'deleted');
+        const models = modelMap[ev] || [];
+        return logs.filter(l => models.some(m => (l.model || '').includes(m)));
+    }
+
+    // SA-13: exportar log visible a CSV
+    exportCsv() {
+        const rows = this.dataSource.data;
+        if (!rows.length) return;
+        const header = ['Fecha', 'Usuario', 'Rol', 'Acción', 'Entidad', 'ID', 'IP'];
+        const lines = rows.map(l => [
+            l.created_at,
+            l.user?.name || 'Sistema',
+            l.user?.role || '',
+            l.action,
+            this.getModelName(l.model || ''),
+            l.model_id,
+            l.ip_address || ''
+        ].map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(','));
+        const csv = [header.join(','), ...lines].join('\n');
+        const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `zia_auditoria_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        URL.revokeObjectURL(url);
     }
 }

@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\Period;
+use App\Models\IotDevice;
+use App\Models\TelemetryAlert;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 
 class AdminCompanyController extends Controller
@@ -179,5 +182,62 @@ class AdminCompanyController extends Controller
     {
         $period->update(['status' => 'active']);
         return response()->json($period);
+    }
+
+    // SA-17: KPIs globales de plataforma para el dashboard del superadmin
+    public function platformStats()
+    {
+        $totalCompanies  = Company::count();
+        $activeCompanies = Company::whereNull('deleted_at')->count();
+        $openPeriods     = Period::where('status', 'open')->orWhereNull('status')->count();
+        $closedPeriods   = Period::where('status', 'closed')->count();
+
+        $totalEmissions = round(
+            DB::table('carbon_emissions')->whereNull('deleted_at')->sum('calculated_co2e'), 2
+        );
+
+        $totalUsers  = DB::table('users')->whereNotIn('role', ['superadmin'])->whereNull('deleted_at')->count();
+        $activeUsers = DB::table('users')
+            ->whereNotIn('role', ['superadmin'])
+            ->whereNull('deleted_at')
+            ->where('updated_at', '>=', now()->subDays(30))
+            ->count();
+
+        $totalDevices     = IotDevice::whereNull('deleted_at')->count();
+        $pendingAlerts    = TelemetryAlert::where('resolved', false)->count();
+
+        // Top 5 empresas por emisiones este año
+        $topCompanies = DB::table('carbon_emissions')
+            ->join('periods', 'carbon_emissions.period_id', '=', 'periods.id')
+            ->join('companies', 'periods.company_id', '=', 'companies.id')
+            ->whereNull('carbon_emissions.deleted_at')
+            ->where('periods.year', now()->year)
+            ->groupBy('companies.id', 'companies.name')
+            ->select('companies.name', DB::raw('SUM(carbon_emissions.calculated_co2e) as total_co2e'))
+            ->orderByDesc('total_co2e')
+            ->limit(5)
+            ->get()
+            ->map(fn($r) => ['name' => $r->name, 'total_co2e' => round((float)$r->total_co2e, 2)]);
+
+        // Evolución de emisiones por año (últimos 5 años)
+        $emissionsByYear = DB::table('carbon_emissions')
+            ->join('periods', 'carbon_emissions.period_id', '=', 'periods.id')
+            ->whereNull('carbon_emissions.deleted_at')
+            ->where('periods.year', '>=', now()->year - 4)
+            ->groupBy('periods.year')
+            ->select('periods.year', DB::raw('SUM(carbon_emissions.calculated_co2e) as total_co2e'))
+            ->orderBy('periods.year')
+            ->get()
+            ->map(fn($r) => ['year' => $r->year, 'total_co2e' => round((float)$r->total_co2e, 2)]);
+
+        return response()->json([
+            'companies'       => ['total' => $totalCompanies, 'active' => $activeCompanies],
+            'periods'         => ['open' => $openPeriods, 'closed' => $closedPeriods],
+            'emissions'       => ['total_co2e' => $totalEmissions],
+            'users'           => ['total' => $totalUsers, 'active_30d' => $activeUsers],
+            'iot'             => ['devices' => $totalDevices, 'pending_alerts' => $pendingAlerts],
+            'top_companies'   => $topCompanies,
+            'emissions_trend' => $emissionsByYear,
+        ]);
     }
 }

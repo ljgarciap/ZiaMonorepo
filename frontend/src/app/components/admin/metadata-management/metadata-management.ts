@@ -125,7 +125,13 @@ import { CategoryDialog, FactorDialog, ConfirmDialog, FormulaDialog } from '../a
                         <ng-container matColumnDef="factor">
                           <th mat-header-cell *matHeaderCellDef>Factores de Gas (kg/u)</th>
                           <td mat-cell *matCellDef="let f" class="factor-value-td">
-                            <div class="gases-breakdown" [matTooltip]="'CO2: ' + f.factor_co2 + ' | CH4: ' + f.factor_ch4 + ' | N2O: ' + f.factor_n2o + ' | NF3: ' + f.factor_nf3 + ' | SF6: ' + f.factor_sf6">
+                            <!-- SA-08: alerta visual cuando todos los GEI = 0 -->
+                            <span class="factor-incomplete-badge" *ngIf="isFactorIncomplete(f)"
+                              matTooltip="Todos los valores de gas son cero. Este factor produce huella = 0 tCO₂e para cualquier consumo.">
+                              <mat-icon>warning</mat-icon> Factor incompleto
+                            </span>
+                            <div class="gases-breakdown" *ngIf="!isFactorIncomplete(f)"
+                              [matTooltip]="'CO2: ' + f.factor_co2 + ' | CH4: ' + f.factor_ch4 + ' | N2O: ' + f.factor_n2o + ' | NF3: ' + f.factor_nf3 + ' | SF6: ' + f.factor_sf6">
                               <span class="gas">CO₂: {{f.factor_co2}}</span>
                               <span class="gas-sep">|</span>
                               <span class="gas">CH₄: {{f.factor_ch4}}</span>
@@ -146,7 +152,8 @@ import { CategoryDialog, FactorDialog, ConfirmDialog, FormulaDialog } from '../a
                         </ng-container>
 
                         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="factor-row"></tr>
+                        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="factor-row"
+                          [class.factor-row-warning]="isFactorIncomplete(row)"></tr>
                       </table>
                       <div class="empty-factors-msg" *ngIf="(group.factors || []).length === 0">
                          No hay factores vinculados a esta categoría.
@@ -161,6 +168,11 @@ import { CategoryDialog, FactorDialog, ConfirmDialog, FormulaDialog } from '../a
                             <div class="cat-text">
                               <h3>{{cat.name}}</h3>
                               <span class="cat-meta">{{(cat.factors || []).length}} Factores vinculados</span>
+                              <!-- SA-08: contar factores incompletos en la subcategoría -->
+                              <span class="incomplete-count" *ngIf="countIncompleteFactors(cat.factors) > 0">
+                                <mat-icon>warning</mat-icon>
+                                {{countIncompleteFactors(cat.factors)}} con valores cero
+                              </span>
                             </div>
                         </div>
                         <div class="cat-actions">
@@ -184,7 +196,7 @@ import { CategoryDialog, FactorDialog, ConfirmDialog, FormulaDialog } from '../a
                             <div class="name-with-formula">
                               {{f.name}}
                               <span class="formula-tag-mini" *ngIf="f.calculation_formula_id">
-                                <mat-icon>bolt</mat-icon> 
+                                <mat-icon>bolt</mat-icon>
                                 {{ getFormulaName(f.calculation_formula_id) }}
                               </span>
                             </div>
@@ -201,7 +213,12 @@ import { CategoryDialog, FactorDialog, ConfirmDialog, FormulaDialog } from '../a
                         <ng-container matColumnDef="factor">
                           <th mat-header-cell *matHeaderCellDef>Factores de Gas (kg/u)</th>
                           <td mat-cell *matCellDef="let f" class="factor-value-td">
-                            <div class="gases-breakdown" [matTooltip]="'CO2: ' + f.factor_co2 + ' | CH4: ' + f.factor_ch4 + ' | N2O: ' + f.factor_n2o + ' | NF3: ' + f.factor_nf3 + ' | SF6: ' + f.factor_sf6">
+                            <span class="factor-incomplete-badge" *ngIf="isFactorIncomplete(f)"
+                              matTooltip="Todos los valores de gas son cero. Este factor produce huella = 0 tCO₂e.">
+                              <mat-icon>warning</mat-icon> Factor incompleto
+                            </span>
+                            <div class="gases-breakdown" *ngIf="!isFactorIncomplete(f)"
+                              [matTooltip]="'CO2: ' + f.factor_co2 + ' | CH4: ' + f.factor_ch4 + ' | N2O: ' + f.factor_n2o">
                               <span class="gas">CO₂: {{f.factor_co2}}</span>
                               <span class="gas-sep">|</span>
                               <span class="gas">CH₄: {{f.factor_ch4}}</span>
@@ -222,7 +239,8 @@ import { CategoryDialog, FactorDialog, ConfirmDialog, FormulaDialog } from '../a
                         </ng-container>
 
                         <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-                        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="factor-row"></tr>
+                        <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="factor-row"
+                          [class.factor-row-warning]="isFactorIncomplete(row)"></tr>
                       </table>
                       <div class="empty-factors-msg" *ngIf="(cat.factors || []).length === 0">
                          No hay factores vinculados a esta categoría.
@@ -445,6 +463,20 @@ import { CategoryDialog, FactorDialog, ConfirmDialog, FormulaDialog } from '../a
     
     .gases-breakdown { display: flex; gap: 8px; font-size: 11px; color: var(--prestige-text-muted); }
     .gas-sep { color: var(--prestige-border); }
+    /* SA-08: badge para factores con valores GEI = 0 */
+    .factor-incomplete-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: #fff3e0; color: #e65100; padding: 2px 8px; border-radius: 6px;
+      font-size: 11px; font-weight: 700; border: 1px solid #ffcc80;
+    }
+    .factor-incomplete-badge mat-icon { font-size: 13px; width: 13px; height: 13px; }
+    .factor-row-warning td { background: rgba(255, 152, 0, 0.04) !important; }
+    .incomplete-count {
+      display: inline-flex; align-items: center; gap: 3px; margin-left: 8px;
+      background: #fff3e0; color: #e65100; padding: 1px 6px; border-radius: 4px;
+      font-size: 10px; font-weight: 700; border: 1px solid #ffcc80;
+    }
+    .incomplete-count mat-icon { font-size: 11px; width: 11px; height: 11px; }
 
     .factor-actions { display: flex; gap: 2px; }
     .small-action-btn { width: 32px; height: 32px; line-height: 32px; color: var(--prestige-text-muted); }
@@ -691,5 +723,19 @@ export class MetadataManagementComponent implements OnInit {
       case 3: return '#f59e0b';
       default: return '#64748b';
     }
+  }
+
+  // SA-08: un factor está incompleto si todos sus valores GEI son 0 o nulos
+  isFactorIncomplete(f: any): boolean {
+    const co2 = parseFloat(f.factor_co2 ?? 0);
+    const ch4 = parseFloat(f.factor_ch4 ?? 0);
+    const n2o = parseFloat(f.factor_n2o ?? 0);
+    const nf3 = parseFloat(f.factor_nf3 ?? 0);
+    const sf6 = parseFloat(f.factor_sf6 ?? 0);
+    return co2 + ch4 + n2o + nf3 + sf6 === 0;
+  }
+
+  countIncompleteFactors(factors: any[] = []): number {
+    return factors.filter(f => this.isFactorIncomplete(f)).length;
   }
 }

@@ -26,7 +26,7 @@ import { CompanyFactorSettingsDialog } from './company-factor-settings-dialog';
     MatFormFieldModule,
     MatInputModule,
     MatTooltipModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
   ],
   template: `
     <div class="management-page">
@@ -87,6 +87,28 @@ import { CompanyFactorSettingsDialog } from './company-factor-settings-dialog';
                   <button class="add-period-btn" (click)="onAddPeriod(company)" matTooltip="Vincular periodo">
                     <mat-icon>add</mat-icon>
                   </button>
+                </div>
+              </td>
+            </ng-container>
+
+            <!-- SA-07: semáforo de completitud + estado del período -->
+            <ng-container matColumnDef="completeness">
+              <th mat-header-cell *matHeaderCellDef>Completitud</th>
+              <td mat-cell *matCellDef="let company">
+                <div class="semaforo-wrap">
+                  <span class="semaforo" [ngClass]="getSemaforoClass(company)"
+                    [matTooltip]="getSemaforoTooltip(company)">
+                    {{ getSemaforoIcon(company) }}
+                  </span>
+                  <div class="period-status-wrap">
+                    <ng-container *ngFor="let p of (company.periods || []).slice(-2)">
+                      <span class="period-status-chip"
+                        [class.open]="p.status === 'open'"
+                        [class.closed]="p.status === 'closed'">
+                        {{ p.year }} {{ p.status === 'closed' ? '🔒' : '🔓' }}
+                      </span>
+                    </ng-container>
+                  </div>
                 </div>
               </td>
             </ng-container>
@@ -198,7 +220,21 @@ import { CompanyFactorSettingsDialog } from './company-factor-settings-dialog';
     }
     .add-period-btn mat-icon { font-size: 14px; width: 14px; height: 14px; }
 
-    .status-indicator { 
+    /* SA-07: semáforo de completitud */
+    .semaforo-wrap { display: flex; flex-direction: column; gap: 4px; }
+    .semaforo { font-size: 18px; cursor: default; }
+    .semaforo.green { filter: hue-rotate(0deg); }
+    .semaforo.yellow { filter: hue-rotate(0deg); }
+    .semaforo.red { filter: hue-rotate(0deg); }
+    .period-status-wrap { display: flex; flex-wrap: wrap; gap: 3px; }
+    .period-status-chip {
+      padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600;
+      background: var(--status-neutral-bg); color: var(--status-neutral-text); border: 1px solid var(--prestige-border);
+    }
+    .period-status-chip.open { background: #dcfce7; color: #166534; }
+    .period-status-chip.closed { background: #f1f5f9; color: #64748b; }
+
+    .status-indicator {
       padding: 4px 10px; border-radius: 20px; font-size: 10px; font-weight: 700;
       text-transform: uppercase; background: var(--status-error-bg) !important; color: var(--status-error-text) !important; border: 1px solid var(--prestige-border);
       width: fit-content;
@@ -231,7 +267,7 @@ export class CompanyManagementComponent implements OnInit {
   private dialog = inject(MatDialog);
 
   dataSource = new MatTableDataSource<any>([]);
-  displayedColumns = ['name', 'nit', 'periods', 'status', 'actions'];
+  displayedColumns = ['name', 'nit', 'periods', 'completeness', 'status', 'actions'];
   sectors: any[] = [];
   loading = true;
 
@@ -324,5 +360,30 @@ export class CompanyManagementComponent implements OnInit {
       data: { company },
       width: '600px'
     });
+  }
+
+  // SA-07: semáforo de completitud (verde = tiene períodos con datos, amarillo = tiene períodos sin datos, rojo = sin períodos)
+  getSemaforoClass(company: any): string {
+    const periods = company.periods || [];
+    if (!periods.length) return 'red';
+    const openPeriods = periods.filter((p: any) => p.status === 'open' || !p.status);
+    if (!openPeriods.length) return 'yellow'; // Todos cerrados
+    return 'green';
+  }
+
+  getSemaforoIcon(company: any): string {
+    switch (this.getSemaforoClass(company)) {
+      case 'green':  return '🟢';
+      case 'yellow': return '🟡';
+      default:       return '🔴';
+    }
+  }
+
+  getSemaforoTooltip(company: any): string {
+    const periods = company.periods || [];
+    if (!periods.length) return 'Sin períodos de reporte configurados';
+    const openCount  = periods.filter((p: any) => p.status === 'open' || !p.status).length;
+    const closedCount = periods.length - openCount;
+    return `${periods.length} período(s): ${openCount} abierto(s), ${closedCount} cerrado(s)`;
   }
 }

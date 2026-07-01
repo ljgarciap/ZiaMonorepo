@@ -6,14 +6,17 @@
                 <mat-icon matListItemIcon>dashboard</mat-icon>
                 <div matListItemTitle>Dashboard</div>
             </a>
-            <a mat-list-item routerLink="/form" routerLinkActive="active-link">
-                <mat-icon matListItemIcon>assignment</mat-icon>
-                <div matListItemTitle>Huella de Carbono</div>
-            </a>
-            <a mat-list-item routerLink="/smart-intake" routerLinkActive="active-link">
-                <mat-icon matListItemIcon>quiz</mat-icon>
-                <div matListItemTitle>Smart Intake</div>
-            </a>
+            <!-- SA-01: superadmin no captura datos operativos — solo admin/user -->
+            <ng-container *ngIf="authService.currentContext()?.role !== 'superadmin'">
+                <a mat-list-item routerLink="/form" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>assignment</mat-icon>
+                    <div matListItemTitle>Huella de Carbono</div>
+                </a>
+                <a mat-list-item routerLink="/smart-intake" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>quiz</mat-icon>
+                    <div matListItemTitle>Smart Intake</div>
+                </a>
+            </ng-container>
             <a mat-list-item routerLink="/live" routerLinkActive="active-link">
                 <mat-icon matListItemIcon>sensors</mat-icon>
                 <div matListItemTitle>Zia Live</div>
@@ -35,6 +38,13 @@
             <ng-container *ngIf="['superadmin', 'admin'].includes(authService.currentContext()?.role || '')">
                 <mat-divider></mat-divider>
                 <div mat-subheader class="admin-header">Administración</div>
+
+                <!-- SA-17: Dashboard ejecutivo global — solo superadmin -->
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'"
+                    mat-list-item routerLink="/admin/platform" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>monitoring</mat-icon>
+                    <div matListItemTitle>Plataforma Global</div>
+                </a>
 
                 <!-- A02: Superadmin ve gestión completa de empresas; Admin ve solo su empresa (read-only) -->
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'"
