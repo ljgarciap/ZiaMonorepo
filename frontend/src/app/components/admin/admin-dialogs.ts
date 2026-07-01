@@ -9,6 +9,8 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatOptionModule } from '@angular/material/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDividerModule } from '@angular/material/divider';
 import { AdminService } from '../../services/admin.service';
 import { AuthService } from '../../services/auth';
 
@@ -23,31 +25,87 @@ import { AuthService } from '../../services/auth';
     MatButtonModule,
     MatSelectModule,
     MatOptionModule,
+    MatDividerModule,
     FormsModule,
     ReactiveFormsModule
   ],
   template: `
-    <div class="zia-dialog-premium">
+    <div class="zia-dialog-premium" style="min-width: 580px;">
       <h2 mat-dialog-title>{{ data.company?.id ? 'Editar Empresa' : 'Nueva Empresa' }}</h2>
-      <mat-dialog-content>
+      <mat-dialog-content style="max-height: 72vh; overflow-y: auto;">
         <form [formGroup]="form" (ngSubmit)="onSave()" class="zia-form-compact">
-          <mat-form-field appearance="outline">
-            <mat-label>Nombre de la Empresa</mat-label>
-            <input matInput formControlName="name" placeholder="Ej: Zia Corp">
-          </mat-form-field>
-          
-          <mat-form-field appearance="outline">
-            <mat-label>NIT</mat-label>
-            <input matInput formControlName="nit" placeholder="Ej: 900.123.456-1">
-          </mat-form-field>
 
-          <mat-form-field appearance="outline">
+          <div class="dialog-section-label">Datos Generales</div>
+          <div class="zia-form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Nombre de la Empresa</mat-label>
+              <input matInput formControlName="name" placeholder="Ej: Zia Corp">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>NIT</mat-label>
+              <input matInput formControlName="nit" placeholder="Ej: 900.123.456-1">
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
             <mat-label>Sector</mat-label>
             <mat-select formControlName="company_sector_id">
               <mat-option *ngFor="let s of data.sectors" [value]="s.id">{{s.name}}</mat-option>
               <mat-option *ngIf="!data.sectors.length" disabled>No hay sectores disponibles</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <mat-divider style="margin: 12px 0;"></mat-divider>
+          <div class="dialog-section-label">Representante y Contacto</div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Representante Legal</mat-label>
+            <input matInput formControlName="legal_rep" placeholder="Nombre completo del rep. legal">
+          </mat-form-field>
+          <div class="zia-form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Correo de Contacto</mat-label>
+              <input matInput formControlName="contact_email" type="email" placeholder="contacto@empresa.co">
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Teléfono de Contacto</mat-label>
+              <input matInput formControlName="contact_phone" placeholder="+57 300 000 0000">
+            </mat-form-field>
+          </div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Dirección</mat-label>
+            <input matInput formControlName="address" placeholder="Calle, ciudad, departamento">
+          </mat-form-field>
+
+          <mat-divider style="margin: 12px 0;"></mat-divider>
+          <div class="dialog-section-label">Configuración del Inventario GHG</div>
+          <div class="zia-form-grid">
+            <mat-form-field appearance="outline">
+              <mat-label>Año Base</mat-label>
+              <input matInput formControlName="base_year" type="number" placeholder="Ej: 2020">
+              <mat-hint>Año de referencia para la línea base</mat-hint>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Metodología</mat-label>
+              <mat-select formControlName="methodology">
+                <mat-option value="GHG_PROTOCOL">GHG Protocol (WBCSD/WRI)</mat-option>
+                <mat-option value="ISO_14064">ISO 14064</mat-option>
+                <mat-option value="IPCC">IPCC</mat-option>
+                <mat-option value="OTHER">Otra metodología</mat-option>
+              </mat-select>
+            </mat-form-field>
+          </div>
+
+          <mat-divider style="margin: 12px 0;"></mat-divider>
+          <div class="dialog-section-label">Meta de Descarbonización</div>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Descripción de la Meta</mat-label>
+            <textarea matInput formControlName="decarbonization_goal" rows="2"
+              placeholder="Ej: Reducir 30% las emisiones Alcance 1+2 vs. línea base 2020"></textarea>
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Año Objetivo</mat-label>
+            <input matInput formControlName="decarbonization_year" type="number" placeholder="Ej: 2030">
+          </mat-form-field>
+
         </form>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
@@ -57,7 +115,8 @@ import { AuthService } from '../../services/auth';
         </button>
       </mat-dialog-actions>
     </div>
-  `
+  `,
+  styles: [`.dialog-section-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--prestige-text-muted); margin: 4px 0 8px; } .full-width { width: 100%; }`]
 })
 export class CompanyDialog {
   form: FormGroup;
@@ -67,10 +126,19 @@ export class CompanyDialog {
     public dialogRef: MatDialogRef<CompanyDialog>,
     @Inject(MAT_DIALOG_DATA) public data: { company: any, sectors: any[] }
   ) {
+    const c = data.company || {};
     this.form = this.fb.group({
-      name: [data.company?.name || '', Validators.required],
-      nit: [data.company?.nit || '', Validators.required],
-      company_sector_id: [data.company?.company_sector_id || data.company?.sector_id || null]
+      name:                 [c.name || '', Validators.required],
+      nit:                  [c.nit || ''],
+      company_sector_id:    [c.company_sector_id || c.sector_id || null],
+      legal_rep:            [c.legal_rep || ''],
+      contact_email:        [c.contact_email || '', Validators.email],
+      contact_phone:        [c.contact_phone || ''],
+      address:              [c.address || ''],
+      base_year:            [c.base_year || null, [Validators.min(1990), Validators.max(2100)]],
+      methodology:          [c.methodology || 'GHG_PROTOCOL'],
+      decarbonization_goal: [c.decarbonization_goal || ''],
+      decarbonization_year: [c.decarbonization_year || null, [Validators.min(2020), Validators.max(2100)]],
     });
   }
 
@@ -193,12 +261,20 @@ export class SectorDialog {
               <mat-option *ngFor="let c of data.allCompanies" [value]="c.id">{{c.name}}</mat-option>
             </mat-select>
           </mat-form-field>
+
+          <mat-form-field appearance="outline" *ngIf="!data.id">
+            <mat-label>Contraseña Temporal</mat-label>
+            <input matInput type="password" formControlName="password"
+              placeholder="Mín. 8 caracteres (opcional — se genera si se deja vacío)"
+              matTooltip="Si se deja vacío, la contraseña temporal será 'password'. El usuario debe cambiarla en su primer acceso.">
+            <mat-hint>Dejar vacío para usar contraseña genérica</mat-hint>
+          </mat-form-field>
         </form>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
         <button mat-button (click)="onCancel()">Cancelar</button>
         <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="onSave()">
-          {{ data.id ? 'Guardar Cambios' : 'Enviar Invitación' }}
+          {{ data.id ? 'Guardar Cambios' : 'Crear Usuario' }}
         </button>
       </mat-dialog-actions>
     </div>
@@ -220,10 +296,11 @@ export class UserDialog {
     const userCompanyIds = data.companies?.map((c: any) => c.id) || [];
 
     this.form = this.fb.group({
-      name: [data.name || '', Validators.required],
-      email: [data.email || '', [Validators.required, Validators.email]],
-      role: [data.role || 'user', Validators.required],
-      companies: [userCompanyIds]
+      name:      [data.name || '', Validators.required],
+      email:     [data.email || '', [Validators.required, Validators.email]],
+      role:      [data.role || 'user', Validators.required],
+      companies: [userCompanyIds],
+      password:  [null, data.id ? [] : [Validators.minLength(8)]],
     });
   }
 
@@ -249,6 +326,7 @@ export class UserDialog {
     MatButtonModule,
     MatSelectModule,
     MatOptionModule,
+    MatTooltipModule,
     FormsModule,
     ReactiveFormsModule
   ],
@@ -260,50 +338,64 @@ export class UserDialog {
           <div class="zia-form-grid">
             <mat-form-field appearance="outline">
               <mat-label>Nombre del Elemento</mat-label>
-              <input matInput formControlName="name">
+              <input matInput formControlName="name"
+                matTooltip="Nombre del combustible, material o actividad. Ej: Gas Natural, Diésel, Electricidad red">
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>Unidad</mat-label>
-              <mat-select formControlName="measurement_unit_id">
+              <mat-label>Unidad de Actividad</mat-label>
+              <mat-select formControlName="measurement_unit_id"
+                matTooltip="Unidad en que se medirá el dato de actividad. Ej: kWh para electricidad, L para combustibles líquidos">
                 <mat-option *ngFor="let u of data.units" [value]="u.id">
                   {{u.name}} ({{u.symbol}})
                 </mat-option>
               </mat-select>
             </mat-form-field>
           </div>
-          
-          <div class="subtitle-premium">Factores de Emisión (kg Gas / Unidad)</div>
+
+          <div class="subtitle-premium">
+            Factores de Emisión (kg Gas / Unidad)
+            <span class="help-text" matTooltip="Ingresa los kg de cada gas por unidad de actividad (fuente: IPCC AR5 GWP 100). Deja en 0 los gases no aplicables a este combustible.">
+              ¿Qué debo ingresar?
+            </span>
+          </div>
           <div class="zia-form-grid-3">
             <mat-form-field appearance="outline">
-              <mat-label>CO2</mat-label>
-              <input matInput type="number" formControlName="factor_co2">
+              <mat-label>CO₂</mat-label>
+              <input matInput type="number" formControlName="factor_co2"
+                matTooltip="Dióxido de carbono (CO₂) en kg por unidad. GWP = 1. Principal gas en combustión de fósiles.">
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>CH4</mat-label>
-              <input matInput type="number" formControlName="factor_ch4">
+              <mat-label>CH₄</mat-label>
+              <input matInput type="number" formControlName="factor_ch4"
+                matTooltip="Metano (CH₄) en kg por unidad. GWP AR5 = 28. Relevante en gas natural y ganadería.">
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>N2O</mat-label>
-              <input matInput type="number" formControlName="factor_n2o">
+              <mat-label>N₂O</mat-label>
+              <input matInput type="number" formControlName="factor_n2o"
+                matTooltip="Óxido nitroso (N₂O) en kg por unidad. GWP AR5 = 265. Común en fertilizantes y combustión.">
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>NF3</mat-label>
-              <input matInput type="number" formControlName="factor_nf3">
+              <mat-label>NF₃</mat-label>
+              <input matInput type="number" formControlName="factor_nf3"
+                matTooltip="Trifluoruro de nitrógeno (NF₃) en kg por unidad. GWP AR5 = 16 100. Sólo en electrónica.">
             </mat-form-field>
             <mat-form-field appearance="outline">
-              <mat-label>SF6</mat-label>
-              <input matInput type="number" formControlName="factor_sf6">
+              <mat-label>SF₆</mat-label>
+              <input matInput type="number" formControlName="factor_sf6"
+                matTooltip="Hexafluoruro de azufre (SF₆) en kg por unidad. GWP AR5 = 23 500. Usado en equipos eléctricos.">
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Incertidumbre (%)</mat-label>
-              <input matInput type="number" formControlName="uncertainty_upper">
+              <input matInput type="number" formControlName="uncertainty_upper"
+                matTooltip="Margen de incertidumbre superior del factor (%). Ej: 10 significa ±10% según el método de inventario GHG Protocol Scope 1.">
             </mat-form-field>
           </div>
 
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Fórmula de Cálculo Especial</mat-label>
-            <mat-select formControlName="calculation_formula_id">
-              <mat-option [value]="null">Cálculo Estándar (Sumatoria gases)</mat-option>
+            <mat-select formControlName="calculation_formula_id"
+              matTooltip="Deja en 'Estándar' para la sumatoria normal de gases × GWP. Selecciona una fórmula personalizada solo para métodos especiales (ej: intensidad, IPCC Tier 2).">
+              <mat-option [value]="null">Cálculo Estándar (Sumatoria gases × GWP)</mat-option>
               <mat-option *ngFor="let formula of data.formulas" [value]="formula.id">
                 {{formula.name}}
               </mat-option>
@@ -318,7 +410,8 @@ export class UserDialog {
         </button>
       </mat-dialog-actions>
     </div>
-  `
+  `,
+  styles: [`.help-text { font-size: 11px; color: var(--prestige-primary); cursor: help; text-decoration: underline dotted; margin-left: 8px; font-weight: 400; }`]
 })
 export class FactorDialog {
   form: FormGroup;

@@ -10,6 +10,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatSelectModule } from '@angular/material/select';
+import { MatOptionModule } from '@angular/material/core';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatPaginatorModule, MatPaginator } from '@angular/material/paginator';
 import { AdminService } from '../../../services/admin.service';
@@ -30,8 +31,9 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
     MatProgressSpinnerModule,
     MatDialogModule,
     MatSelectModule,
+    MatOptionModule,
     MatTabsModule,
-    MatPaginatorModule
+    MatPaginatorModule,
   ],
   template: `
     <div class="management-page">
@@ -41,7 +43,7 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
           <p class="subtitle">Gestiona los permisos, roles y empresas asociadas a los integrantes de la plataforma.</p>
         </div>
         <button mat-flat-button class="btn-prestige" (click)="onCreate()">
-          <mat-icon>person_add</mat-icon> Invitar Usuario
+          <mat-icon>person_add</mat-icon> Nuevo Usuario
         </button>
       </div>
 
@@ -56,10 +58,18 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
           <mat-tab label="Activos">
             <div class="glass-card table-wrapper">
               <div class="table-header">
-                 <div class="search-container">
-                    <mat-icon class="search-icon">search</mat-icon>
-                    <input class="search-input" (keyup)="applyActiveFilter($event)" placeholder="Filtrar activos por nombre o correo...">
-                 </div>
+                <div class="search-container">
+                  <mat-icon class="search-icon">search</mat-icon>
+                  <input class="search-input" (keyup)="applyActiveFilter($event)" placeholder="Buscar por nombre o correo...">
+                </div>
+                <!-- SA-14: filtro por empresa -->
+                <mat-form-field appearance="outline" class="company-filter">
+                  <mat-label>Filtrar por empresa</mat-label>
+                  <mat-select [(ngModel)]="selectedCompanyFilter" (ngModelChange)="applyCompanyFilter()">
+                    <mat-option [value]="null">Todas las empresas</mat-option>
+                    <mat-option *ngFor="let c of companies" [value]="c.id">{{ c.name }}</mat-option>
+                  </mat-select>
+                </mat-form-field>
               </div>
 
               <div class="table-container">
@@ -67,15 +77,15 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
                   <ng-container matColumnDef="name">
                     <th mat-header-cell *matHeaderCellDef>Usuario</th>
                     <td mat-cell *matCellDef="let user">
-                       <div class="user-profile-cell">
-                          <div class="avatar-prestige" [style.background]="getAvatarColor(user.role)">
-                            {{user.name?.charAt(0) || '?'}}
-                          </div>
-                          <div class="user-info">
-                            <span class="full-name">{{user.name}}</span>
-                            <span class="user-email">{{user.email}}</span>
-                          </div>
-                       </div>
+                      <div class="user-profile-cell">
+                        <div class="avatar-prestige" [style.background]="getAvatarColor(user.role)">
+                          {{user.name?.charAt(0) || '?'}}
+                        </div>
+                        <div class="user-info">
+                          <span class="full-name">{{user.name}}</span>
+                          <span class="user-email">{{user.email}}</span>
+                        </div>
+                      </div>
                     </td>
                   </ng-container>
 
@@ -88,13 +98,23 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
                     </td>
                   </ng-container>
 
-                  <ng-container matColumnDef="companies">
-                    <th mat-header-cell *matHeaderCellDef>Empresas</th>
+                  <!-- SA-14: empresa asignada principal -->
+                  <ng-container matColumnDef="company">
+                    <th mat-header-cell *matHeaderCellDef>Empresa Principal</th>
                     <td mat-cell *matCellDef="let user">
-                      <button mat-stroked-button class="btn-companies-count" (click)="onViewCompanies(user)" matTooltip="Ver empresas asociadas">
-                        <mat-icon matPrefix>business</mat-icon>
-                        {{ user.companies?.length || 0 }} {{ (user.companies?.length === 1) ? 'Empresa' : 'Empresas' }}
-                      </button>
+                      <span class="company-tag" *ngIf="user.companies?.length">{{ user.companies[0]?.name }}</span>
+                      <span class="text-muted" *ngIf="!user.companies?.length">—</span>
+                      <span class="more-badge" *ngIf="user.companies?.length > 1" matTooltip="{{ getCompanyNames(user) }}">
+                        +{{ user.companies.length - 1 }}
+                      </span>
+                    </td>
+                  </ng-container>
+
+                  <!-- SA-14: columna created_at -->
+                  <ng-container matColumnDef="created_at">
+                    <th mat-header-cell *matHeaderCellDef>Registrado</th>
+                    <td mat-cell *matCellDef="let user">
+                      <span class="date-text">{{ user.created_at | date:'dd/MM/yyyy' }}</span>
                     </td>
                   </ng-container>
 
@@ -105,6 +125,9 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
                         <button mat-icon-button class="action-btn edit" (click)="onEdit(user)" matTooltip="Editar Perfil">
                           <mat-icon>edit</mat-icon>
                         </button>
+                        <button mat-icon-button class="action-btn" (click)="onViewCompanies(user)" matTooltip="Gestionar Empresas">
+                          <mat-icon>business</mat-icon>
+                        </button>
                         <button mat-icon-button class="action-btn delete" (click)="onDelete(user)" matTooltip="Suspender">
                           <mat-icon>person_off</mat-icon>
                         </button>
@@ -114,9 +137,9 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
 
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="prestige-row"></tr>
-                  
+
                   <tr class="mat-row empty-state-row" *matNoDataRow>
-                    <td class="mat-cell" colspan="4">
+                    <td class="mat-cell" colspan="5">
                        <p>No se encontraron resultados para su búsqueda.</p>
                     </td>
                   </tr>
@@ -135,7 +158,6 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
                     <input class="search-input" (keyup)="applyInactiveFilter($event)" placeholder="Filtrar inactivos por nombre o correo...">
                  </div>
               </div>
-
               <div class="table-container">
                 <table mat-table [dataSource]="inactiveDataSource" class="prestige-table">
                   <ng-container matColumnDef="name">
@@ -152,7 +174,6 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
                        </div>
                     </td>
                   </ng-container>
-
                   <ng-container matColumnDef="role">
                     <th mat-header-cell *matHeaderCellDef>Nivel</th>
                     <td mat-cell *matCellDef="let user">
@@ -161,37 +182,34 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
                       </div>
                     </td>
                   </ng-container>
-
-                  <ng-container matColumnDef="companies">
-                    <th mat-header-cell *matHeaderCellDef>Empresas</th>
+                  <ng-container matColumnDef="company">
+                    <th mat-header-cell *matHeaderCellDef>Empresa</th>
                     <td mat-cell *matCellDef="let user">
-                      <button mat-stroked-button class="btn-companies-count" (click)="onViewCompanies(user)" matTooltip="Ver empresas asociadas" style="opacity: 0.6;">
-                        <mat-icon matPrefix>business</mat-icon>
-                        {{ user.companies?.length || 0 }} {{ (user.companies?.length === 1) ? 'Empresa' : 'Empresas' }}
-                      </button>
+                      <span class="company-tag" style="opacity:0.5;" *ngIf="user.companies?.length">{{ user.companies[0]?.name }}</span>
+                      <span class="text-muted" *ngIf="!user.companies?.length">—</span>
                     </td>
                   </ng-container>
-
+                  <ng-container matColumnDef="created_at">
+                    <th mat-header-cell *matHeaderCellDef>Registrado</th>
+                    <td mat-cell *matCellDef="let user">
+                      <span class="date-text">{{ user.created_at | date:'dd/MM/yyyy' }}</span>
+                    </td>
+                  </ng-container>
                   <ng-container matColumnDef="actions">
                     <th mat-header-cell *matHeaderCellDef>Acciones</th>
                     <td mat-cell *matCellDef="let user">
                       <div class="action-buttons">
-                        <button mat-icon-button class="action-btn edit" (click)="onEdit(user)" matTooltip="Editar Perfil">
-                          <mat-icon>edit</mat-icon>
-                        </button>
                         <button mat-icon-button class="action-btn activate" (click)="onRestore(user)" matTooltip="Reactivar Acceso">
                           <mat-icon>person_add</mat-icon>
                         </button>
                       </div>
                     </td>
                   </ng-container>
-
                   <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
                   <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="prestige-row"></tr>
-                  
                   <tr class="mat-row empty-state-row" *matNoDataRow>
-                    <td class="mat-cell" colspan="4">
-                       <p>No se encontraron resultados para su búsqueda.</p>
+                    <td class="mat-cell" colspan="5">
+                       <p>No se encontraron resultados.</p>
                     </td>
                   </tr>
                 </table>
@@ -205,59 +223,50 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
   `,
   styles: [`
     .management-page { padding: 24px; max-width: 1400px; margin: 0 auto; }
-    
-    .header-section { 
-      display: flex; justify-content: space-between; align-items: flex-end; 
+
+    .header-section {
+      display: flex; justify-content: space-between; align-items: flex-end;
       margin-bottom: 32px; gap: 20px;
     }
-    .title-group h1 { 
-      font-size: 28px; font-weight: 600; color: var(--prestige-primary); 
+    .title-group h1 {
+      font-size: 28px; font-weight: 600; color: var(--prestige-primary);
       margin: 0 0 4px 0; letter-spacing: -0.02em;
     }
     .subtitle { color: var(--prestige-text-muted); margin: 0; font-size: 14px; }
 
-    .btn-prestige { 
-      background: var(--prestige-primary); color: white; padding: 0 20px; 
+    .btn-prestige {
+      background: var(--prestige-primary); color: white; padding: 0 20px;
       border-radius: 10px; font-weight: 500; height: 42px; font-size: 14px;
     }
 
     .tabs-container { margin-top: 16px; }
     .table-wrapper { padding: 0; border-radius: 0 0 12px 12px; border-top: none; }
-    
-    .table-header { 
+
+    .table-header {
       padding: 16px 24px; border-bottom: 1px solid var(--prestige-border);
-      display: flex; align-items: center;
+      display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
     }
     .search-container {
-      position: relative; display: flex; align-items: center; width: 340px;
+      position: relative; display: flex; align-items: center; width: 300px;
       background: rgba(255, 255, 255, 0.03); border: 1px solid var(--prestige-border);
       border-radius: 8px; padding: 6px 12px; transition: all 0.3s ease;
     }
     .search-container:focus-within {
       border-color: var(--prestige-primary);
       box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
-      background: rgba(255, 255, 255, 0.05);
     }
-    .search-icon {
-      color: var(--prestige-text-muted); margin-right: 8px;
-      font-size: 20px; width: 20px; height: 20px; display: flex; align-items: center;
-    }
-    .search-input {
-      border: none; background: transparent; color: var(--prestige-text);
-      font-size: 13.5px; outline: none; width: 100%;
-    }
+    .search-icon { color: var(--prestige-text-muted); margin-right: 8px; font-size: 20px; width: 20px; height: 20px; }
+    .search-input { border: none; background: transparent; color: var(--prestige-text); font-size: 13.5px; outline: none; width: 100%; }
 
-    .prestige-table { width: 100%; min-width: 800px; }
-    .table-container { 
-      width: 100%; 
-      overflow-x: auto; 
-      position: relative;
-      min-height: 200px;
-    }
+    .company-filter { width: 220px; margin: 0; }
+    ::ng-deep .company-filter .mat-mdc-form-field-wrapper { padding-bottom: 0; }
+
+    .prestige-table { width: 100%; min-width: 700px; }
+    .table-container { width: 100%; overflow-x: auto; position: relative; min-height: 200px; }
 
     .user-profile-cell { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-    .avatar-prestige { 
-      width: 36px; height: 36px; border-radius: 50%; color: white; 
+    .avatar-prestige {
+      width: 36px; height: 36px; border-radius: 50%; color: white;
       display: flex; align-items: center; justify-content: center;
       font-weight: 600; font-size: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
     }
@@ -267,14 +276,20 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
     .full-name.text-muted { color: var(--prestige-text-muted); text-decoration: line-through; }
     .user-email { font-size: 12px; color: var(--prestige-text-muted); }
 
-    .btn-companies-count {
-      border-radius: 20px; font-size: 12px; font-weight: 500;
-      color: var(--prestige-text); border-color: var(--prestige-border);
-      height: 32px; display: flex; align-items: center; gap: 4px;
+    .company-tag {
+      background: var(--status-info-bg); color: var(--status-info-text);
+      border: 1px solid var(--prestige-border); border-radius: 12px;
+      padding: 2px 8px; font-size: 11px; font-weight: 500;
     }
-    .btn-companies-count mat-icon { font-size: 16px; width: 16px; height: 16px; margin-right: 4px; }
+    .more-badge {
+      background: var(--prestige-border); color: var(--prestige-text-muted);
+      border-radius: 10px; padding: 1px 6px; font-size: 10px; font-weight: 700;
+      margin-left: 4px; cursor: default;
+    }
+    .text-muted { color: var(--prestige-text-muted); font-size: 12px; }
+    .date-text { font-size: 12px; color: var(--prestige-text-muted); }
 
-    .role-chip { 
+    .role-chip {
       padding: 4px 12px; border-radius: 30px; font-size: 10px; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.03em; border: 1px solid transparent;
       width: fit-content;
@@ -297,7 +312,6 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
     @media (max-width: 768px) {
       .management-page { padding: 16px; }
       .header-section { flex-direction: column; align-items: flex-start; gap: 16px; }
-      .search-field { width: 100%; }
     }
   `]
 })
@@ -308,9 +322,11 @@ export class UserManagementComponent implements OnInit {
 
   activeDataSource = new MatTableDataSource<any>([]);
   inactiveDataSource = new MatTableDataSource<any>([]);
-  displayedColumns = ['name', 'role', 'companies', 'actions'];
+  displayedColumns = ['name', 'role', 'company', 'created_at', 'actions'];
   loading = true;
   companies: any[] = [];
+  selectedCompanyFilter: number | null = null;
+  private allActiveUsers: any[] = [];
 
   @ViewChild('activePaginator') activePaginator!: MatPaginator;
   @ViewChild('inactivePaginator') inactivePaginator!: MatPaginator;
@@ -325,12 +341,10 @@ export class UserManagementComponent implements OnInit {
     this.adminService.getUsers().subscribe({
       next: (data) => {
         const users = data || [];
-        
-        // Filter users
-        const activeUsers = users.filter(u => !u.deleted_at);
-        const inactiveUsers = users.filter(u => u.deleted_at);
+        this.allActiveUsers = users.filter((u: any) => !u.deleted_at);
+        const inactiveUsers = users.filter((u: any) => u.deleted_at);
 
-        this.activeDataSource.data = activeUsers;
+        this.activeDataSource.data = this.allActiveUsers;
         this.inactiveDataSource.data = inactiveUsers;
 
         setTimeout(() => {
@@ -341,11 +355,7 @@ export class UserManagementComponent implements OnInit {
         this.loading = false;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.error('[UserMgmt] Error:', err);
-        this.loading = false;
-        this.cdr.detectChanges();
-      }
+      error: () => { this.loading = false; this.cdr.detectChanges(); }
     });
   }
 
@@ -365,9 +375,24 @@ export class UserManagementComponent implements OnInit {
     this.inactiveDataSource.filter = filterValue.trim().toLowerCase();
   }
 
-  onTabChange() {
-    // Force Change Detection to handle paginators properly on tab switch
+  applyCompanyFilter() {
+    if (!this.selectedCompanyFilter) {
+      this.activeDataSource.data = this.allActiveUsers;
+    } else {
+      this.activeDataSource.data = this.allActiveUsers.filter(u =>
+        u.companies?.some((c: any) => c.id === this.selectedCompanyFilter)
+      );
+    }
+    setTimeout(() => { this.activeDataSource.paginator = this.activePaginator; });
     this.cdr.detectChanges();
+  }
+
+  onTabChange() {
+    this.cdr.detectChanges();
+  }
+
+  getCompanyNames(user: any): string {
+    return (user.companies || []).map((c: any) => c.name).join(', ');
   }
 
   onCreate() {
@@ -397,9 +422,7 @@ export class UserManagementComponent implements OnInit {
       data: { user }
     });
     dialogRef.afterClosed().subscribe(hasChanges => {
-      if (hasChanges) {
-        this.loadUsers();
-      }
+      if (hasChanges) this.loadUsers();
     });
   }
 
@@ -415,12 +438,11 @@ export class UserManagementComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialog, {
       data: {
         title: 'Suspender Usuario',
-        message: `¿Estás seguro de que deseas desactivar el acceso para ${user.email}? El usuario no podrá iniciar sesión hasta que sea reactivado.`,
+        message: `¿Estás seguro de que deseas desactivar el acceso para ${user.email}?`,
         confirmText: 'Suspender Acceso',
         color: 'warn'
       }
     });
-
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.adminService.deleteUser(user.id).subscribe(() => this.loadUsers());
@@ -432,12 +454,11 @@ export class UserManagementComponent implements OnInit {
     const dialogRef = this.dialog.open(ConfirmDialog, {
       data: {
         title: 'Reactivar Usuario',
-        message: `¿Deseas restablecer el acceso para ${user.email}? El usuario podrá ingresar nuevamente con sus credenciales.`,
+        message: `¿Deseas restablecer el acceso para ${user.email}?`,
         confirmText: 'Reactivar Acceso',
         color: 'primary'
       }
     });
-
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.adminService.restoreUser(user.id).subscribe(() => this.loadUsers());

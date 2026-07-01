@@ -55,12 +55,20 @@ class AdminCompanyController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'              => 'required|string|max:255',
-            'nit'               => 'nullable|string|max:20',
-            'company_sector_id' => 'required|exists:company_sectors,id',
-            'logo_url'          => 'nullable|url',
-            'num_employees'     => 'nullable|integer|min:1',
-            'floor_sqm'         => 'nullable|numeric|min:0',
+            'name'                  => 'required|string|max:255',
+            'nit'                   => 'nullable|string|max:20',
+            'company_sector_id'     => 'nullable|exists:company_sectors,id',
+            'logo_url'              => 'nullable|url',
+            'num_employees'         => 'nullable|integer|min:1',
+            'floor_sqm'             => 'nullable|numeric|min:0',
+            'contact_email'         => 'nullable|email|max:255',
+            'contact_phone'         => 'nullable|string|max:30',
+            'legal_rep'             => 'nullable|string|max:255',
+            'address'               => 'nullable|string|max:500',
+            'base_year'             => 'nullable|integer|min:1990|max:2100',
+            'methodology'           => 'nullable|string|in:GHG_PROTOCOL,ISO_14064,IPCC,OTHER',
+            'decarbonization_goal'  => 'nullable|string|max:1000',
+            'decarbonization_year'  => 'nullable|integer|min:2020|max:2100',
         ]);
 
         if ($validator->fails()) {
@@ -69,6 +77,8 @@ class AdminCompanyController extends Controller
 
         $company = Company::create($request->only([
             'name', 'nit', 'company_sector_id', 'logo_url', 'num_employees', 'floor_sqm',
+            'contact_email', 'contact_phone', 'legal_rep', 'address',
+            'base_year', 'methodology', 'decarbonization_goal', 'decarbonization_year',
         ]));
         return response()->json($company->load('sector'), 201);
     }
@@ -87,6 +97,8 @@ class AdminCompanyController extends Controller
     {
         $company->update($request->only([
             'name', 'nit', 'company_sector_id', 'logo_url', 'num_employees', 'floor_sqm',
+            'contact_email', 'contact_phone', 'legal_rep', 'address',
+            'base_year', 'methodology', 'decarbonization_goal', 'decarbonization_year',
         ]));
         return response()->json($company->load('sector'));
     }
@@ -180,7 +192,26 @@ class AdminCompanyController extends Controller
 
     public function reopenPeriod(Period $period)
     {
-        $period->update(['status' => 'active']);
+        $period->update(['status' => 'open']);
+        return response()->json($period);
+    }
+
+    // SA-15: ciclo de vida de períodos — transiciones adicionales
+    public function sendToReview(Period $period)
+    {
+        if (!in_array($period->status, ['open', 'active'])) {
+            return response()->json(['message' => 'Solo períodos abiertos pueden pasar a revisión.'], 422);
+        }
+        $period->update(['status' => 'in_review']);
+        return response()->json($period);
+    }
+
+    public function archivePeriod(Period $period)
+    {
+        if ($period->status !== 'closed') {
+            return response()->json(['message' => 'Solo períodos cerrados pueden archivarse.'], 422);
+        }
+        $period->update(['status' => 'archived']);
         return response()->json($period);
     }
 

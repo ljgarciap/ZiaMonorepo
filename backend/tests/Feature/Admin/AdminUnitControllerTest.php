@@ -87,7 +87,7 @@ class AdminUnitControllerTest extends TestCase
         $this->actingAs($this->superadmin, 'api')
              ->deleteJson("/api/admin/units/{$unit->id}")
              ->assertStatus(409)
-             ->assertJsonFragment(['message' => 'Cannot delete unit as it is used by emission factors.']);
+             ->assertJsonFragment(['message' => 'No se puede eliminar: esta unidad está en uso por factores de emisión.']);
     }
 
     public function test_admin_cannot_access_unit_endpoints()

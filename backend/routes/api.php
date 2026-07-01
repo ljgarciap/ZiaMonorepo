@@ -84,7 +84,15 @@ Route::middleware('auth:api')->group(function () {
             Route::delete('/factors/{factor}', [\App\Http\Controllers\Api\Admin\AdminMasterDataController::class, 'deleteFactor']);
             Route::apiResource('/formulas', \App\Http\Controllers\Api\Admin\CalculationFormulaController::class);
             Route::apiResource('/units', \App\Http\Controllers\Api\Admin\AdminUnitController::class);
+            Route::post('/units/{unit}/toggle', [\App\Http\Controllers\Api\Admin\AdminUnitController::class, 'toggle']);
             Route::apiResource('/scopes', \App\Http\Controllers\Api\Admin\AdminScopeController::class);
+
+            // SA-15: ciclo de vida de períodos
+            Route::post('/periods/{period}/review', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'sendToReview']);
+            Route::post('/periods/{period}/archive', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'archivePeriod']);
+
+            // SA-12: Dashboard IoT global
+            Route::get('/iot-devices', [\App\Http\Controllers\Api\Admin\AdminIotController::class, 'index']);
         });
     });
 

@@ -15,7 +15,11 @@ class Company extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['name', 'nit', 'company_sector_id', 'logo_url', 'tags', 'floor_sqm', 'num_employees', 'consolidation_approach'];
+    protected $fillable = [
+        'name', 'nit', 'company_sector_id', 'logo_url', 'tags', 'floor_sqm', 'num_employees', 'consolidation_approach',
+        'contact_email', 'contact_phone', 'legal_rep', 'address',
+        'base_year', 'methodology', 'decarbonization_goal', 'decarbonization_year',
+    ];
 
     protected $casts = [
         'tags' => 'array'

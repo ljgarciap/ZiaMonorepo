@@ -103,6 +103,12 @@
                     <mat-icon matListItemIcon>category</mat-icon>
                     <div matListItemTitle>Alcances</div>
                 </a>
+                <!-- SA-12: Seguimiento IoT — superadmin -->
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
+                    routerLink="/admin/iot-devices" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>device_hub</mat-icon>
+                    <div matListItemTitle>Dispositivos IoT</div>
+                </a>
             </ng-container>
 
             <mat-divider></mat-divider>
@@ -118,7 +124,7 @@
             <button mat-icon-button (click)="sidenav.toggle()" class="menu-btn">
                 <mat-icon>menu</mat-icon>
             </button>
-            <span class="toolbar-title">Zia Dashboard</span>
+            <span class="toolbar-title">{{ pageTitle() }}</span>
 
             <span class="context-pill" *ngIf="authService.currentContext() as ctx"
                 style="margin-left: 15px; font-size: 0.85em; background: rgba(0,0,0,0.05); padding: 4px 12px; border-radius: 16px; display: flex; align-items: center; gap: 5px; border: 1px solid rgba(0,0,0,0.1);">

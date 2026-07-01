@@ -11,7 +11,9 @@ class MeasurementUnit extends Model
 {
     use SoftDeletes, LogsActivity;
 
-    protected $fillable = ['name', 'symbol'];
+    protected $fillable = ['name', 'symbol', 'is_standard', 'is_active'];
+
+    protected $casts = ['is_standard' => 'boolean', 'is_active' => 'boolean'];
 
     public function factors()
     {

@@ -117,6 +117,12 @@ export const routes: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['superadmin', 'admin'] }
             },
+            {
+                path: 'admin/iot-devices',
+                loadComponent: () => import('./components/admin/iot-devices/iot-devices').then(m => m.IotDevicesComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin'] } // SA-12
+            },
 
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ]

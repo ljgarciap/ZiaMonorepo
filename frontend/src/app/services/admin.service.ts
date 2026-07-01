@@ -144,6 +144,24 @@ export class AdminService {
         return this.http.delete(`${this.apiUrl}/units/${id}`);
     }
 
+    toggleUnit(id: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/units/${id}/toggle`, {});
+    }
+
+    // SA-15: period lifecycle
+    sendPeriodToReview(periodId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/periods/${periodId}/review`, {});
+    }
+
+    archivePeriod(periodId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/periods/${periodId}/archive`, {});
+    }
+
+    // SA-12: IoT device overview
+    getIotDevicesOverview(): Observable<any> {
+        return this.http.get(`${this.apiUrl}/iot-devices`);
+    }
+
     // Scopes
     getScopes(): Observable<any[]> {
         return this.http.get<any[]>(`${this.apiUrl}/scopes`);
