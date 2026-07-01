@@ -123,6 +123,12 @@ export const routes: Routes = [
                 canActivate: [roleGuard],
                 data: { roles: ['superadmin'] } // SA-12
             },
+            {
+                path: 'admin/questionnaires',
+                loadComponent: () => import('./components/admin/questionnaire-management/questionnaire-management').then(m => m.QuestionnaireMgmtComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin'] } // SA-10
+            },
 
             { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
         ]

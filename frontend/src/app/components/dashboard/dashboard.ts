@@ -34,6 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/scopes':               'Alcances',
   '/admin/audit':                'Auditoría',
   '/admin/iot-devices':          'Dispositivos IoT',
+  '/admin/questionnaires':       'Cuestionarios Smart Intake',
 };
 
 @Component({

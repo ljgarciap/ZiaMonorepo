@@ -231,4 +231,58 @@ export class AdminService {
     getPlatformStats(): Observable<any> {
         return this.http.get(`${this.apiUrl}/platform-stats`);
     }
+
+    // SA-11: reporte PDF global
+    downloadPlatformReport(): void {
+        window.open(`${this.apiUrl}/reports/platform`, '_blank');
+    }
+
+    // SA-10: Gestión de cuestionarios
+    getQuestionnaires(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/questionnaires`);
+    }
+
+    getQuestionnaire(id: number): Observable<any> {
+        return this.http.get(`${this.apiUrl}/questionnaires/${id}`);
+    }
+
+    createQuestionnaire(data: any): Observable<any> {
+        return this.http.post(`${this.apiUrl}/questionnaires`, data);
+    }
+
+    updateQuestionnaire(id: number, data: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/questionnaires/${id}`, data);
+    }
+
+    deleteQuestionnaire(id: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/questionnaires/${id}`);
+    }
+
+    publishQuestionnaire(id: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/questionnaires/${id}/publish`, {});
+    }
+
+    archiveQuestionnaire(id: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/questionnaires/${id}/archive`, {});
+    }
+
+    newQuestionnaireVersion(id: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/questionnaires/${id}/version`, {});
+    }
+
+    addQuestion(templateId: number, data: any): Observable<any> {
+        return this.http.post(`${this.apiUrl}/questionnaires/${templateId}/questions`, data);
+    }
+
+    updateQuestion(templateId: number, questionId: number, data: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/questionnaires/${templateId}/questions/${questionId}`, data);
+    }
+
+    deleteQuestion(templateId: number, questionId: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/questionnaires/${templateId}/questions/${questionId}`);
+    }
+
+    reorderQuestions(templateId: number, order: { id: number; order: number }[]): Observable<any> {
+        return this.http.post(`${this.apiUrl}/questionnaires/${templateId}/questions/reorder`, { order });
+    }
 }

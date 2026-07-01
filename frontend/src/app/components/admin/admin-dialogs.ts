@@ -174,9 +174,15 @@ export class CompanyDialog {
             <mat-label>Nombre del Sector</mat-label>
             <input matInput formControlName="name" placeholder="Ej: Industrial">
           </mat-form-field>
-          
+
           <mat-form-field appearance="outline">
-            <mat-label>Descripción</mat-label>
+            <mat-label>Codigo CIIU Rev. 4</mat-label>
+            <input matInput formControlName="ciiu_code" placeholder="Ej: C10, A, B06" [readonly]="data.is_ciiu">
+            <mat-hint>Codigo de la clasificacion CIIU Rev. 4 (opcional)</mat-hint>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>Descripcion</mat-label>
             <textarea matInput formControlName="description" placeholder="Opcional..."></textarea>
           </mat-form-field>
         </form>
@@ -200,6 +206,7 @@ export class SectorDialog {
   ) {
     this.form = this.fb.group({
       name: [data.name || '', Validators.required],
+      ciiu_code: [data.ciiu_code || ''],
       description: [data.description || '']
     });
   }

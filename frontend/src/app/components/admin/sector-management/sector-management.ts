@@ -32,7 +32,7 @@ import { SectorDialog, ConfirmDialog } from '../admin-dialogs';
       <div class="header-section">
         <div class="title-group">
           <h1>Gestión de Sectores</h1>
-          <p class="subtitle">Administra los sectores económicos para clasificar las empresas.</p>
+          <p class="subtitle">Sectores del catálogo CIIU Rev. 4 y sectores personalizados.</p>
         </div>
         <button mat-flat-button class="btn-prestige" (click)="onCreate()">
           <mat-icon>add</mat-icon> Nuevo Sector
@@ -43,9 +43,13 @@ import { SectorDialog, ConfirmDialog } from '../admin-dialogs';
         <div class="table-header">
            <mat-form-field appearance="outline" class="search-field prestige-field">
               <mat-label>Buscar sector</mat-label>
-              <input matInput (keyup)="applyFilter($event)" placeholder="Nombre o descripción" #input>
+              <input matInput (keyup)="applyFilter($event)" placeholder="Nombre o código CIIU" #input>
               <mat-icon matSuffix>search</mat-icon>
             </mat-form-field>
+            <div class="legend-chip">
+              <mat-icon style="font-size:14px;width:14px;height:14px;color:#1a237e">verified</mat-icon>
+              Catálogo CIIU Rev. 4
+            </div>
         </div>
 
         <div class="spinner-container" *ngIf="loading">
@@ -55,6 +59,18 @@ import { SectorDialog, ConfirmDialog } from '../admin-dialogs';
 
         <div class="table-container">
           <table mat-table [dataSource]="dataSource" class="prestige-table">
+
+            <ng-container matColumnDef="ciiu_code">
+              <th mat-header-cell *matHeaderCellDef>Código CIIU</th>
+              <td mat-cell *matCellDef="let sector">
+                <span *ngIf="sector.ciiu_code" class="ciiu-badge" [class.ciiu-section]="sector.ciiu_code?.length === 1">
+                  <mat-icon *ngIf="sector.is_ciiu" style="font-size:12px;width:12px;height:12px;vertical-align:middle;margin-right:2px">verified</mat-icon>
+                  {{sector.ciiu_code}}
+                </span>
+                <span *ngIf="!sector.ciiu_code" class="text-muted">—</span>
+              </td>
+            </ng-container>
+
             <ng-container matColumnDef="name">
               <th mat-header-cell *matHeaderCellDef>Nombre</th>
               <td mat-cell *matCellDef="let sector">
@@ -63,7 +79,7 @@ import { SectorDialog, ConfirmDialog } from '../admin-dialogs';
             </ng-container>
 
             <ng-container matColumnDef="description">
-              <th mat-header-cell *matHeaderCellDef>Descripción</th>
+              <th mat-header-cell *matHeaderCellDef>Descripcion</th>
               <td mat-cell *matCellDef="let sector">{{sector.description || '—'}}</td>
             </ng-container>
 
@@ -74,7 +90,9 @@ import { SectorDialog, ConfirmDialog } from '../admin-dialogs';
                   <button mat-icon-button class="action-btn edit" (click)="onEdit(sector)" matTooltip="Editar">
                     <mat-icon>edit</mat-icon>
                   </button>
-                  <button mat-icon-button class="action-btn delete" (click)="onDelete(sector)" matTooltip="Eliminar">
+                  <button mat-icon-button class="action-btn delete" (click)="onDelete(sector)"
+                    [matTooltip]="sector.is_ciiu ? 'No se puede eliminar un sector del catalogo CIIU' : 'Eliminar'"
+                    [disabled]="sector.is_ciiu">
                     <mat-icon>delete</mat-icon>
                   </button>
                 </div>
@@ -82,10 +100,10 @@ import { SectorDialog, ConfirmDialog } from '../admin-dialogs';
             </ng-container>
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="prestige-row"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="prestige-row" [class.ciiu-row]="row.is_ciiu"></tr>
 
             <tr class="mat-row" *matNoDataRow>
-              <td class="mat-cell empty-state" colspan="3">
+              <td class="mat-cell empty-state" colspan="4">
                 <div class="empty-msg-wrap" *ngIf="!loading">
                    <mat-icon>list</mat-icon>
                    <p>No se encontraron sectores.</p>
@@ -105,15 +123,21 @@ import { SectorDialog, ConfirmDialog } from '../admin-dialogs';
     .btn-prestige { background: var(--prestige-primary); color: white; padding: 0 20px; border-radius: 10px; font-weight: 500; height: 42px; font-size: 14px; }
     .table-wrapper { padding: 0; overflow: hidden; }
     .table-header { padding: 24px 24px 16px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--prestige-border); }
+    .legend-chip { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--prestige-text-muted); padding: 4px 10px; background: rgba(26,35,126,0.05); border-radius: 16px; border: 1px solid rgba(26,35,126,0.15); }
     .search-field { width: 320px; font-size: 13px; }
-    .prestige-table { width: 100%; border: none; min-width: 600px; }
+    .prestige-table { width: 100%; border: none; min-width: 700px; }
     .table-container { width: 100%; overflow-x: auto; position: relative; min-height: 200px; }
     .prestige-row:hover { background: var(--row-hover-bg) !important; cursor: pointer; }
+    .ciiu-row td { background: rgba(26,35,126,0.02); }
+    .ciiu-badge { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; background: rgba(26,35,126,0.08); color: #1a237e; border-radius: 4px; padding: 2px 7px; letter-spacing: .04em; }
+    .ciiu-badge.ciiu-section { background: #1a237e; color: white; }
     .sector-name { font-weight: 600; color: var(--prestige-text); }
+    .text-muted { color: var(--prestige-text-muted); }
     .action-buttons { display: flex; gap: 2px; }
     .action-btn { color: var(--prestige-text-muted); width: 36px; height: 36px; }
     .action-btn.edit:hover { color: var(--prestige-primary); background: rgba(26, 35, 126, 0.05); }
     .action-btn.delete:hover { color: #d32f2f; background: #ffebee; }
+    .action-btn:disabled { opacity: 0.3; }
     .spinner-container { padding: 48px; text-align: center; color: var(--prestige-text-muted); }
     .empty-state { padding: 48px; text-align: center; color: var(--prestige-text-muted); }
   `]
@@ -124,7 +148,7 @@ export class SectorManagementComponent implements OnInit {
     private dialog = inject(MatDialog);
 
     dataSource = new MatTableDataSource<any>([]);
-    displayedColumns = ['name', 'description', 'actions'];
+    displayedColumns = ['ciiu_code', 'name', 'description', 'actions'];
     loading = true;
 
     ngOnInit() {
@@ -171,10 +195,11 @@ export class SectorManagementComponent implements OnInit {
     }
 
     onDelete(sector: any) {
+        if (sector.is_ciiu) return;
         const dialogRef = this.dialog.open(ConfirmDialog, {
             data: {
                 title: 'Eliminar Sector',
-                message: `¿Estás seguro de que deseas eliminar el sector "${sector.name}"?`,
+                message: `Esta seguro de eliminar el sector "${sector.name}"?`,
                 confirmText: 'Eliminar',
                 color: 'warn'
             }

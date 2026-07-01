@@ -8,7 +8,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatMenuModule } from '@angular/material/menu';
 import { AdminService } from '../../../services/admin.service';
-import { AuthService } from '../../../services/auth.service';
+import { AuthService } from '../../../services/auth';
 
 // SA-15: states and their allowed transitions
 const PERIOD_STATES: Record<string, { label: string; icon: string; color: string }> = {
@@ -186,7 +186,7 @@ export class AdminPeriodsComponent implements OnInit {
   isSuperadmin = false;
 
   ngOnInit() {
-    this.isSuperadmin = this.authService.currentUser()?.role === 'superadmin';
+    this.isSuperadmin = (this.authService.currentUser() as any)?.role === 'superadmin';
     this.load();
   }
 

@@ -10,6 +10,7 @@ use App\Models\TelemetryAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class AdminCompanyController extends Controller
 {
@@ -270,5 +271,39 @@ class AdminCompanyController extends Controller
             'top_companies'   => $topCompanies,
             'emissions_trend' => $emissionsByYear,
         ]);
+    }
+
+    // SA-11: reporte PDF global multiorganización
+    public function platformReport()
+    {
+        // Reutilizar datos del platformStats
+        $stats = json_decode(json_encode($this->platformStats()->getData()), true);
+
+        // Desglose por alcance — todas las empresas
+        $scopeBreakdown = DB::table('carbon_emissions')
+            ->join('periods', 'carbon_emissions.period_id', '=', 'periods.id')
+            ->join('scopes', 'carbon_emissions.scope_id', '=', 'scopes.id')
+            ->whereNull('carbon_emissions.deleted_at')
+            ->groupBy('scopes.id', 'scopes.name', 'scopes.number')
+            ->select(
+                'scopes.number as scope_number',
+                'scopes.name as scope_name',
+                DB::raw('SUM(carbon_emissions.calculated_co2e) as total_co2e')
+            )
+            ->orderBy('scopes.number')
+            ->get()
+            ->map(fn($r) => [
+                'scope_number' => $r->scope_number,
+                'scope_name'   => $r->scope_name,
+                'total_co2e'   => round((float)$r->total_co2e, 2),
+            ]);
+
+        $pdf = Pdf::loadView('reports.platform', [
+            'stats'          => $stats,
+            'scopeBreakdown' => $scopeBreakdown,
+        ])->setPaper('a4', 'portrait');
+
+        $filename = 'zia-informe-plataforma-' . now()->format('Ymd') . '.pdf';
+        return $pdf->download($filename);
     }
 }

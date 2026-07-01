@@ -93,6 +93,23 @@ Route::middleware('auth:api')->group(function () {
 
             // SA-12: Dashboard IoT global
             Route::get('/iot-devices', [\App\Http\Controllers\Api\Admin\AdminIotController::class, 'index']);
+
+            // SA-11: Reporte PDF global multiorganización
+            Route::get('/reports/platform', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'platformReport']);
+
+            // SA-10: Gestión de cuestionarios Smart Intake
+            Route::get('/questionnaires', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'index']);
+            Route::post('/questionnaires', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'store']);
+            Route::get('/questionnaires/{template}', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'show']);
+            Route::put('/questionnaires/{template}', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'update']);
+            Route::delete('/questionnaires/{template}', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'destroy']);
+            Route::post('/questionnaires/{template}/publish', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'publish']);
+            Route::post('/questionnaires/{template}/archive', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'archive']);
+            Route::post('/questionnaires/{template}/version', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'newVersion']);
+            Route::post('/questionnaires/{template}/questions', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'storeQuestion']);
+            Route::put('/questionnaires/{template}/questions/{question}', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'updateQuestion']);
+            Route::delete('/questionnaires/{template}/questions/{question}', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'destroyQuestion']);
+            Route::post('/questionnaires/{template}/questions/reorder', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'reorderQuestions']);
         });
     });
 

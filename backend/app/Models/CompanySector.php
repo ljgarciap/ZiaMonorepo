@@ -11,7 +11,9 @@ class CompanySector extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
-    protected $fillable = ['name', 'code', 'description'];
+    protected $fillable = ['name', 'code', 'description', 'ciiu_code', 'is_ciiu'];
+
+    protected $casts = ['is_ciiu' => 'boolean'];
 
     public function companies()
     {

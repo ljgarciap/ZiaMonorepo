@@ -9,6 +9,7 @@ import { ContextSelectorComponent } from '../context-selector/context-selector';
 import { DashboardService } from '../../services/dashboard.service';
 import { ContextService } from '../../services/context.service';
 import { AuthService } from '../../services/auth'; // Added AuthService
+import { AdminService } from '../../services/admin.service';
 import { Chart, registerables } from 'chart.js';
 
 Chart.register(...registerables);
@@ -16,6 +17,7 @@ Chart.register(...registerables);
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatDividerModule } from '@angular/material/divider';
 
 @Component({
   selector: 'app-dashboard-content',
@@ -29,6 +31,7 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
     MatMenuModule,
     MatButtonModule,
     MatProgressBarModule,
+    MatDividerModule,
     ContextSelectorComponent
   ],
   template: `
@@ -72,6 +75,14 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
                         <mat-icon>sensors</mat-icon>
                         <span>Telemetría y Datos IoT del Período (PDF)</span>
                     </button>
+                    <ng-container *ngIf="isSuperAdmin">
+                      <mat-divider></mat-divider>
+                      <div mat-subheader style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;">Informe Global</div>
+                      <button mat-menu-item (click)="onDownloadPlatformReport()">
+                        <mat-icon>public</mat-icon>
+                        <span>Informe Consolidado Plataforma (PDF)</span>
+                      </button>
+                    </ng-container>
                 </mat-menu>
                 <app-context-selector></app-context-selector>
             </div>
@@ -469,6 +480,7 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
   private context = inject(ContextService);
   private authService = inject(AuthService); // Injected
   private router = inject(Router); // Injected
+  private adminService = inject(AdminService);
   private cdr = inject(ChangeDetectorRef);
 
   @ViewChild('donutChart') donutCanvas!: ElementRef;
@@ -618,6 +630,10 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
         link.click();
       }
     });
+  }
+
+  onDownloadPlatformReport() {
+    this.adminService.downloadPlatformReport();
   }
 
   updateCharts() {

@@ -109,6 +109,12 @@
                     <mat-icon matListItemIcon>device_hub</mat-icon>
                     <div matListItemTitle>Dispositivos IoT</div>
                 </a>
+                <!-- SA-10: Cuestionarios Smart Intake — superadmin -->
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
+                    routerLink="/admin/questionnaires" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>quiz</mat-icon>
+                    <div matListItemTitle>Cuestionarios</div>
+                </a>
             </ng-container>
 
             <mat-divider></mat-divider>
