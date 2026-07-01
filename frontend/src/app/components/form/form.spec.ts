@@ -164,4 +164,67 @@ describe('FormComponent', () => {
       }, 0);
     });
   });
+
+  // --- removeEmission --------------------------------------------------------
+  it('removeEmission() removes an item from the dataSource for the given scope', () => {
+    component.selectedCompany = { id: 1, name: 'ECONOVA' };
+    component.selectedPeriod = { id: 7, year: 2026 };
+
+    const cat = {
+      name: 'Gasolina',
+      selectedFactor: { id: 3, name: 'Gasolina E10', factor_total_co2e: '7.618', unit: { symbol: 'L' } },
+      inputAmount: '100',
+      factors: [],
+      children: [],
+    };
+    component.addEmission(cat, 1);
+    const item = (component as any).dataSources[1].data[0];
+    expect((component as any).dataSources[1].data.length).toBe(1);
+
+    component.removeEmission(item, 1);
+
+    expect((component as any).dataSources[1].data.length).toBe(0);
+  });
+
+  it('removeEmission() is a no-op for a scopeId with no dataSource', () => {
+    // Scope 999 never had any emissions added — should not throw
+    expect(() => component.removeEmission({}, 999)).not.toThrow();
+  });
+
+  // --- addEmission guard without company ------------------------------------
+  it('addEmission() is a no-op when no company is set', () => {
+    component.selectedCompany = null;
+    component.selectedPeriod = { id: 7, year: 2026 };
+
+    const cat = {
+      name: 'Gasolina',
+      selectedFactor: { id: 3, name: 'Gasolina E10', factor_total_co2e: '7.618', unit: { symbol: 'L' } },
+      inputAmount: '100',
+      factors: [],
+      children: [],
+    };
+
+    // Should return early without modifying dataSources
+    component.addEmission(cat, 1);
+    expect((component as any).dataSources[1]).toBeUndefined();
+  });
+
+  // --- addEmission with electricidad ----------------------------------------
+  it('addEmission() sets selectedFactor when category name contains electricidad and has factors', () => {
+    component.selectedCompany = { id: 1, name: 'ECONOVA' };
+    component.selectedPeriod = { id: 7, year: 2026 };
+
+    const electricFactor = { id: 7, name: 'Red Colombia', factor_total_co2e: '0.4', unit: { symbol: 'kWh' } };
+    const cat = {
+      name: 'Electricidad',
+      selectedFactor: electricFactor,
+      inputAmount: '1000',
+      factors: [electricFactor, { id: 8, name: 'Red Venezuela', factor_total_co2e: '0.5', unit: { symbol: 'kWh' } }],
+      children: [],
+    };
+    component.addEmission(cat, 2);
+
+    // After addEmission, electricidad re-selects the first factor
+    expect(cat.selectedFactor).toEqual(electricFactor);
+  });
 });

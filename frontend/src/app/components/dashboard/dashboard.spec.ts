@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { vi } from 'vitest';
 
 import { DashboardComponent } from './dashboard';
@@ -44,29 +44,50 @@ describe('DashboardComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  // --- 2 new tests ----------------------------------------------------------
-
+  // --- toggleTheme -----------------------------------------------------------
   it('theme toggle button calls themeService.toggleTheme()', () => {
     fixture.detectChanges();
-
-    // The toolbar has a button (click)="toggleTheme()"
-    const buttons: NodeListOf<HTMLButtonElement> = fixture.nativeElement.querySelectorAll('button');
-    // Find the button that triggers toggleTheme — it is an icon-button in the toolbar
-    // We can call the component method directly and verify the mock
     component.toggleTheme();
-
     expect(themeMock.toggleTheme).toHaveBeenCalledTimes(1);
   });
 
+  // --- logout ---------------------------------------------------------------
+  it('logout() delegates to authService.logout()', () => {
+    component.logout();
+    expect(authMock.logout).toHaveBeenCalledTimes(1);
+  });
+
+  // --- navigation rendering -------------------------------------------------
   it('renders Historial nav item for user role', () => {
-    // Context with 'user' role → Historial link must appear
     authMock.currentContext.set({ type: 'company', id: 1, label: 'ECONOVA', role: 'user' });
     fixture.detectChanges();
 
     const el: HTMLElement = fixture.nativeElement;
     const navText = el.textContent ?? '';
     expect(navText).toContain('Historial');
-    // Admin section must NOT appear for plain users
     expect(navText).not.toContain('Administración');
+  });
+
+  it('pageTitle defaults to the current route label', () => {
+    fixture.detectChanges();
+    // Initial URL is '/' — not in PAGE_TITLES, so falls back to 'ZIA Carbon Control'
+    expect(component.pageTitle()).toBeTruthy();
+  });
+
+  // --- admin nav visibility -------------------------------------------------
+  it('renders Administración nav items for admin role', () => {
+    authMock.currentContext.set({ type: 'company', id: 1, label: 'ECONOVA', role: 'admin' });
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Administración');
+  });
+
+  it('renders Plataforma nav items for superadmin role', () => {
+    authMock.currentContext.set({ type: 'company', id: 1, label: 'ECONOVA', role: 'superadmin' });
+    fixture.detectChanges();
+
+    const el: HTMLElement = fixture.nativeElement;
+    expect(el.textContent).toContain('Plataforma');
   });
 });

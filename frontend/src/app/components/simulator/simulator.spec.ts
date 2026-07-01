@@ -36,6 +36,21 @@ const mockCalculateResult = {
   projection: [{ year: 2026, co2e_tco2e: 1.1372, savings_cop: 4251200 }],
 };
 
+const mockCalculateResultMultiYear = {
+  breakdown: [
+    { id: 1, name: 'Ajuste de Horario HVAC', scope: 2, annual_co2e_tco2e: 1.1372, annual_savings_cop: 4251200, total_co2e_tco2e: 5.686, total_savings_cop: 21256000 },
+  ],
+  years: 5,
+  totals: { annual_co2e_tco2e: 1.1372, annual_savings_cop: 4251200, total_co2e_tco2e: 5.686, total_savings_cop: 21256000 },
+  projection: [
+    { year: 2026, co2e_tco2e: 1.1372, savings_cop: 4251200 },
+    { year: 2027, co2e_tco2e: 1.1372, savings_cop: 4251200 },
+    { year: 2028, co2e_tco2e: 1.1372, savings_cop: 4251200 },
+    { year: 2029, co2e_tco2e: 1.1372, savings_cop: 4251200 },
+    { year: 2030, co2e_tco2e: 1.1372, savings_cop: 4251200 },
+  ],
+};
+
 describe('SimulatorComponent', () => {
   let component: SimulatorComponent;
   let fixture: ComponentFixture<SimulatorComponent>;
@@ -86,6 +101,39 @@ describe('SimulatorComponent', () => {
     expect(component.loading()).toBe(false);
   });
 
+  // --- template rendering after load -------------------------------------------
+
+  it('renders scenario cards after scenarios are loaded', () => {
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
+    fixture.detectChanges(); // re-render after loading=false
+
+    const cards = fixture.nativeElement.querySelectorAll('.scenario-card');
+    expect(cards.length).toBe(3);
+  });
+
+  it('renders empty-impact panel when no scenarios are selected', () => {
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
+    fixture.detectChanges();
+
+    const emptyImpact = fixture.nativeElement.querySelector('.empty-impact');
+    expect(emptyImpact).not.toBeNull();
+  });
+
+  it('renders metrics for a selected scenario', () => {
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
+
+    // Select first scenario
+    component.scenarios.update(list => list.map((s, i) => ({ ...s, selected: i === 0 })));
+    fixture.detectChanges();
+
+    // card-metrics should be visible for selected scenario
+    const metrics = fixture.nativeElement.querySelector('.card-metrics');
+    expect(metrics).not.toBeNull();
+  });
+
   // --- selectedCount -----------------------------------------------------------
 
   it('selectedCount() returns 0 when no scenarios are selected', () => {
@@ -119,7 +167,6 @@ describe('SimulatorComponent', () => {
     fixture.detectChanges();
     http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
 
-    // Select first scenario
     component.scenarios.set(component.scenarios().map((s, i) => ({ ...s, selected: i === 0 })));
     component.selectedYears = 5;
     component.recalculate();
@@ -131,6 +178,70 @@ describe('SimulatorComponent', () => {
 
     expect(component.result()).toBeTruthy();
     expect(component.result()!.totals.annual_co2e_tco2e).toBe(1.1372);
+  });
+
+  it('renders impact panel after result is set', () => {
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
+
+    // Manually set a result to test impact panel rendering
+    component.result.set(mockCalculateResult as any);
+    fixture.detectChanges();
+
+    const impactHeader = fixture.nativeElement.querySelector('.impact-header');
+    expect(impactHeader).not.toBeNull();
+
+    const breakdown = fixture.nativeElement.querySelector('.breakdown');
+    expect(breakdown).not.toBeNull();
+
+    const equivalences = fixture.nativeElement.querySelector('.equivalences');
+    expect(equivalences).not.toBeNull();
+  });
+
+  it('renders projection table when selectedYears > 1 and result is set', () => {
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
+
+    component.selectedYears = 5;
+    component.result.set(mockCalculateResultMultiYear as any);
+    fixture.detectChanges();
+
+    const projection = fixture.nativeElement.querySelector('.projection');
+    expect(projection).not.toBeNull();
+
+    // Bar chart should render for multi-year
+    const barChart = fixture.nativeElement.querySelector('.bar-chart');
+    expect(barChart).not.toBeNull();
+  });
+
+  it('does NOT render projection section when selectedYears === 1', () => {
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
+
+    component.selectedYears = 1;
+    component.result.set(mockCalculateResult as any);
+    fixture.detectChanges();
+
+    const projection = fixture.nativeElement.querySelector('.projection');
+    expect(projection).toBeNull();
+  });
+
+  it('renders scope-1 result (annual_savings_cop === 0) correctly', () => {
+    fixture.detectChanges();
+    http.expectOne(`${environment.apiUrl}/simulator/scenarios`).flush(mockScenarios);
+
+    const scope1Result = {
+      ...mockCalculateResult,
+      totals: { annual_co2e_tco2e: 4.56, annual_savings_cop: 0, total_co2e_tco2e: 4.56, total_savings_cop: 0 },
+      breakdown: [{ id: 4, name: 'Refrigerante', scope: 1, annual_co2e_tco2e: 4.56, annual_savings_cop: 0, total_co2e_tco2e: 4.56, total_savings_cop: 0 }],
+    };
+
+    component.result.set(scope1Result as any);
+    fixture.detectChanges();
+
+    // impact-kpi should render without the savings column when savings_cop === 0
+    const kpis = fixture.nativeElement.querySelectorAll('.impact-kpi');
+    expect(kpis.length).toBe(1); // only CO2e, no savings column
   });
 
   // --- categoryIcon ------------------------------------------------------------
