@@ -92,10 +92,82 @@ class DashboardController extends Controller
             'tco2e_por_empleado'  => ($numEmployees > 0)  ? round($huellaTotal / $numEmployees, 4) : null,
         ];
 
+        // A01: Panel de completitud para admin y superadmin
+        $adminPanel = null;
+        if (in_array($activeRole, ['admin', 'superadmin'])) {
+            // Emisiones por unidad operativa (una query con join)
+            $byUnit = DB::table('carbon_emissions')
+                ->leftJoin('operational_units', 'carbon_emissions.unit_id', '=', 'operational_units.id')
+                ->where('carbon_emissions.period_id', $periodId)
+                ->whereNull('carbon_emissions.deleted_at')
+                ->select(
+                    'operational_units.id as unit_id',
+                    'operational_units.name as unit_name',
+                    DB::raw('SUM(carbon_emissions.calculated_co2e) as total_co2e'),
+                    DB::raw('COUNT(*) as entries')
+                )
+                ->groupBy('operational_units.id', 'operational_units.name')
+                ->orderByDesc('total_co2e')
+                ->get();
+
+            // Emisiones por usuario
+            $byUser = DB::table('carbon_emissions')
+                ->join('users', 'carbon_emissions.user_id', '=', 'users.id')
+                ->where('carbon_emissions.period_id', $periodId)
+                ->whereNull('carbon_emissions.deleted_at')
+                ->select(
+                    'users.id as user_id',
+                    'users.name as user_name',
+                    DB::raw('SUM(carbon_emissions.calculated_co2e) as total_co2e'),
+                    DB::raw('COUNT(*) as entries')
+                )
+                ->groupBy('users.id', 'users.name')
+                ->orderByDesc('total_co2e')
+                ->get();
+
+            // Total usuarios con rol 'user' asignados a esta empresa
+            $totalUsers = DB::table('company_user')
+                ->join('users', 'users.id', '=', 'company_user.user_id')
+                ->where('company_user.company_id', $companyId)
+                ->where('users.role', 'user')
+                ->whereNull('users.deleted_at')
+                ->count();
+
+            $usersWithData = $byUser->count();
+
+            // Añadir porcentaje sobre huella total a cada fila
+            $byUnitMapped = $byUnit->map(fn($r) => [
+                'unit_id'    => $r->unit_id,
+                'unit_name'  => $r->unit_name ?? 'Sin unidad',
+                'total_co2e' => round((float) $r->total_co2e, 2),
+                'percentage' => $huellaTotal > 0 ? round(((float)$r->total_co2e / $huellaTotal) * 100, 2) : 0,
+                'entries'    => (int) $r->entries,
+            ])->values();
+
+            $byUserMapped = $byUser->map(fn($r) => [
+                'user_id'    => $r->user_id,
+                'user_name'  => $r->user_name,
+                'total_co2e' => round((float) $r->total_co2e, 2),
+                'percentage' => $huellaTotal > 0 ? round(((float)$r->total_co2e / $huellaTotal) * 100, 2) : 0,
+                'entries'    => (int) $r->entries,
+            ])->values();
+
+            $adminPanel = [
+                'registration_progress' => [
+                    'users_with_data' => $usersWithData,
+                    'total_users'     => $totalUsers,
+                    'percentage'      => $totalUsers > 0 ? round(($usersWithData / $totalUsers) * 100) : 0,
+                ],
+                'by_unit' => $byUnitMapped,
+                'by_user' => $byUserMapped,
+            ];
+        }
+
         return response()->json([
             'huella_total' => round($huellaTotal, 2),
             'neutralizados' => 0,
             'my_emissions' => $myEmissions,
+            'admin_panel' => $adminPanel,
             'alcances' => $alcancesRes,
             'equivalency' => [
                 'value' => $eqValue,

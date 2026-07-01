@@ -15,6 +15,7 @@ Chart.register(...registerables);
 
 import { MatMenuModule } from '@angular/material/menu';
 import { MatButtonModule } from '@angular/material/button';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
 
 @Component({
   selector: 'app-dashboard-content',
@@ -27,6 +28,7 @@ import { MatButtonModule } from '@angular/material/button';
     MatProgressSpinnerModule,
     MatMenuModule,
     MatButtonModule,
+    MatProgressBarModule,
     ContextSelectorComponent
   ],
   template: `
@@ -108,6 +110,129 @@ import { MatButtonModule } from '@angular/material/button';
                         <span class="unit">tCO₂e</span>
                     </div>
                     <span class="my-pct">{{summary.my_emissions.percentage}}% del total corporativo</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- A01: Panel de Completitud Administrativa (solo admin y superadmin) -->
+        <div class="admin-panel" *ngIf="isAdminOrAbove && summary?.admin_panel as panel">
+            <div class="admin-panel-header">
+                <mat-icon class="panel-header-icon">admin_panel_settings</mat-icon>
+                <h3>Panel de Completitud Administrativa</h3>
+                <span class="panel-subtitle">Estado de registro de emisiones para el período seleccionado</span>
+            </div>
+
+            <div class="admin-panel-body">
+                <!-- Progreso de registro -->
+                <div class="glass-card progress-card">
+                    <div class="progress-card-header">
+                        <mat-icon class="progress-icon">how_to_reg</mat-icon>
+                        <div>
+                            <span class="progress-label">Usuarios que han registrado datos</span>
+                            <span class="progress-fraction">
+                                {{ panel.registration_progress.users_with_data }} / {{ panel.registration_progress.total_users }}
+                            </span>
+                        </div>
+                        <span class="progress-pct" [class.pct-full]="panel.registration_progress.percentage === 100">
+                            {{ panel.registration_progress.percentage }}%
+                        </span>
+                    </div>
+                    <mat-progress-bar
+                        mode="determinate"
+                        [value]="panel.registration_progress.percentage"
+                        [color]="panel.registration_progress.percentage === 100 ? 'accent' : 'primary'">
+                    </mat-progress-bar>
+                    <p class="progress-hint" *ngIf="panel.registration_progress.percentage < 100">
+                        {{ panel.registration_progress.total_users - panel.registration_progress.users_with_data }}
+                        usuario(s) aún no han registrado emisiones en este período.
+                    </p>
+                    <p class="progress-hint hint-ok" *ngIf="panel.registration_progress.percentage === 100">
+                        Todos los usuarios han registrado datos. ✓
+                    </p>
+                </div>
+
+                <div class="completeness-tables">
+                    <!-- Por Unidad Operativa -->
+                    <div class="glass-card completeness-table-card">
+                        <h4 class="completeness-title">
+                            <mat-icon>account_tree</mat-icon>
+                            Emisiones por Unidad Operativa
+                        </h4>
+                        <div class="completeness-scroll" *ngIf="panel.by_unit?.length; else noUnitData">
+                            <table class="completeness-mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>Unidad</th>
+                                        <th>tCO₂e</th>
+                                        <th>% del total</th>
+                                        <th>Registros</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let u of panel.by_unit">
+                                        <td>
+                                            <div class="unit-name-cell">
+                                                <div class="unit-dot"></div>
+                                                {{ u.unit_name }}
+                                            </div>
+                                        </td>
+                                        <td><strong>{{ u.total_co2e | number:'1.2-2' }}</strong></td>
+                                        <td>
+                                            <div class="pct-bar-wrap">
+                                                <div class="pct-bar" [style.width.%]="u.percentage"></div>
+                                                <span class="pct-txt">{{ u.percentage }}%</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-muted">{{ u.entries }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <ng-template #noUnitData>
+                            <p class="no-data-hint">Sin unidades operativas configuradas o sin registros.</p>
+                        </ng-template>
+                    </div>
+
+                    <!-- Por Usuario -->
+                    <div class="glass-card completeness-table-card">
+                        <h4 class="completeness-title">
+                            <mat-icon>people</mat-icon>
+                            Emisiones por Usuario
+                        </h4>
+                        <div class="completeness-scroll" *ngIf="panel.by_user?.length; else noUserData">
+                            <table class="completeness-mini-table">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>tCO₂e</th>
+                                        <th>% del total</th>
+                                        <th>Registros</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let u of panel.by_user">
+                                        <td>
+                                            <div class="user-name-cell">
+                                                <div class="user-avatar-sm">{{ u.user_name.charAt(0) }}</div>
+                                                {{ u.user_name }}
+                                            </div>
+                                        </td>
+                                        <td><strong>{{ u.total_co2e | number:'1.2-2' }}</strong></td>
+                                        <td>
+                                            <div class="pct-bar-wrap">
+                                                <div class="pct-bar user-bar" [style.width.%]="u.percentage"></div>
+                                                <span class="pct-txt">{{ u.percentage }}%</span>
+                                            </div>
+                                        </td>
+                                        <td class="text-muted">{{ u.entries }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <ng-template #noUserData>
+                            <p class="no-data-hint">Ningún usuario ha registrado emisiones aún.</p>
+                        </ng-template>
+                    </div>
                 </div>
             </div>
         </div>
@@ -249,8 +374,81 @@ import { MatButtonModule } from '@angular/material/button';
     .my-contribution-inner { display: flex; align-items: center; gap: 16px; }
     .my-icon { font-size: 36px; width: 36px; height: 36px; color: var(--prestige-primary); opacity: 0.8; }
     .my-pct { font-size: 12px; color: var(--prestige-text-muted); margin-top: 4px; display: block; }
-    @media (max-width: 1200px) { .summary-grid { grid-template-columns: 1fr 1fr; } .middle-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 768px) { .summary-grid { grid-template-columns: 1fr; } .bottom-grid { grid-template-columns: 1fr; } }
+    /* A01 — Admin Panel de Completitud */
+    .admin-panel { margin-bottom: 32px; }
+    .admin-panel-header {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+    }
+    .admin-panel-header h3 {
+      font-size: 16px; font-weight: 700; color: var(--prestige-primary); margin: 0;
+    }
+    .panel-header-icon { color: var(--prestige-primary); }
+    .panel-subtitle { font-size: 12px; color: var(--prestige-text-muted); margin-left: auto; }
+
+    .admin-panel-body { display: flex; flex-direction: column; gap: 16px; }
+
+    /* Progress card */
+    .progress-card { padding: 20px 24px; }
+    .progress-card-header {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 12px;
+    }
+    .progress-icon { color: var(--prestige-primary); font-size: 28px; width: 28px; height: 28px; }
+    .progress-label { display: block; font-size: 12px; font-weight: 600; color: var(--prestige-text-muted); text-transform: uppercase; }
+    .progress-fraction { display: block; font-size: 22px; font-weight: 800; color: var(--prestige-text); margin-top: 2px; }
+    .progress-pct {
+      margin-left: auto; font-size: 24px; font-weight: 800;
+      color: var(--prestige-primary);
+    }
+    .progress-pct.pct-full { color: #2e7d32; }
+    .progress-hint { font-size: 12px; color: var(--prestige-text-muted); margin: 8px 0 0; }
+    .progress-hint.hint-ok { color: #2e7d32; }
+
+    /* Tables by unit / user */
+    .completeness-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .completeness-table-card { padding: 20px 0 0; overflow: hidden; }
+    .completeness-title {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 13px; font-weight: 700; color: var(--prestige-text); margin: 0 0 12px;
+      padding: 0 20px;
+    }
+    .completeness-title mat-icon { font-size: 16px; width: 16px; height: 16px; color: var(--prestige-primary); }
+    .completeness-scroll { max-height: 260px; overflow-y: auto; }
+
+    .completeness-mini-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .completeness-mini-table th {
+      padding: 10px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase;
+      color: var(--prestige-text-muted); background: var(--table-header-bg);
+      text-align: left; position: sticky; top: 0;
+    }
+    .completeness-mini-table td {
+      padding: 10px 16px; color: var(--prestige-text);
+      border-bottom: 1px solid var(--prestige-border);
+    }
+    .completeness-mini-table tr:last-child td { border-bottom: none; }
+    .text-muted { color: var(--prestige-text-muted) !important; }
+
+    .unit-name-cell, .user-name-cell { display: flex; align-items: center; gap: 8px; }
+    .unit-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--prestige-primary); flex-shrink: 0; }
+    .user-avatar-sm {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: var(--status-info-bg); color: var(--status-info-text);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 11px; flex-shrink: 0;
+    }
+
+    .pct-bar-wrap { display: flex; align-items: center; gap: 6px; min-width: 80px; }
+    .pct-bar {
+      height: 6px; border-radius: 3px; background: var(--prestige-primary); opacity: 0.7; min-width: 2px;
+    }
+    .user-bar { background: #00897b; }
+    .pct-txt { font-size: 11px; color: var(--prestige-text-muted); white-space: nowrap; }
+
+    .no-data-hint {
+      padding: 24px 20px; color: var(--prestige-text-muted); font-size: 13px; text-align: center;
+    }
+
+    @media (max-width: 1200px) { .summary-grid { grid-template-columns: 1fr 1fr; } .middle-grid { grid-template-columns: 1fr; } .completeness-tables { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .summary-grid { grid-template-columns: 1fr; } .bottom-grid { grid-template-columns: 1fr; } .panel-subtitle { display: none; } }
   `]
 })
 export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestroy {
@@ -276,6 +474,11 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
 
   get activeRole(): string {
     return this.authService.currentContext()?.role || this.authService.currentUser()?.role || '';
+  }
+
+  get isAdminOrAbove(): boolean {
+    const r = this.activeRole;
+    return r === 'admin' || r === 'superadmin';
   }
 
   goToAudit() {
