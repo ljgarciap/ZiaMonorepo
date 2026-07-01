@@ -121,7 +121,10 @@ class CarbonEmissionApiTest extends TestCase
 
     public function test_delete_emission_returns_204()
     {
-        // Create an emission first
+        // Delete requires admin or superadmin (matrix: Usuario = CRU, sin Delete)
+        $admin = \App\Models\User::factory()->create(['role' => 'admin']);
+        $this->actingAs($admin, 'api');
+
         $createResponse = $this->postJson("/api/periods/{$this->period->id}/emissions", [
             'emission_factor_id' => $this->factor->id,
             'quantity'           => 100,

@@ -1,0 +1,257 @@
+# Deploy to AWS ECS (or any Docker-capable server — see adaptation notes below)
+#
+# Adaptar a otro servidor: reemplazar los jobs de ECR por un docker login + push
+# a cualquier registry (GHCR, Docker Hub, registry privado) y el job "deploy"
+# por un paso SSH que ejecute: docker compose pull && docker compose up -d
+#
+# Secrets requeridos en GitHub → Settings → Secrets and variables → Actions:
+#   AWS_ACCESS_KEY_ID      — IAM user con permisos ECR + ECS
+#   AWS_SECRET_ACCESS_KEY  — clave del IAM user
+#   AWS_ACCOUNT_ID         — número de cuenta AWS (12 dígitos)
+#
+# Variables requeridas en GitHub → Settings → Secrets and variables → Variables:
+#   AWS_REGION             — ej. us-east-1
+#   ECS_CLUSTER            — nombre del cluster ECS
+#   ECS_SERVICE_BACKEND    — nombre del servicio ECS para Laravel
+#   ECS_SERVICE_AGENT      — nombre del servicio ECS para zia-agent
+#   ECS_SERVICE_FRONTEND   — nombre del servicio ECS para nginx/Angular
+#   ECR_REPO_BACKEND       — nombre del repositorio ECR para backend
+#   ECR_REPO_AGENT         — nombre del repositorio ECR para zia-agent
+#   ECR_REPO_FRONTEND      — nombre del repositorio ECR para frontend
+
+name: Deploy to AWS ECS
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Entorno de despliegue'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+  # Descomenta para desplegar automáticamente cuando el CI pase en master:
+  # workflow_run:
+  #   workflows: ["CI"]
+  #   branches: [master]
+  #   types: [completed]
+
+env:
+  AWS_REGION:    ${{ vars.AWS_REGION }}
+  ECR_REGISTRY:  ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
+  IMAGE_TAG:     ${{ github.sha }}
+
+jobs:
+  # ──────────────────────────────────────────────────────────────
+  # Job 1: Construir y publicar imagen Backend (Laravel 11)
+  # ──────────────────────────────────────────────────────────────
+  build-backend:
+    name: Build & push — Backend (Laravel)
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag & push image
+        id: image
+        env:
+          REPO: ${{ vars.ECR_REPO_BACKEND }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$REPO:$IMAGE_TAG"
+          docker build -t "$IMAGE_URI" ./backend
+          docker push "$IMAGE_URI"
+          # Mantener también un tag :latest para rollback rápido
+          docker tag "$IMAGE_URI" "$ECR_REGISTRY/$REPO:latest"
+          docker push "$ECR_REGISTRY/$REPO:latest"
+          echo "uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 2: Construir y publicar imagen ZIA Agent (Python FastAPI)
+  # ──────────────────────────────────────────────────────────────
+  build-agent:
+    name: Build & push — ZIA Agent (Python)
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag & push image
+        id: image
+        env:
+          REPO: ${{ vars.ECR_REPO_AGENT }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$REPO:$IMAGE_TAG"
+          docker build -t "$IMAGE_URI" ./zia-agent
+          docker push "$IMAGE_URI"
+          docker tag "$IMAGE_URI" "$ECR_REGISTRY/$REPO:latest"
+          docker push "$ECR_REGISTRY/$REPO:latest"
+          echo "uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 3: Build Angular, publicar imagen Nginx/Frontend
+  # ──────────────────────────────────────────────────────────────
+  build-frontend:
+    name: Build & push — Frontend (Angular + Nginx)
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.image.outputs.uri }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Build Angular app
+        working-directory: frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag & push image
+        id: image
+        env:
+          REPO: ${{ vars.ECR_REPO_FRONTEND }}
+        run: |
+          IMAGE_URI="$ECR_REGISTRY/$REPO:$IMAGE_TAG"
+          # El Dockerfile de frontend copia el dist/ pre-compilado al contenedor Nginx
+          docker build -t "$IMAGE_URI" ./frontend
+          docker push "$IMAGE_URI"
+          docker tag "$IMAGE_URI" "$ECR_REGISTRY/$REPO:latest"
+          docker push "$ECR_REGISTRY/$REPO:latest"
+          echo "uri=$IMAGE_URI" >> "$GITHUB_OUTPUT"
+
+  # ──────────────────────────────────────────────────────────────
+  # Job 4: Actualizar task definitions y servicios ECS
+  # ──────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: [build-backend, build-agent, build-frontend]
+    environment: ${{ inputs.environment || 'production' }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      - name: Deploy Backend service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.ECS_SERVICE_BACKEND }}" \
+            --force-new-deployment \
+            --region "${{ env.AWS_REGION }}"
+
+      - name: Deploy ZIA Agent service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.ECS_SERVICE_AGENT }}" \
+            --force-new-deployment \
+            --region "${{ env.AWS_REGION }}"
+
+      - name: Deploy Frontend service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.ECS_SERVICE_FRONTEND }}" \
+            --force-new-deployment \
+            --region "${{ env.AWS_REGION }}"
+
+      - name: Wait for Backend stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.ECS_SERVICE_BACKEND }}" \
+            --region "${{ env.AWS_REGION }}"
+          echo "✅ Backend estable"
+
+      - name: Wait for Agent stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.ECS_SERVICE_AGENT }}" \
+            --region "${{ env.AWS_REGION }}"
+          echo "✅ ZIA Agent estable"
+
+      - name: Wait for Frontend stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.ECS_SERVICE_FRONTEND }}" \
+            --region "${{ env.AWS_REGION }}"
+          echo "✅ Frontend estable"
+
+      - name: Deployment summary
+        run: |
+          echo "## Despliegue completado 🚀" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Servicio     | Imagen |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend      | \`${{ needs.build-backend.outputs.image }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| ZIA Agent    | \`${{ needs.build-agent.outputs.image }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend     | \`${{ needs.build-frontend.outputs.image }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Commit       | \`${{ github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Entorno      | ${{ inputs.environment || 'production' }} |" >> "$GITHUB_STEP_SUMMARY"
+
+# ──────────────────────────────────────────────────────────────
+# ADAPTACIÓN A SERVIDOR NO-AWS (VPS, DigitalOcean, servidor propio)
+# ──────────────────────────────────────────────────────────────
+# 1. Reemplazar los pasos de ECR login por docker login a tu registry:
+#      docker login ghcr.io -u ${{ github.actor }} -p ${{ secrets.GITHUB_TOKEN }}
+#
+# 2. Cambiar el job "deploy" por un paso SSH:
+#      - name: Deploy via SSH
+#        uses: appleboy/ssh-action@v1
+#        with:
+#          host:     ${{ secrets.SERVER_HOST }}
+#          username: ${{ secrets.SERVER_USER }}
+#          key:      ${{ secrets.SERVER_SSH_KEY }}
+#          script: |
+#            cd /opt/zia
+#            docker compose pull
+#            docker compose up -d --remove-orphans
+#            docker image prune -f
+#
+# 3. Ajustar las variables de entorno en el servidor vía .env en /opt/zia/.env

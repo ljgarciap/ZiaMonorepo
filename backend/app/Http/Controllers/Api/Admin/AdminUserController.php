@@ -61,7 +61,7 @@ class AdminUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'nullable|string|min:8',
-            'role' => 'required|string|in:superadmin,admin,user',
+            'role' => 'required|string|in:superadmin,admin,user,iot_tech,auditor',
             'companies' => 'array',
             'companies.*' => 'exists:companies,id',
         ]);
@@ -133,6 +133,10 @@ class AdminUserController extends Controller
 
     public function destroy(User $user)
     {
+        $activeRole = request()->header('X-Context-Role') ?: auth()->user()->role;
+        if ($activeRole !== 'superadmin') {
+            return response()->json(['error' => 'Solo el Superadmin puede eliminar usuarios.'], 403);
+        }
         if ($user->id === auth()->id()) {
             return response()->json(['error' => 'Cannot delete yourself'], 400);
         }
