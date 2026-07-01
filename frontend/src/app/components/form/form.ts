@@ -139,7 +139,11 @@ export class FormComponent implements AfterViewInit {
   // General Info
   year = '2022';
   huella = '';
-  showDebug = false; // Toggle for JSON debug
+
+  get isAdminOrAbove(): boolean {
+    const role = this.authService.currentContext()?.role || this.authService.currentUser()?.role;
+    return role === 'admin' || role === 'superadmin';
+  }
 
   // Data Store (Dynamic)
   dataSources: { [key: number]: MatTableDataSource<any> } = {};

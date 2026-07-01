@@ -116,15 +116,21 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
             <td mat-cell *matCellDef="let row"> <strong>{{row.calculated_co2e | number:'1.4-4'}}</strong> </td>
           </ng-container>
 
-          <!-- Actions Column (Optional for now) -->
-          <!-- <ng-container matColumnDef="actions">
-            <th mat-header-cell *matHeaderCellDef> Acciones </th>
+          <!-- Last Modified Column -->
+          <ng-container matColumnDef="updated_at">
+            <th mat-header-cell *matHeaderCellDef mat-sort-header> Última modificación </th>
             <td mat-cell *matCellDef="let row">
-              <button mat-icon-button color="primary" matTooltip="Ver detalles">
-                <mat-icon>visibility</mat-icon>
-              </button>
+              <ng-container *ngIf="wasModified(row); else notModified">
+                <span class="modified-badge" title="Modificado: {{row.updated_at | date:'dd/MM/yyyy HH:mm'}}">
+                  <mat-icon style="font-size:14px;height:14px;width:14px;vertical-align:middle;">edit</mat-icon>
+                  {{row.updated_at | date:'dd/MM/yyyy HH:mm'}}
+                </span>
+              </ng-container>
+              <ng-template #notModified>
+                <span class="original-badge">Original</span>
+              </ng-template>
             </td>
-          </ng-container> -->
+          </ng-container>
 
           <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
           <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
@@ -207,10 +213,14 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
     :host-context(.dark-theme) .source-cat { color: var(--prestige-text-muted); }
     
     th.mat-header-cell { color: #1a237e; font-weight: 600; font-size: 13px; text-transform: uppercase; }
+
+    .modified-badge { color: #f59e0b; font-size: 12px; display: inline-flex; align-items: center; gap: 4px; }
+    .original-badge { color: #9ca3af; font-size: 12px; font-style: italic; }
+    :host-context(.dark-theme) .modified-badge { color: #fbbf24; }
   `]
 })
 export class HistoryComponent implements OnInit, AfterViewInit {
-  displayedColumns: string[] = ['created_at', 'period_year', 'scope', 'source', 'quantity', 'calculated_co2e'];
+  displayedColumns: string[] = ['created_at', 'period_year', 'scope', 'source', 'quantity', 'calculated_co2e', 'updated_at'];
   dataSource = new MatTableDataSource<any>([]);
 
   totalResults = 0;
@@ -291,5 +301,10 @@ export class HistoryComponent implements OnInit, AfterViewInit {
     this.currentSortBy = sortState.active;
     this.currentSortDir = sortState.direction || 'desc';
     this.loadData();
+  }
+
+  wasModified(row: any): boolean {
+    if (!row.updated_at || !row.created_at) return false;
+    return new Date(row.updated_at).getTime() - new Date(row.created_at).getTime() > 1000;
   }
 }

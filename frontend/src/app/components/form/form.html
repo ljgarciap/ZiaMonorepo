@@ -226,23 +226,19 @@
 
     <br>
     <div class="action-row">
-        <button mat-raised-button color="accent" style="width: 100%; height: 50px; font-size: 18px;"
-            (click)="onSubmit()">CALCULAR HUELLA DE CARBONO</button>
-    </div>
-
-    <!-- Add button to check data -->
-    <div style="margin-top: 20px;">
-        <button mat-button (click)="showDebug = !showDebug" color="accent">
-            <mat-icon>{{ showDebug ? 'visibility_off' : 'visibility' }}</mat-icon>
-            {{ showDebug ? 'Ocultar JSON' : 'Ver JSON (Debug)' }}
+        <!-- Admin/Superadmin: acción de cálculo explícita -->
+        <button *ngIf="isAdminOrAbove"
+            mat-raised-button color="accent"
+            style="width: 100%; height: 50px; font-size: 18px;"
+            (click)="onSubmit()">
+            CALCULAR HUELLA DE CARBONO
         </button>
-    </div>
-
-    <div class="debug-section" *ngIf="showDebug && hasData">
-        <h3>Datos Cargados:</h3>
-        <div *ngFor="let key of debugKeys">
-            <pre
-                *ngIf="(dataSources[key]?.data?.length || 0) > 0">Scope {{key}}: {{ dataSources[key]?.data | json }}</pre>
-        </div>
+        <!-- Usuario operativo: acción de guardado -->
+        <button *ngIf="!isAdminOrAbove"
+            mat-raised-button color="primary"
+            style="width: 100%; height: 50px; font-size: 18px;"
+            (click)="onSubmit()">
+            GUARDAR DATOS DE EMISIÓN
+        </button>
     </div>
 </div>
