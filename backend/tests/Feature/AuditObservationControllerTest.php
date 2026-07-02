@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\AuditObservation;
+use App\Models\AuditorAssignment;
 use App\Models\Company;
 use App\Models\CompanySector;
 use App\Models\Period;
@@ -17,6 +18,7 @@ class AuditObservationControllerTest extends TestCase
     private Company $company;
     private Period $period;
     private User $auditor;
+    private User $superadmin;
 
     protected function setUp(): void
     {
@@ -25,12 +27,22 @@ class AuditObservationControllerTest extends TestCase
         $sector = CompanySector::create(['name' => 'Servicios Test']);
         $this->company = Company::factory()->create(['company_sector_id' => $sector->id]);
         $this->period  = Period::factory()->create(['company_id' => $this->company->id]);
+        $this->superadmin = User::factory()->create(['role' => 'superadmin']);
 
         $this->auditor = User::factory()->create(['role' => 'auditor']);
+        // company_user: permite entrar al contexto de la empresa (P1)
         $this->auditor->companies()->attach($this->company->id, [
             'role' => 'auditor',
             'is_active' => true,
             'expires_at' => now()->addWeek(),
+        ]);
+        // AuditorAssignment: autoriza el período exacto (spec 1.2.3 — este gap)
+        AuditorAssignment::create([
+            'user_id' => $this->auditor->id,
+            'company_id' => $this->company->id,
+            'period_id' => $this->period->id,
+            'granted_by' => $this->superadmin->id,
+            'expires_at' => null,
         ]);
     }
 
@@ -61,11 +73,11 @@ class AuditObservationControllerTest extends TestCase
         ]);
     }
 
-    public function test_auditor_with_expired_access_cannot_create_observation(): void
+    public function test_auditor_with_expired_period_assignment_cannot_create_observation(): void
     {
-        $this->auditor->companies()->updateExistingPivot($this->company->id, [
-            'expires_at' => now()->subDay(),
-        ]);
+        AuditorAssignment::where('user_id', $this->auditor->id)
+            ->where('period_id', $this->period->id)
+            ->update(['expires_at' => now()->subDay()]);
 
         $this->actingAs($this->auditor, 'api')
              ->postJson($this->url(), ['body' => 'Hallazgo tardío'])
@@ -78,6 +90,29 @@ class AuditObservationControllerTest extends TestCase
 
         $this->actingAs($outsider, 'api')
              ->postJson($this->url(), ['body' => 'Hallazgo no autorizado'])
+             ->assertStatus(403);
+    }
+
+    public function test_auditor_with_company_access_but_no_period_assignment_cannot_create_observation(): void
+    {
+        // Puede entrar al contexto de la empresa (company_user) pero el Superadmin
+        // nunca lo autorizó explícitamente para ESTE período — gap central que resuelve
+        // AuditorAssignment: acceso "por empresa y periodo específico", no solo por empresa.
+        $otherPeriod = Period::factory()->create(['company_id' => $this->company->id]);
+        $auditorWithoutAssignment = User::factory()->create(['role' => 'auditor']);
+        $auditorWithoutAssignment->companies()->attach($this->company->id, [
+            'role' => 'auditor', 'is_active' => true, 'expires_at' => now()->addWeek(),
+        ]);
+        AuditorAssignment::create([
+            'user_id' => $auditorWithoutAssignment->id,
+            'company_id' => $this->company->id,
+            'period_id' => $otherPeriod->id,
+            'granted_by' => $this->superadmin->id,
+        ]);
+
+        // Autorizado para $otherPeriod, NO para $this->period
+        $this->actingAs($auditorWithoutAssignment, 'api')
+             ->postJson($this->url(), ['body' => 'Hallazgo fuera de alcance'])
              ->assertStatus(403);
     }
 

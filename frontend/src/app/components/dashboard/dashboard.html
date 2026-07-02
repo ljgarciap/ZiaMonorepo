@@ -117,6 +117,16 @@
                     <mat-icon matListItemIcon>category</mat-icon>
                     <div matListItemTitle>Alcances</div>
                 </a>
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
+                    routerLink="/admin/tags" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>sell</mat-icon>
+                    <div matListItemTitle>Catálogo de Tags</div>
+                </a>
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
+                    routerLink="/admin/auditor-assignments" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>verified_user</mat-icon>
+                    <div matListItemTitle>Acceso de Auditores</div>
+                </a>
                 <!-- SA-12: Seguimiento IoT — superadmin -->
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/iot-devices" routerLinkActive="active-link">

@@ -148,6 +148,32 @@ export class AdminService {
         return this.http.post(`${this.apiUrl}/units/${id}/toggle`, {});
     }
 
+    // Tags (catálogo global, spec 1.2.3)
+    getTags(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/tags`);
+    }
+
+    createTag(data: any): Observable<any> {
+        return this.http.post(`${this.apiUrl}/tags`, data);
+    }
+
+    updateTag(id: number, data: any): Observable<any> {
+        return this.http.put(`${this.apiUrl}/tags/${id}`, data);
+    }
+
+    deleteTag(id: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/tags/${id}`);
+    }
+
+    toggleTag(id: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/tags/${id}/toggle`, {});
+    }
+
+    // Aprobación metodológica (spec 1.2.3)
+    approveMethodology(companyId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/companies/${companyId}/approve-methodology`, {});
+    }
+
     // SA-15: period lifecycle
     sendPeriodToReview(periodId: number): Observable<any> {
         return this.http.post(`${this.apiUrl}/periods/${periodId}/review`, {});

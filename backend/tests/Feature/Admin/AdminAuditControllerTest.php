@@ -110,10 +110,17 @@ class AdminAuditControllerTest extends TestCase
     {
         $sector = CompanySector::create(['name' => 'Servicios Test']);
         $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
 
         $auditor = User::factory()->create(['role' => 'auditor']);
         $auditor->companies()->attach($company->id, [
             'role' => 'auditor', 'is_active' => true, 'expires_at' => now()->addWeek(),
+        ]);
+        \App\Models\AuditorAssignment::factory()->create([
+            'user_id' => $auditor->id,
+            'company_id' => $company->id,
+            'period_id' => \App\Models\Period::factory()->create(['company_id' => $company->id])->id,
+            'granted_by' => $superadmin->id,
         ]);
 
         $companyUser = User::factory()->create(['role' => 'user']);
@@ -127,14 +134,38 @@ class AdminAuditControllerTest extends TestCase
              ->assertJsonCount(1, 'data');
     }
 
-    public function test_auditor_with_expired_access_cannot_read_company_audit_log(): void
+    public function test_auditor_without_any_period_assignment_cannot_read_company_audit_log(): void
     {
         $sector = CompanySector::create(['name' => 'Servicios Test']);
         $company = Company::factory()->create(['company_sector_id' => $sector->id]);
 
+        // company_user activo (puede entrar al contexto), pero sin AuditorAssignment.
         $auditor = User::factory()->create(['role' => 'auditor']);
         $auditor->companies()->attach($company->id, [
-            'role' => 'auditor', 'is_active' => true, 'expires_at' => now()->subDay(),
+            'role' => 'auditor', 'is_active' => true, 'expires_at' => now()->addWeek(),
+        ]);
+
+        $this->actingAs($auditor, 'api')
+             ->getJson("/api/companies/{$company->id}/audit-logs")
+             ->assertStatus(403);
+    }
+
+    public function test_auditor_with_expired_period_assignment_cannot_read_company_audit_log(): void
+    {
+        $sector = CompanySector::create(['name' => 'Servicios Test']);
+        $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+
+        $auditor = User::factory()->create(['role' => 'auditor']);
+        $auditor->companies()->attach($company->id, [
+            'role' => 'auditor', 'is_active' => true, 'expires_at' => now()->addWeek(),
+        ]);
+        \App\Models\AuditorAssignment::factory()->create([
+            'user_id' => $auditor->id,
+            'company_id' => $company->id,
+            'period_id' => \App\Models\Period::factory()->create(['company_id' => $company->id])->id,
+            'granted_by' => $superadmin->id,
+            'expires_at' => now()->subDay(),
         ]);
 
         $this->actingAs($auditor, 'api')

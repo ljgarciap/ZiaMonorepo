@@ -96,11 +96,42 @@ class AdminCompanyController extends Controller
      */
     public function update(Request $request, Company $company)
     {
-        $company->update($request->only([
+        $data = $request->only([
             'name', 'nit', 'company_sector_id', 'logo_url', 'num_employees', 'floor_sqm',
             'contact_email', 'contact_phone', 'legal_rep', 'address',
             'base_year', 'methodology', 'decarbonization_goal', 'decarbonization_year',
-        ]));
+        ]);
+
+        // Cambiar la estructura metodológica invalida una aprobación previa del Superadmin.
+        $methodologyFields = ['base_year', 'methodology', 'decarbonization_goal', 'decarbonization_year'];
+        if ($company->is_methodology_approved && array_intersect_key($data, array_flip($methodologyFields))) {
+            $data['is_methodology_approved'] = false;
+            $data['methodology_approved_at'] = null;
+            $data['methodology_approved_by'] = null;
+        }
+
+        $company->update($data);
+        return response()->json($company->load('sector'));
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/companies/{company}/approve-methodology",
+     *     summary="Superadmin approves the company's methodological structure (ISO 14064-1 / GHG Protocol)",
+     *     tags={"Admin - Companies"},
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="company", in="path", required=true, @OA\Schema(type="integer")),
+     *     @OA\Response(response=200, description="Approved")
+     * )
+     */
+    public function approveMethodology(Company $company)
+    {
+        $company->update([
+            'is_methodology_approved' => true,
+            'methodology_approved_at' => now(),
+            'methodology_approved_by' => auth()->id(),
+        ]);
+
         return response()->json($company->load('sector'));
     }
 

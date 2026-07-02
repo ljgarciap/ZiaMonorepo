@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\ActivityLog;
+use App\Models\AuditorAssignment;
 use App\Models\Company;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -89,9 +90,10 @@ class AdminAuditController extends Controller
     }
 
     /**
-     * Superadmin: acceso total. Admin: solo su propia empresa. Auditor: solo
-     * empresas donde su acceso está activo y no ha vencido (mismo criterio que
-     * AuditObservationController / RoleMiddleware).
+     * Superadmin: acceso total. Admin: solo su propia empresa. Auditor: solo si
+     * tiene al menos un AuditorAssignment vigente para algún período de esa
+     * empresa (esta vista es la bitácora de la empresa, no de un período único;
+     * el detalle por período exacto se controla en AuditObservationController).
      */
     private function authorizeCompanyAccess(Company $company): void
     {
@@ -112,16 +114,12 @@ class AdminAuditController extends Controller
         }
 
         if ($user->role === 'auditor') {
-            $belongs = $user->companies()
-                ->where('companies.id', $company->id)
-                ->wherePivot('is_active', true)
-                ->where(function ($q) {
-                    $q->whereNull('company_user.expires_at')
-                        ->orWhere('company_user.expires_at', '>', now());
-                })
+            $assigned = AuditorAssignment::where('user_id', $user->id)
+                ->where('company_id', $company->id)
+                ->active()
                 ->exists();
 
-            abort_unless($belongs, 403, 'Tu acceso de auditoría a esta empresa no está vigente.');
+            abort_unless($assigned, 403, 'No tienes autorización de auditoría vigente para esta empresa.');
             return;
         }
 

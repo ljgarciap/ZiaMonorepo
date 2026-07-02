@@ -126,6 +126,18 @@ export const routes: Routes = [
                 data: { roles: ['superadmin'] }
             },
             {
+                path: 'admin/tags',
+                loadComponent: () => import('./components/admin/tag-management/tag-management').then(m => m.TagManagementComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin'] }
+            },
+            {
+                path: 'admin/auditor-assignments',
+                loadComponent: () => import('./components/admin/auditor-assignments/auditor-assignments').then(m => m.AuditorAssignmentsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin'] }
+            },
+            {
                 path: 'admin/audit',
                 loadComponent: () => import('./components/admin/audit-logs/audit-logs').then(m => m.AuditLogsComponent),
                 canActivate: [roleGuard],

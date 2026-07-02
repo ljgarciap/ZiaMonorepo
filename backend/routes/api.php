@@ -56,6 +56,8 @@ Route::middleware('auth:api')->group(function () {
             Route::post('/companies', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'store']);
             Route::put('/companies/{company}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'update']);
             Route::delete('/companies/{company}', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'destroy']);
+            // Aprobación metodológica ISO 14064-1 / GHG Protocol (spec 1.2.3)
+            Route::post('/companies/{company}/approve-methodology', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'approveMethodology']);
 
             // Period lifecycle (create / update / delete / close) — matrix: admin = R only
             Route::post('/companies/{company}/periods', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'addPeriod']);
@@ -86,6 +88,14 @@ Route::middleware('auth:api')->group(function () {
             Route::apiResource('/units', \App\Http\Controllers\Api\Admin\AdminUnitController::class);
             Route::post('/units/{unit}/toggle', [\App\Http\Controllers\Api\Admin\AdminUnitController::class, 'toggle']);
             Route::apiResource('/scopes', \App\Http\Controllers\Api\Admin\AdminScopeController::class);
+            // Catálogo global de tags (spec 1.2.3: "Diseñar catálogos globales: sectores, tags...")
+            Route::apiResource('/tags', \App\Http\Controllers\Api\Admin\AdminTagController::class);
+            Route::post('/tags/{tag}/toggle', [\App\Http\Controllers\Api\Admin\AdminTagController::class, 'toggle']);
+
+            // Acceso del Auditor externo a un período específico (spec 1.2.3)
+            Route::get('/auditor-assignments', [\App\Http\Controllers\Api\Admin\AdminAuditorAssignmentController::class, 'index']);
+            Route::post('/auditor-assignments', [\App\Http\Controllers\Api\Admin\AdminAuditorAssignmentController::class, 'store']);
+            Route::delete('/auditor-assignments/{assignment}', [\App\Http\Controllers\Api\Admin\AdminAuditorAssignmentController::class, 'destroy']);
 
             // SA-15: ciclo de vida de períodos
             Route::post('/periods/{period}/review', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'sendToReview']);
@@ -120,6 +130,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/companies', [App\Http\Controllers\Api\CompanyController::class, 'index']);
         Route::get('/companies/{company}/periods', [App\Http\Controllers\Api\CompanyController::class, 'periods']);
         Route::get('/companies/{company}/units', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'index']);
+        Route::get('/companies/{company}/available-tags', [\App\Http\Controllers\Api\Admin\AdminTagController::class, 'availableForCompany']);
         Route::get('/dictionaries/factors', [App\Http\Controllers\Api\MasterDataController::class, 'emissionFactors']);
         Route::get('/dictionaries/questionnaire', [App\Http\Controllers\Api\MasterDataController::class, 'questionnaireRules']);
 

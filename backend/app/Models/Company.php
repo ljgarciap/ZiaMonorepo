@@ -19,10 +19,13 @@ class Company extends Model
         'name', 'nit', 'company_sector_id', 'logo_url', 'tags', 'floor_sqm', 'num_employees', 'consolidation_approach',
         'contact_email', 'contact_phone', 'legal_rep', 'address',
         'base_year', 'methodology', 'decarbonization_goal', 'decarbonization_year',
+        'is_methodology_approved', 'methodology_approved_at', 'methodology_approved_by',
     ];
 
     protected $casts = [
-        'tags' => 'array'
+        'tags' => 'array',
+        'is_methodology_approved' => 'boolean',
+        'methodology_approved_at' => 'datetime',
     ];
 
     public function users()

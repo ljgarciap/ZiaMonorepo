@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditObservation;
+use App\Models\AuditorAssignment;
 use App\Models\Company;
 use App\Models\Period;
 use Illuminate\Http\Request;
@@ -19,7 +20,7 @@ class AuditObservationController extends Controller
     public function index(Company $company, Period $period)
     {
         $this->abortIfPeriodNotInCompany($period, $company);
-        $this->authorizeAccess($company);
+        $this->authorizeAccess($company, $period);
 
         return response()->json(
             $period->auditObservations()
@@ -38,7 +39,7 @@ class AuditObservationController extends Controller
     public function store(Request $request, Company $company, Period $period)
     {
         $this->abortIfPeriodNotInCompany($period, $company);
-        $this->authorizeAccess($company);
+        $this->authorizeAccess($company, $period);
 
         $data = $request->validate([
             'body' => 'required|string',
@@ -67,7 +68,7 @@ class AuditObservationController extends Controller
         abort_unless(in_array($user->role, ['superadmin', 'admin']), 403);
 
         if ($user->role === 'admin') {
-            $this->authorizeAccess($company);
+            $this->authorizeAccess($company, $period);
         }
 
         $observation->delete();
@@ -81,11 +82,12 @@ class AuditObservationController extends Controller
     }
 
     /**
-     * Superadmin: acceso total. Admin: solo su propia empresa. Auditor: solo
-     * empresas donde su acceso (company_user) está activo y no ha vencido —
-     * mismo criterio de expiración que RoleMiddleware aplica a nivel de rutas.
+     * Superadmin: acceso total. Admin: solo su propia empresa. Auditor: solo el
+     * período exacto para el que el Superadmin le otorgó un AuditorAssignment
+     * vigente — company_user.expires_at (P1) controla si puede entrar al
+     * contexto de la empresa; esto controla a qué período dentro de ella.
      */
-    private function authorizeAccess(Company $company): void
+    private function authorizeAccess(Company $company, Period $period): void
     {
         $user = Auth::user();
 
@@ -104,16 +106,12 @@ class AuditObservationController extends Controller
         }
 
         if ($user->role === 'auditor') {
-            $belongs = $user->companies()
-                ->where('companies.id', $company->id)
-                ->wherePivot('is_active', true)
-                ->where(function ($query) {
-                    $query->whereNull('company_user.expires_at')
-                        ->orWhere('company_user.expires_at', '>', now());
-                })
+            $assigned = AuditorAssignment::where('user_id', $user->id)
+                ->where('period_id', $period->id)
+                ->active()
                 ->exists();
 
-            abort_unless($belongs, 403, 'Tu acceso de auditoría a esta empresa no está vigente.');
+            abort_unless($assigned, 403, 'No tienes autorización de auditoría para este período.');
             return;
         }
 

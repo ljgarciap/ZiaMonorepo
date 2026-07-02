@@ -59,4 +59,71 @@ class AdminCompanyControllerTest extends TestCase
 
         $response->assertStatus(403);
     }
+
+    // ─── approveMethodology (gap: "aprobar estructuras metodológicas") ────────
+
+    public function test_superadmin_can_approve_methodology()
+    {
+        $company = Company::factory()->create(['methodology' => 'GHG_PROTOCOL']);
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+
+        $response = $this->actingAs($superadmin, 'api')
+             ->postJson("/api/admin/companies/{$company->id}/approve-methodology");
+
+        $response->assertOk()
+                 ->assertJsonPath('is_methodology_approved', true)
+                 ->assertJsonPath('methodology_approved_by', $superadmin->id);
+
+        $company->refresh();
+        $this->assertTrue($company->is_methodology_approved);
+        $this->assertNotNull($company->methodology_approved_at);
+    }
+
+    public function test_admin_cannot_approve_methodology()
+    {
+        $company = Company::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
+
+        $this->actingAs($admin, 'api')
+             ->postJson("/api/admin/companies/{$company->id}/approve-methodology")
+             ->assertStatus(403);
+    }
+
+    public function test_changing_methodology_fields_revokes_prior_approval()
+    {
+        $company = Company::factory()->create(['methodology' => 'GHG_PROTOCOL']);
+        $company->update([
+            'is_methodology_approved' => true,
+            'methodology_approved_at' => now(),
+            'methodology_approved_by' => User::factory()->create(['role' => 'superadmin'])->id,
+        ]);
+
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+
+        $this->actingAs($superadmin, 'api')
+             ->putJson("/api/admin/companies/{$company->id}", ['methodology' => 'ISO_14064'])
+             ->assertOk()
+             ->assertJsonPath('is_methodology_approved', false);
+
+        $company->refresh();
+        $this->assertFalse($company->is_methodology_approved);
+        $this->assertNull($company->methodology_approved_at);
+    }
+
+    public function test_updating_unrelated_field_does_not_revoke_approval()
+    {
+        $company = Company::factory()->create();
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+        $company->update([
+            'is_methodology_approved' => true,
+            'methodology_approved_at' => now(),
+            'methodology_approved_by' => $superadmin->id,
+        ]);
+
+        $this->actingAs($superadmin, 'api')
+             ->putJson("/api/admin/companies/{$company->id}", ['contact_email' => 'nuevo@empresa.co'])
+             ->assertOk()
+             ->assertJsonPath('is_methodology_approved', true);
+    }
 }
