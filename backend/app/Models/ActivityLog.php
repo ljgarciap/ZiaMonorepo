@@ -9,6 +9,7 @@ class ActivityLog extends Model
     protected $fillable = [
         'user_id',
         'action',
+        'is_exceptional',
         'model',
         'model_id',
         'details',
@@ -17,6 +18,7 @@ class ActivityLog extends Model
 
     protected $casts = [
         'details' => 'array',
+        'is_exceptional' => 'boolean',
     ];
 
     public function user()

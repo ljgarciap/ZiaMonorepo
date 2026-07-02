@@ -11,6 +11,7 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { ReactiveFormsModule, FormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { AdminService } from '../../../services/admin.service';
 
@@ -30,6 +31,7 @@ import { AdminService } from '../../../services/admin.service';
         MatButtonModule,
         MatIconModule,
         MatCardModule,
+        MatTooltipModule,
         ReactiveFormsModule,
         FormsModule
     ],
@@ -131,6 +133,10 @@ import { AdminService } from '../../../services/admin.service';
                 <span class="action-badge" [ngClass]="log.action">
                   {{ log.action | uppercase }}
                 </span>
+                <!-- Acceso excepcional: superadmin operando en contexto no-superadmin -->
+                <span class="exceptional-badge" *ngIf="log.is_exceptional" matTooltip="Superadmin actuó fuera de su rol natural (portal Admin restringido)">
+                  <mat-icon>warning</mat-icon> Excepcional
+                </span>
               </td>
             </ng-container>
 
@@ -223,10 +229,16 @@ import { AdminService } from '../../../services/admin.service';
     .user-name { font-weight: 500; font-size: 14px; }
     .user-role { font-size: 11px; color: var(--prestige-text-muted); }
 
-    .action-badge { 
-      padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; 
+    .action-badge {
+      padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;
       text-transform: uppercase; letter-spacing: 0.5px;
     }
+    .exceptional-badge {
+      display: inline-flex; align-items: center; gap: 4px; margin-left: 6px;
+      padding: 2px 8px; border-radius: 6px; font-size: 10px; font-weight: 700;
+      background: #fef3c7; color: #92400e;
+    }
+    .exceptional-badge mat-icon { font-size: 13px; width: 13px; height: 13px; }
     .created { background: #dcfce7; color: #166534; }
     .updated { background: #dbeafe; color: #1e40af; }
     .deleted { background: #fee2e2; color: #991b1b; }
@@ -290,7 +302,7 @@ export class AuditLogsComponent implements OnInit {
 
         this.adminService.getAuditLogs(params).subscribe({
             next: (res) => {
-                this.dataSource.data = this.applyCriticalEventFilter(res.data);
+                this.dataSource.data = res.data;
                 this.totalLogs = res.total;
                 this.loading = false;
             },
@@ -327,21 +339,6 @@ export class AuditLogsComponent implements OnInit {
         const oldKeys = Object.keys(details?.old || {});
         const newKeys = Object.keys(details?.new || {});
         return [...new Set([...oldKeys, ...newKeys])];
-    }
-
-    // SA-13: filtra por evento crítico del lado del cliente después de cargar
-    applyCriticalEventFilter(logs: any[]): any[] {
-        const ev = this.filterForm.value.critical_event;
-        if (!ev) return logs;
-        const modelMap: Record<string, string[]> = {
-            factor_change:  ['EmissionFactor'],
-            role_change:    ['User'],
-            company_change: ['Company'],
-            period_change:  ['Period'],
-        };
-        if (ev === 'deletion') return logs.filter(l => l.action === 'deleted');
-        const models = modelMap[ev] || [];
-        return logs.filter(l => models.some(m => (l.model || '').includes(m)));
     }
 
     // SA-13: exportar log visible a CSV

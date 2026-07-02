@@ -51,10 +51,28 @@ trait LogsActivity
         ActivityLog::create([
             'user_id' => Auth::id(),
             'action' => $action,
+            'is_exceptional' => self::isExceptionalAccess(),
             'model' => get_class($model),
             'model_id' => $model->id,
             'details' => $details,
             'ip_address' => request()->ip()
         ]);
+    }
+
+    /**
+     * Un superadmin operando bajo un contexto no-superadmin (p.ej. el portal Admin
+     * restringido) está interviniendo en un nivel operativo que normalmente no le
+     * corresponde. Esa acción debe quedar marcada como acceso excepcional.
+     */
+    protected static function isExceptionalAccess(): bool
+    {
+        $user = Auth::user();
+        if (!$user || $user->role !== 'superadmin') {
+            return false;
+        }
+
+        $activeRole = request()->header('X-Context-Role') ?: $user->role;
+
+        return $activeRole !== 'superadmin';
     }
 }

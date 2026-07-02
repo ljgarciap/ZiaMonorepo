@@ -43,6 +43,11 @@ class AdminAuditController extends Controller
             $query->where('action', $request->action);
         }
 
+        // SA-13: filtro por evento crítico (server-side, antes de paginar)
+        if ($request->filled('critical_event')) {
+            $this->applyCriticalEventFilter($query, $request->critical_event);
+        }
+
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
@@ -52,5 +57,27 @@ class AdminAuditController extends Controller
         }
 
         return response()->json($query->paginate(20));
+    }
+
+    /**
+     * Same categories the frontend used to filter client-side (SA-13). Moved server-side
+     * so pagination totals stay correct when a critical_event filter is active.
+     */
+    private function applyCriticalEventFilter($query, string $criticalEvent): void
+    {
+        $modelMap = [
+            'factor_change' => [\App\Models\EmissionFactor::class],
+            'role_change' => [\App\Models\User::class],
+            'company_change' => [\App\Models\Company::class],
+            'period_change' => [\App\Models\Period::class],
+        ];
+
+        if ($criticalEvent === 'deletion') {
+            $query->where('action', 'deleted');
+            return;
+        }
+
+        $models = $modelMap[$criticalEvent] ?? [];
+        $query->whereIn('model', $models);
     }
 }
