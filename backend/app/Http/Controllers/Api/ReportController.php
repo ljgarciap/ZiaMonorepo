@@ -19,11 +19,14 @@ class ReportController extends Controller
     {
         $period->load(['company', 'emissions.factor.category.scope', 'emissions.factor.unit']);
 
-        // Dashboard summary (scope totals + equivalency)
+        // Dashboard summary (scope totals + equivalency). El PDF es un documento de
+        // cumplimiento a nivel empresa — company_wide evita que se scope a las
+        // emisiones propias del solicitante cuando lo genera un rol 'user'.
         $dashboardController = new DashboardController();
         $request = new Request([
-            'company_id' => $period->company_id,
-            'period_id'  => $period->id,
+            'company_id'   => $period->company_id,
+            'period_id'    => $period->id,
+            'company_wide' => true,
         ]);
         $summaryResponse = $dashboardController->summary($request);
         $summary = json_decode($summaryResponse->getContent(), true);

@@ -169,4 +169,92 @@ class DashboardControllerTest extends TestCase
 
         $response->assertStatus(401);
     }
+
+    // ─── scope='own' para rol Usuario (matriz CRUD: Dashboard = solo métricas propias) ──
+
+    public function test_user_role_only_sees_own_emissions_in_summary()
+    {
+        $scope    = Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
+        $category = EmissionCategory::factory()->create(['scope_id' => $scope->id]);
+        $factor   = EmissionFactor::factory()->create(['emission_category_id' => $category->id]);
+
+        $operativeUser = User::factory()->create(['role' => 'user']);
+        $otherUser = User::factory()->create(['role' => 'user']);
+
+        CarbonEmission::factory()->create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
+            'calculated_co2e' => 10.0, 'user_id' => $operativeUser->id,
+        ]);
+        CarbonEmission::factory()->create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
+            'calculated_co2e' => 90.0, 'user_id' => $otherUser->id,
+        ]);
+
+        $response = $this->actingAs($operativeUser, 'api')->getJson(
+            "/api/dashboard/summary?company_id={$this->company->id}&period_id={$this->period->id}"
+        );
+
+        $response->assertOk()->assertJsonPath('scope', 'own');
+        $this->assertEqualsWithDelta(10.0, $response->json('huella_total'), 0.01);
+    }
+
+    public function test_admin_role_sees_company_wide_emissions_in_summary()
+    {
+        $scope    = Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
+        $category = EmissionCategory::factory()->create(['scope_id' => $scope->id]);
+        $factor   = EmissionFactor::factory()->create(['emission_category_id' => $category->id]);
+
+        CarbonEmission::factory()->create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id, 'calculated_co2e' => 10.0,
+        ]);
+        CarbonEmission::factory()->create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id, 'calculated_co2e' => 90.0,
+        ]);
+
+        $response = $this->getJson(
+            "/api/dashboard/summary?company_id={$this->company->id}&period_id={$this->period->id}"
+        );
+
+        $response->assertOk()->assertJsonPath('scope', 'company');
+        $this->assertEqualsWithDelta(100.0, $response->json('huella_total'), 0.01);
+    }
+
+    public function test_intensity_kpis_are_null_for_own_scope()
+    {
+        $company = Company::factory()->create(['floor_sqm' => 100, 'num_employees' => 10]);
+        $period  = Period::factory()->create(['company_id' => $company->id]);
+        $operativeUser = User::factory()->create(['role' => 'user']);
+
+        $response = $this->actingAs($operativeUser, 'api')->getJson(
+            "/api/dashboard/summary?company_id={$company->id}&period_id={$period->id}"
+        );
+
+        $response->assertOk();
+        $this->assertNull($response->json('intensidad_kpis'));
+    }
+
+    public function test_trends_only_counts_own_emissions_for_user_role()
+    {
+        $scope    = Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
+        $category = EmissionCategory::factory()->create(['scope_id' => $scope->id]);
+        $factor   = EmissionFactor::factory()->create(['emission_category_id' => $category->id]);
+
+        $operativeUser = User::factory()->create(['role' => 'user']);
+        $otherUser = User::factory()->create(['role' => 'user']);
+
+        CarbonEmission::factory()->create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
+            'calculated_co2e' => 5.0, 'user_id' => $operativeUser->id,
+        ]);
+        CarbonEmission::factory()->create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
+            'calculated_co2e' => 95.0, 'user_id' => $otherUser->id,
+        ]);
+
+        $response = $this->actingAs($operativeUser, 'api')
+             ->getJson("/api/dashboard/trends?company_id={$this->company->id}");
+
+        $response->assertOk();
+        $this->assertEqualsWithDelta(5.0, $response->json('revenue_trend.datasets.0.data.0'), 0.01);
+    }
 }

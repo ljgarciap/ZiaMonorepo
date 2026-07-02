@@ -21,24 +21,28 @@ class DashboardController extends Controller
 
         $company = Company::find($companyId);
 
-        // Fetch all emissions for the given period
+        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        // Matriz CRUD spec 1.2.3: "Dashboard: Usuario = R (métricas propias)" — a
+        // diferencia de Admin/Superadmin (empresa completa), el rol Usuario solo debe
+        // ver el consolidado de lo que él mismo capturó, no el de toda la empresa.
+        // company_wide=1 fuerza el total de toda la empresa aunque el rol sea 'user' —
+        // lo usan los reportes oficiales (PDF/Excel de período), que son documentos de
+        // cumplimiento a nivel empresa, no la vista personal del dashboard interactivo.
+        $ownScopeOnly = $activeRole === 'user' && !$request->boolean('company_wide');
+
+        // Fetch emissions for the given period — scoped a las propias si aplica.
         // We join with factors and categories to get names and scopes
-        $emissions = \App\Models\CarbonEmission::where('period_id', $periodId)
-            ->with(['factor.category'])
-            ->get();
+        $emissionsQuery = \App\Models\CarbonEmission::where('period_id', $periodId)
+            ->with(['factor.category']);
+
+        if ($ownScopeOnly) {
+            $emissionsQuery->where('user_id', auth()->id());
+        }
+
+        $emissions = $emissionsQuery->get();
 
         $huellaTotal = $emissions->sum('calculated_co2e');
 
-        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
-        $myEmissions = null;
-        if ($activeRole === 'user') {
-            $myTotal = $emissions->where('user_id', auth()->id())->sum('calculated_co2e');
-            $myEmissions = [
-                'total'      => round($myTotal, 2),
-                'percentage' => $huellaTotal > 0 ? round(($myTotal / $huellaTotal) * 100, 2) : 0,
-            ];
-        }
-        
         // Group by Scope
         $scopes = [
             1 => ['total' => 0, 'label' => 'Alcance 1', 'color' => '#1a237e'],
@@ -87,7 +91,9 @@ class DashboardController extends Controller
         $floorSqm     = $company ? ($company->floor_sqm ?? 0) : 0;
         $numEmployees = $company ? ($company->num_employees ?? 0) : 0;
 
-        $intensidadKpis = [
+        // Sin sentido para scope propio: dividir la huella de un individuo entre
+        // metros/empleados de toda la empresa no es una métrica coherente.
+        $intensidadKpis = $ownScopeOnly ? null : [
             'tco2e_por_m2'        => ($floorSqm > 0)     ? round($huellaTotal / $floorSqm, 4)     : null,
             'tco2e_por_empleado'  => ($numEmployees > 0)  ? round($huellaTotal / $numEmployees, 4) : null,
         ];
@@ -166,7 +172,7 @@ class DashboardController extends Controller
         return response()->json([
             'huella_total' => round($huellaTotal, 2),
             'neutralizados' => 0,
-            'my_emissions' => $myEmissions,
+            'scope' => $ownScopeOnly ? 'own' : 'company',
             'admin_panel' => $adminPanel,
             'alcances' => $alcancesRes,
             'equivalency' => [
@@ -185,6 +191,9 @@ class DashboardController extends Controller
     {
         $companyId = (int)$request->query('company_id', 1);
 
+        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        $ownScopeOnly = $activeRole === 'user';
+
         // Get all periods for this company, ordered by year
         $periods = Period::where('company_id', $companyId)
             ->orderBy('year')
@@ -193,12 +202,14 @@ class DashboardController extends Controller
         // Temporal Evolution: Emissions by period
         $periodLabels = [];
         $periodData = [];
-        
+
         foreach ($periods as $period) {
             $periodLabels[] = (string)$period->year;
-            $totalEmissions = \App\Models\CarbonEmission::where('period_id', $period->id)
-                ->sum('calculated_co2e');
-            $periodData[] = round($totalEmissions, 2);
+            $periodQuery = \App\Models\CarbonEmission::where('period_id', $period->id);
+            if ($ownScopeOnly) {
+                $periodQuery->where('user_id', auth()->id());
+            }
+            $periodData[] = round($periodQuery->sum('calculated_co2e'), 2);
         }
 
         // Category Distribution: Emissions by category for the latest period
@@ -207,9 +218,12 @@ class DashboardController extends Controller
         $categoryData = [];
 
         if ($latestPeriod) {
-            $emissionsByCategory = \App\Models\CarbonEmission::where('period_id', $latestPeriod->id)
-                ->with(['factor.category'])
-                ->get()
+            $categoryQuery = \App\Models\CarbonEmission::where('period_id', $latestPeriod->id)
+                ->with(['factor.category']);
+            if ($ownScopeOnly) {
+                $categoryQuery->where('user_id', auth()->id());
+            }
+            $emissionsByCategory = $categoryQuery->get()
                 ->groupBy(function($emission) {
                     return $emission->factor->category->name ?? 'Sin categoría';
                 });

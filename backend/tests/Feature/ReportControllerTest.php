@@ -203,6 +203,49 @@ class ReportControllerTest extends TestCase
         $this->assertEquals(0.02, $capturedData['intensityPerEmployee']);
     }
 
+    // Regresión: el PDF es un documento de cumplimiento a nivel empresa — no debe
+    // scoparse a las emisiones propias del solicitante aunque su rol sea 'user'
+    // (DashboardController::summary sí hace ese scope para la vista interactiva).
+    public function test_pdf_includes_company_wide_total_even_when_requested_by_user_role()
+    {
+        $this->company->update(['floor_sqm' => 10]);
+
+        $factor = EmissionFactor::factory()->create([
+            'emission_category_id' => EmissionCategory::factory()->create()->id,
+            'factor_co2'           => 2.0,
+        ]);
+
+        $otherUser = User::factory()->create(['role' => 'user']);
+        $otherUser->companies()->attach($this->company->id, ['role' => 'user', 'is_active' => true]);
+
+        CarbonEmission::create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
+            'quantity' => 500, 'calculated_co2e' => 1.0, 'user_id' => $this->user->id,
+        ]);
+        CarbonEmission::create([
+            'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
+            'quantity' => 500, 'calculated_co2e' => 9.0, 'user_id' => $otherUser->id,
+        ]);
+
+        $capturedData = null;
+        Pdf::shouldReceive('loadView')
+           ->once()
+           ->with('reports.summary', Mockery::on(function ($data) use (&$capturedData) {
+               $capturedData = $data;
+               return true;
+           }))
+           ->andReturnSelf();
+        Pdf::shouldReceive('download')->andReturn(response()->make('', 200));
+
+        $this->actingAs($this->user, 'api')
+             ->get("/api/reports/periods/{$this->period->id}/pdf")
+             ->assertOk();
+
+        // huella_total (10.0 tCO2e = 1.0 propia + 9.0 de otro usuario) / 10 m² = 1.0.
+        // Si el PDF se hubiera scoped a lo propio (bug), sería 1.0/10 = 0.1.
+        $this->assertEqualsWithDelta(1.0, $capturedData['intensityPerSqm'], 0.001);
+    }
+
     public function test_intensity_null_when_company_has_no_area_or_employees()
     {
         $this->company->update(['floor_sqm' => null, 'num_employees' => null]);

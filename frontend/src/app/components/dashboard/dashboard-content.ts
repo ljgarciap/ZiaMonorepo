@@ -99,7 +99,7 @@ import { MatDividerModule } from '@angular/material/divider';
         <!-- Top Summary Cards -->
         <div class="summary-grid">
             <div class="glass-card summary-card">
-                <span class="card-title">Huella Total</span>
+                <span class="card-title">{{summary?.scope === 'own' ? 'Mi Huella' : 'Huella Total'}}</span>
                 <div class="card-value">
                     <span class="main-value">{{summary?.huella_total || 0 | number:'1.2-2'}}</span>
                     <span class="unit">tCO2e</span>
@@ -119,21 +119,6 @@ import { MatDividerModule } from '@angular/material/divider';
                 <div class="card-footer">
                     <span class="footer-label">{{summary?.alcances ? summary.alcances['scope_'+s]?.percentage : 0}}% del total</span>
                     <span class="footer-value">{{summary?.alcances ? summary.alcances['scope_'+s]?.neutralizado : 0}} tCO2e</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- H08: Tarjeta de contribución personal (solo rol Usuario) -->
-        <div class="my-contribution-card glass-card" *ngIf="activeRole === 'user' && summary?.my_emissions">
-            <div class="my-contribution-inner">
-                <mat-icon class="my-icon">person</mat-icon>
-                <div>
-                    <span class="card-title">Mis Contribuciones</span>
-                    <div class="card-value">
-                        <span class="main-value">{{summary.my_emissions.total | number:'1.2-2'}}</span>
-                        <span class="unit">tCO₂e</span>
-                    </div>
-                    <span class="my-pct">{{summary.my_emissions.percentage}}% del total corporativo</span>
                 </div>
             </div>
         </div>
@@ -394,10 +379,6 @@ import { MatDividerModule } from '@angular/material/divider';
     .spinner-overlay { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 5; }
     .empty-state-card { padding: 60px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 16px; margin-top: 40px; color: var(--prestige-text-muted); }
     .empty-state-card mat-icon { font-size: 48px; width: 48px; height: 48px; opacity: 0.5; }
-    .my-contribution-card { padding: 20px 24px; margin-bottom: 24px; border-left: 4px solid var(--prestige-primary); }
-    .my-contribution-inner { display: flex; align-items: center; gap: 16px; }
-    .my-icon { font-size: 36px; width: 36px; height: 36px; color: var(--prestige-primary); opacity: 0.8; }
-    .my-pct { font-size: 12px; color: var(--prestige-text-muted); margin-top: 4px; display: block; }
     /* A01 — Admin Panel de Completitud */
     .admin-panel { margin-bottom: 32px; }
     .admin-panel-header {
