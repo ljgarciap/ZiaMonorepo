@@ -65,7 +65,7 @@ class AdminUserController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'nullable|string|min:8',
-            'role' => 'required|string|in:superadmin,admin,user,iot_tech,auditor',
+            'role' => 'required|string|in:superadmin,admin,user,iot_tech,auditor,viewer',
             'companies' => 'array',
             'companies.*' => 'exists:companies,id',
             'access_expires_at' => 'nullable|date',

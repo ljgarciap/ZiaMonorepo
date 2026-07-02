@@ -21,6 +21,13 @@ class IotDevice extends Model
         'baseline_kwh',
         'office_hours_start',
         'office_hours_end',
+        'last_calibrated_at',
+        'calibration_notes',
+        'registered_by',
+    ];
+
+    protected $casts = [
+        'last_calibrated_at' => 'datetime',
     ];
 
     public function readings()

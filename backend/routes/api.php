@@ -124,13 +124,13 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/dictionaries/questionnaire', [App\Http\Controllers\Api\MasterDataController::class, 'questionnaireRules']);
 
         // ── Telemetría: todos los roles (Técnico IoT = gestor principal) ──
-        Route::middleware(['role:superadmin,admin,user,iot_tech,auditor'])->group(function () {
+        Route::middleware(['role:superadmin,admin,user,iot_tech,auditor,viewer'])->group(function () {
             Route::get('/telemetry/live', [App\Http\Controllers\Api\TelemetryController::class, 'live']);
             Route::get('/telemetry/history', [App\Http\Controllers\Api\TelemetryController::class, 'history']);
         });
 
-        // ── Emisiones lectura + Reportes: roles operativos + Auditor ──────
-        Route::middleware(['role:superadmin,admin,user,auditor'])->group(function () {
+        // ── Emisiones lectura + Reportes: roles operativos + Auditor + Viewer ──
+        Route::middleware(['role:superadmin,admin,user,auditor,viewer'])->group(function () {
             Route::get('/periods/{period}/emissions', [App\Http\Controllers\Api\CarbonEmissionController::class, 'index']);
             Route::get('/companies/{company}/emissions/history', [App\Http\Controllers\Api\CarbonEmissionController::class, 'history']);
             Route::get('/companies/{company}/emissions/comparison', [App\Http\Controllers\Api\CarbonEmissionController::class, 'comparison']);
@@ -164,14 +164,42 @@ Route::middleware('auth:api')->group(function () {
             Route::post('/emissions/{emission}/reset-validation', [App\Http\Controllers\Api\CarbonEmissionController::class, 'resetValidation']);
         });
 
-        // ── Dashboard + IA + Simulador: roles operativos únicamente ───────
-        Route::middleware(['role:superadmin,admin,user'])->group(function () {
+        // ── Dashboard: roles operativos + Auditor/Viewer (solo lectura) ───
+        Route::middleware(['role:superadmin,admin,user,auditor,viewer'])->group(function () {
             Route::get('/dashboard/summary', [App\Http\Controllers\Api\DashboardController::class, 'summary']);
             Route::get('/dashboard/trends', [App\Http\Controllers\Api\DashboardController::class, 'trends']);
+        });
+
+        // ── IA + Simulador: roles operativos únicamente (no son "solo lectura") ──
+        Route::middleware(['role:superadmin,admin,user'])->group(function () {
             Route::get('/ai/recommendations', [\App\Http\Controllers\Api\AISidecarController::class, 'getRecommendations']);
             Route::post('/ai/chat', [\App\Http\Controllers\Api\AISidecarController::class, 'chat']);
             Route::get('/simulator/scenarios', [\App\Http\Controllers\Api\SimulatorController::class, 'index']);
             Route::post('/simulator/calculate', [\App\Http\Controllers\Api\SimulatorController::class, 'calculate']);
+        });
+
+        // ── Dispositivos IoT (registro/config): Técnico IoT CRUD, Admin/Superadmin R+CRUD ──
+        // Matriz CRUD spec 1.2.3: Dispositivo IoT = Superadmin CRUD, Técnico IoT CRUD, Admin R
+        Route::middleware(['role:superadmin,admin,iot_tech'])->group(function () {
+            Route::get('/companies/{company}/iot-devices', [App\Http\Controllers\Api\IotDeviceController::class, 'index']);
+        });
+        Route::middleware(['role:superadmin,iot_tech'])->group(function () {
+            Route::post('/companies/{company}/iot-devices', [App\Http\Controllers\Api\IotDeviceController::class, 'store']);
+            Route::put('/iot-devices/{device}', [App\Http\Controllers\Api\IotDeviceController::class, 'update']);
+            Route::delete('/iot-devices/{device}', [App\Http\Controllers\Api\IotDeviceController::class, 'destroy']);
+            Route::post('/iot-devices/{device}/calibrate', [App\Http\Controllers\Api\IotDeviceController::class, 'calibrate']);
+            Route::post('/telemetry/alerts/{alert}/resolve', [App\Http\Controllers\Api\IotDeviceController::class, 'resolveAlert']);
+        });
+
+        // ── Observaciones/dictamen de Auditor externo por período ─────────
+        Route::middleware(['role:superadmin,admin,auditor'])->group(function () {
+            Route::get('/companies/{company}/periods/{period}/observations', [App\Http\Controllers\Api\AuditObservationController::class, 'index']);
+        });
+        Route::middleware(['role:superadmin,auditor'])->group(function () {
+            Route::post('/companies/{company}/periods/{period}/observations', [App\Http\Controllers\Api\AuditObservationController::class, 'store']);
+        });
+        Route::middleware(['role:superadmin,admin'])->group(function () {
+            Route::delete('/companies/{company}/periods/{period}/observations/{observation}', [App\Http\Controllers\Api\AuditObservationController::class, 'destroy']);
         });
     });
 });

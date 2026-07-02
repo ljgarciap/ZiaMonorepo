@@ -50,6 +50,18 @@ export const routes: Routes = [
                 path: 'simulator',
                 loadComponent: () => import('./components/simulator/simulator').then(m => m.SimulatorComponent)
             },
+            {
+                path: 'iot/devices',
+                loadComponent: () => import('./components/iot/device-management/device-management').then(m => m.IotDeviceManagementComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['iot_tech', 'superadmin'] } // Técnico IoT: registro/config/calibración de dispositivos
+            },
+            {
+                path: 'audit/observations',
+                loadComponent: () => import('./components/auditor/observations/observations').then(m => m.AuditObservationsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['auditor', 'admin', 'superadmin'] } // Auditor: hallazgos/dictamen; Admin/Superadmin: ver y moderar
+            },
 
 
             // Admin Routes

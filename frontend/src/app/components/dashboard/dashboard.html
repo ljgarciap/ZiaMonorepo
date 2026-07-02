@@ -6,8 +6,9 @@
                 <mat-icon matListItemIcon>dashboard</mat-icon>
                 <div matListItemTitle>Dashboard</div>
             </a>
-            <!-- SA-01: superadmin no captura datos operativos — solo admin/user -->
-            <ng-container *ngIf="authService.currentContext()?.role !== 'superadmin'">
+            <!-- SA-01: superadmin no captura datos operativos. Auditor (solo lectura) e
+                 iot_tech (sin acceso a datos de emisiones) tampoco — solo admin/user. -->
+            <ng-container *ngIf="['admin','user'].includes(authService.currentContext()?.role || '')">
                 <a mat-list-item routerLink="/form" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>assignment</mat-icon>
                     <div matListItemTitle>Huella de Carbono</div>
@@ -25,8 +26,21 @@
                 <mat-icon matListItemIcon>science</mat-icon>
                 <div matListItemTitle>Simulador</div>
             </a>
-            <!-- Historial: usuario ve sus propios registros; admin ve historial con panel de validación (A09) -->
-            <a *ngIf="['user','admin','superadmin'].includes(authService.currentContext()?.role || '')"
+            <!-- Técnico IoT: registro/configuración/calibración de dispositivos -->
+            <a *ngIf="authService.currentContext()?.role === 'iot_tech'"
+                mat-list-item routerLink="/iot/devices" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>developer_board</mat-icon>
+                <div matListItemTitle>Dispositivos IoT</div>
+            </a>
+            <!-- Auditor externo: hallazgos y dictamen por período. Admin/Superadmin: ver y moderar. -->
+            <a *ngIf="['auditor','admin','superadmin'].includes(authService.currentContext()?.role || '')"
+                mat-list-item routerLink="/audit/observations" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>fact_check</mat-icon>
+                <div matListItemTitle>Observaciones de Auditoría</div>
+            </a>
+            <!-- Historial: usuario ve sus propios registros; admin ve historial con panel de validación (A09);
+                 viewer ve el historial de su empresa en solo lectura. -->
+            <a *ngIf="['user','admin','superadmin','viewer'].includes(authService.currentContext()?.role || '')"
                 mat-list-item routerLink="/history" routerLinkActive="active-link">
                 <mat-icon matListItemIcon>history</mat-icon>
                 <div matListItemTitle>

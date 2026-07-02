@@ -26,4 +26,9 @@ class Period extends Model
     {
         return $this->hasMany(CarbonEmission::class);
     }
+
+    public function auditObservations()
+    {
+        return $this->hasMany(AuditObservation::class);
+    }
 }

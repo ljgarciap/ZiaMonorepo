@@ -90,4 +90,15 @@ describe('DashboardComponent', () => {
     const el: HTMLElement = fixture.nativeElement;
     expect(el.textContent).toContain('Plataforma');
   });
+
+  // --- viewer (solo lectura por empresa) --------------------------------------
+  it('viewer sees Revisión de Datos but not Huella de Carbono nor Administración', () => {
+    authMock.currentContext.set({ type: 'company', id: 1, label: 'ECONOVA', role: 'viewer' });
+    fixture.detectChanges();
+
+    const navText = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(navText).toContain('Revisión de Datos');
+    expect(navText).not.toContain('Huella de Carbono');
+    expect(navText).not.toContain('Administración');
+  });
 });
