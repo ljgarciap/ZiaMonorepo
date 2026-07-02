@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Models\ActivityLog;
 use App\Models\Company;
 use App\Models\CompanySector;
 use App\Models\IotDevice;
+use App\Models\OperationalUnit;
 use App\Models\TelemetryAlert;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -208,5 +210,58 @@ class IotDeviceControllerTest extends TestCase
         $this->actingAs($this->tech, 'api')
              ->postJson("/api/telemetry/alerts/{$alert->id}/resolve", [])
              ->assertStatus(403);
+    }
+
+    // ─── operational_unit_id (gap: "asociar dispositivo a unidad operativa") ──
+
+    public function test_iot_tech_can_assign_device_to_unit_of_same_company(): void
+    {
+        $unit = OperationalUnit::create(['company_id' => $this->company->id, 'name' => 'Piso 3']);
+        $device = IotDevice::factory()->create(['company_id' => $this->company->id]);
+
+        $response = $this->actingAs($this->tech, 'api')
+             ->putJson("/api/iot-devices/{$device->id}", ['operational_unit_id' => $unit->id]);
+
+        $response->assertOk()->assertJsonPath('operational_unit_id', $unit->id);
+    }
+
+    public function test_cannot_assign_device_to_unit_of_another_company(): void
+    {
+        $foreignUnit = OperationalUnit::create(['company_id' => $this->otherCompany->id, 'name' => 'Otra empresa']);
+        $device = IotDevice::factory()->create(['company_id' => $this->company->id]);
+
+        $this->actingAs($this->tech, 'api')
+             ->putJson("/api/iot-devices/{$device->id}", ['operational_unit_id' => $foreignUnit->id])
+             ->assertStatus(422);
+    }
+
+    // ─── trazabilidad: cambios de dispositivo quedan en la bitácora ────────────
+
+    public function test_device_creation_and_update_are_logged_to_activity_log(): void
+    {
+        $response = $this->actingAs($this->tech, 'api')
+             ->postJson("/api/companies/{$this->company->id}/iot-devices", [
+                 'name' => 'Medidor Piso 2', 'type' => 'energy',
+             ]);
+
+        $deviceId = $response->json('id');
+
+        $this->assertDatabaseHas('activity_logs', [
+            'model' => IotDevice::class,
+            'model_id' => $deviceId,
+            'action' => 'created',
+        ]);
+
+        $this->actingAs($this->tech, 'api')
+             ->putJson("/api/iot-devices/{$deviceId}", ['location' => 'Piso 2 - Ala Norte']);
+
+        $log = ActivityLog::where('model', IotDevice::class)
+            ->where('model_id', $deviceId)
+            ->where('action', 'updated')
+            ->latest('id')
+            ->first();
+
+        $this->assertNotNull($log);
+        $this->assertSame('Piso 2 - Ala Norte', $log->details['new']['location']);
     }
 }

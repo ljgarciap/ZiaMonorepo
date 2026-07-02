@@ -173,4 +173,18 @@ class AuditObservationControllerTest extends TestCase
              ->deleteJson("{$this->url()}/{$observation->id}")
              ->assertStatus(403);
     }
+
+    // ─── trazabilidad: crear/eliminar una observación queda en la bitácora ─────
+
+    public function test_observation_creation_is_logged_to_activity_log(): void
+    {
+        $response = $this->actingAs($this->auditor, 'api')
+             ->postJson($this->url(), ['body' => 'Hallazgo auditable']);
+
+        $this->assertDatabaseHas('activity_logs', [
+            'model' => \App\Models\AuditObservation::class,
+            'model_id' => $response->json('id'),
+            'action' => 'created',
+        ]);
+    }
 }

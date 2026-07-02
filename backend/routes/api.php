@@ -201,6 +201,11 @@ Route::middleware('auth:api')->group(function () {
         Route::middleware(['role:superadmin,admin'])->group(function () {
             Route::delete('/companies/{company}/periods/{period}/observations/{observation}', [App\Http\Controllers\Api\AuditObservationController::class, 'destroy']);
         });
+
+        // ── Bitácora acotada a empresa: Auditor externo (acceso vigente) + Admin/Superadmin ──
+        Route::middleware(['role:superadmin,admin,auditor'])->group(function () {
+            Route::get('/companies/{company}/audit-logs', [\App\Http\Controllers\Api\Admin\AdminAuditController::class, 'companyIndex']);
+        });
     });
 });
 

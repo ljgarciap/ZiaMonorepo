@@ -103,4 +103,65 @@ class AdminAuditControllerTest extends TestCase
         $this->assertNotNull($log);
         $this->assertFalse($log->is_exceptional);
     }
+
+    // ─── companyIndex: bitácora scoped a empresa, acceso del Auditor externo ───
+
+    public function test_authorized_auditor_can_read_company_scoped_audit_log(): void
+    {
+        $sector = CompanySector::create(['name' => 'Servicios Test']);
+        $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+
+        $auditor = User::factory()->create(['role' => 'auditor']);
+        $auditor->companies()->attach($company->id, [
+            'role' => 'auditor', 'is_active' => true, 'expires_at' => now()->addWeek(),
+        ]);
+
+        $companyUser = User::factory()->create(['role' => 'user']);
+        $companyUser->companies()->attach($company->id, ['role' => 'user', 'is_active' => true]);
+
+        ActivityLog::create(['user_id' => $companyUser->id, 'action' => 'updated', 'model' => Company::class, 'model_id' => $company->id]);
+
+        $this->actingAs($auditor, 'api')
+             ->getJson("/api/companies/{$company->id}/audit-logs")
+             ->assertOk()
+             ->assertJsonCount(1, 'data');
+    }
+
+    public function test_auditor_with_expired_access_cannot_read_company_audit_log(): void
+    {
+        $sector = CompanySector::create(['name' => 'Servicios Test']);
+        $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+
+        $auditor = User::factory()->create(['role' => 'auditor']);
+        $auditor->companies()->attach($company->id, [
+            'role' => 'auditor', 'is_active' => true, 'expires_at' => now()->subDay(),
+        ]);
+
+        $this->actingAs($auditor, 'api')
+             ->getJson("/api/companies/{$company->id}/audit-logs")
+             ->assertStatus(403);
+    }
+
+    public function test_auditor_not_assigned_to_company_cannot_read_its_audit_log(): void
+    {
+        $sector = CompanySector::create(['name' => 'Servicios Test']);
+        $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+        $outsider = User::factory()->create(['role' => 'auditor']);
+
+        $this->actingAs($outsider, 'api')
+             ->getJson("/api/companies/{$company->id}/audit-logs")
+             ->assertStatus(403);
+    }
+
+    public function test_admin_can_read_audit_log_of_their_own_company_via_company_scoped_endpoint(): void
+    {
+        $sector = CompanySector::create(['name' => 'Servicios Test']);
+        $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $admin->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
+
+        $this->actingAs($admin, 'api')
+             ->getJson("/api/companies/{$company->id}/audit-logs")
+             ->assertOk();
+    }
 }

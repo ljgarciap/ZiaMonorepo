@@ -8,6 +8,7 @@ use App\Models\IotDevice;
 use App\Models\TelemetryAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Validation\Rule;
 
 class IotDeviceController extends Controller
 {
@@ -48,6 +49,7 @@ class IotDeviceController extends Controller
             'baseline_kwh' => 'nullable|numeric',
             'office_hours_start' => 'nullable|string|max:5',
             'office_hours_end' => 'nullable|string|max:5',
+            'operational_unit_id' => ['nullable', Rule::exists('operational_units', 'id')->where('company_id', $company->id)],
         ]);
 
         $device = $company->iotDevices()->create($data + [
@@ -76,6 +78,7 @@ class IotDeviceController extends Controller
             'baseline_kwh' => 'nullable|numeric',
             'office_hours_start' => 'nullable|string|max:5',
             'office_hours_end' => 'nullable|string|max:5',
+            'operational_unit_id' => ['nullable', Rule::exists('operational_units', 'id')->where('company_id', $device->company_id)],
         ]);
 
         $device->update($data);

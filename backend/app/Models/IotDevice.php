@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\LogsActivity;
 
 class IotDevice extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'thingsboard_id',
@@ -24,6 +25,7 @@ class IotDevice extends Model
         'last_calibrated_at',
         'calibration_notes',
         'registered_by',
+        'operational_unit_id',
     ];
 
     protected $casts = [
@@ -43,6 +45,11 @@ class IotDevice extends Model
     public function company()
     {
         return $this->belongsTo(\App\Models\Company::class);
+    }
+
+    public function operationalUnit()
+    {
+        return $this->belongsTo(\App\Models\OperationalUnit::class, 'operational_unit_id');
     }
 
     public function emissionFactor()
