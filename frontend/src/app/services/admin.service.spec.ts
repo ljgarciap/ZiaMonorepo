@@ -103,6 +103,13 @@ describe('AdminService', () => {
     req.flush({});
   });
 
+  it('toggleUserBlock() POSTs to /admin/users/:id/toggle-block', () => {
+    service.toggleUserBlock(2).subscribe();
+    const req = http.expectOne(`${apiUrl}/users/2/toggle-block`);
+    expect(req.request.method).toBe('POST');
+    req.flush({});
+  });
+
   // ─── Master Data: categories & factors ─────────────────────────────────
 
   it('getCategories() GETs /admin/categories', () => {

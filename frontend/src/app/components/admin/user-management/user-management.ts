@@ -128,6 +128,10 @@ import { UserDialog, ConfirmDialog, UserCompaniesDialog } from '../admin-dialogs
                         <button mat-icon-button class="action-btn" (click)="onViewCompanies(user)" matTooltip="Gestionar Empresas">
                           <mat-icon>business</mat-icon>
                         </button>
+                        <button mat-icon-button class="action-btn" (click)="onToggleBlock(user)"
+                          [matTooltip]="user.is_blocked ? 'Desbloquear cuenta' : 'Bloquear cuenta'">
+                          <mat-icon>{{ user.is_blocked ? 'lock_open' : 'lock' }}</mat-icon>
+                        </button>
                         <button mat-icon-button class="action-btn delete" (click)="onDelete(user)" matTooltip="Suspender">
                           <mat-icon>person_off</mat-icon>
                         </button>
@@ -446,6 +450,25 @@ export class UserManagementComponent implements OnInit {
     dialogRef.afterClosed().subscribe(result => {
       if (result) {
         this.adminService.deleteUser(user.id).subscribe(() => this.loadUsers());
+      }
+    });
+  }
+
+  onToggleBlock(user: any) {
+    const willBlock = !user.is_blocked;
+    const dialogRef = this.dialog.open(ConfirmDialog, {
+      data: {
+        title: willBlock ? 'Bloquear Cuenta' : 'Desbloquear Cuenta',
+        message: willBlock
+          ? `¿Bloquear el acceso de ${user.email}? La cuenta no podrá iniciar sesión hasta que la desbloquees.`
+          : `¿Desbloquear el acceso de ${user.email}?`,
+        confirmText: willBlock ? 'Bloquear' : 'Desbloquear',
+        color: willBlock ? 'warn' : 'primary'
+      }
+    });
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.adminService.toggleUserBlock(user.id).subscribe(() => this.loadUsers());
       }
     });
   }

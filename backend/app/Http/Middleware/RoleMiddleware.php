@@ -21,6 +21,12 @@ class RoleMiddleware
 
         $user = auth()->user();
 
+        // Spec 1.2.3: una cuenta bloqueada no debe poder operar aunque su token
+        // (emitido antes del bloqueo) siga vigente — no basta con rechazar el login.
+        if ($user->is_blocked) {
+            return response()->json(['message' => 'Esta cuenta ha sido bloqueada por el administrador.'], 403);
+        }
+
         $requestedRole = $request->header('X-Context-Role');
 
         if ($requestedRole) {

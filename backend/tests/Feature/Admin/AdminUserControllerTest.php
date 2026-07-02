@@ -184,6 +184,61 @@ class AdminUserControllerTest extends TestCase
         $this->assertDatabaseHas('users', ['id' => $user->id, 'deleted_at' => null]);
     }
 
+    // ─── toggle-block (gap: "habilitar o bloquear cuentas") ────────────────────
+
+    public function test_superadmin_can_block_a_user()
+    {
+        $user = User::factory()->create(['is_blocked' => false]);
+
+        $response = $this->actingAs($this->superadmin, 'api')
+             ->postJson("/api/admin/users/{$user->id}/toggle-block");
+
+        $response->assertOk()->assertJsonPath('is_blocked', true);
+
+        $user->refresh();
+        $this->assertTrue($user->is_blocked);
+        $this->assertNotNull($user->blocked_at);
+    }
+
+    public function test_superadmin_can_unblock_a_user()
+    {
+        $user = User::factory()->create(['is_blocked' => true, 'blocked_at' => now()]);
+
+        $response = $this->actingAs($this->superadmin, 'api')
+             ->postJson("/api/admin/users/{$user->id}/toggle-block");
+
+        $response->assertOk()->assertJsonPath('is_blocked', false);
+
+        $user->refresh();
+        $this->assertFalse($user->is_blocked);
+        $this->assertNull($user->blocked_at);
+    }
+
+    public function test_admin_cannot_block_a_user()
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($this->admin, 'api')
+             ->postJson("/api/admin/users/{$user->id}/toggle-block")
+             ->assertStatus(403);
+    }
+
+    public function test_superadmin_cannot_block_themselves()
+    {
+        $this->actingAs($this->superadmin, 'api')
+             ->postJson("/api/admin/users/{$this->superadmin->id}/toggle-block")
+             ->assertStatus(400);
+    }
+
+    public function test_blocked_users_token_is_rejected_on_subsequent_requests()
+    {
+        $user = User::factory()->create(['role' => 'user', 'is_blocked' => true]);
+
+        $this->actingAs($user, 'api')
+             ->getJson('/api/dashboard/summary?company_id=1&period_id=1')
+             ->assertStatus(403);
+    }
+
     // ─── welcome email (10-1) ─────────────────────────────────────────────────
 
     public function test_welcome_email_sent_when_new_user_created()

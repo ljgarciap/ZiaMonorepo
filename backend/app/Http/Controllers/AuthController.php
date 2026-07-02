@@ -92,6 +92,12 @@ class AuthController extends Controller
 
         if (Auth::attempt($credentials)) {
             $user = Auth::user();
+
+            if ($user->is_blocked) {
+                Auth::logout();
+                return response()->json(['error' => 'Esta cuenta ha sido bloqueada por el administrador.'], 403);
+            }
+
             $token = $user->createToken('authToken')->accessToken;
 
             // Load associated companies

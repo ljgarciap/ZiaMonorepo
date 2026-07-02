@@ -77,6 +77,24 @@ class AuthControllerTest extends TestCase
         $response->assertStatus(401);
     }
 
+    // P0-adjacent: "habilitar o bloquear cuentas" (spec 1.2.3)
+    public function test_blocked_user_cannot_login(): void
+    {
+        User::factory()->create([
+            'email'      => 'bloqueado@example.com',
+            'password'   => bcrypt('secret123'),
+            'role'       => 'admin',
+            'is_blocked' => true,
+        ]);
+
+        $response = $this->postJson('/api/login', [
+            'email'    => 'bloqueado@example.com',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertStatus(403);
+    }
+
     public function test_authenticated_user_can_logout()
     {
         $user  = User::factory()->create(['role' => 'admin']);

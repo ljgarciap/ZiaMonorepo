@@ -161,6 +161,30 @@ class AdminUserController extends Controller
     }
 
     /**
+     * POST /admin/users/{user}/toggle-block
+     * Spec 1.2.3: Superadmin "Habilitar o bloquear... cuentas" — distinto de
+     * eliminar: la cuenta sigue existiendo pero no puede autenticarse mientras
+     * esté bloqueada (ver AuthController::login).
+     */
+    public function toggleBlock(User $user)
+    {
+        $activeRole = request()->header('X-Context-Role') ?: auth()->user()->role;
+        if ($activeRole !== 'superadmin') {
+            return response()->json(['error' => 'Solo el Superadmin puede bloquear cuentas.'], 403);
+        }
+        if ($user->id === auth()->id()) {
+            return response()->json(['error' => 'No puedes bloquear tu propia cuenta.'], 400);
+        }
+
+        $user->update([
+            'is_blocked' => !$user->is_blocked,
+            'blocked_at' => $user->is_blocked ? null : now(),
+        ]);
+
+        return response()->json($user);
+    }
+
+    /**
      * Builds sync() pivot data keyed by company id. The pivot 'role' must mirror
      * the user's account role — otherwise a company-scoped context (used by
      * RoleMiddleware to validate X-Context-Role) silently falls back to the

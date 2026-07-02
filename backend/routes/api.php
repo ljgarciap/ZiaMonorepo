@@ -46,6 +46,7 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/users/{user}', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'update']);
         Route::delete('/users/{user}', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'destroy']);
         Route::post('/users/{id}/restore', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'restore']);
+        Route::post('/users/{user}/toggle-block', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'toggleBlock']);
 
         // SA-17: estadísticas globales de plataforma — solo superadmin
         Route::middleware(['role:superadmin'])->get('/platform-stats', [\App\Http\Controllers\Api\Admin\AdminCompanyController::class, 'platformStats']);

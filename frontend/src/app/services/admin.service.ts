@@ -60,6 +60,10 @@ export class AdminService {
         return this.http.post(`${this.apiUrl}/users/${id}/restore`, {});
     }
 
+    toggleUserBlock(id: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/users/${id}/toggle-block`, {});
+    }
+
     // Master Data (SuperAdmin)
     getCategories(): Observable<any[]> {
         return this.http.get<any[]>(`${this.apiUrl}/categories`);
