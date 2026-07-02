@@ -162,6 +162,49 @@ class AdminMasterDataControllerTest extends TestCase
         $this->assertSoftDeleted('emission_factors', ['id' => $factor->id]);
     }
 
+    // ─── factorVersions (gap: "versionar Factores de Emisión") ────────────────
+
+    public function test_factor_versions_lists_creation_and_updates_in_order()
+    {
+        // Se crea vía el endpoint (autenticado) para que LogsActivity capture el 'created';
+        // un ::factory()->create() directo no queda logueado por no haber Auth::check().
+        $storeResponse = $this->actingAs($this->superadmin, 'api')
+             ->postJson('/api/admin/factors', [
+                 'emission_category_id' => $this->category->id,
+                 'measurement_unit_id'  => $this->unit->id,
+                 'name'                 => 'Diesel',
+                 'factor_co2'           => 2.5,
+                 'factor_total_co2e'    => 2.5,
+             ]);
+        $factor = EmissionFactor::find($storeResponse->json('id'));
+
+        $this->actingAs($this->superadmin, 'api')
+             ->putJson("/api/admin/factors/{$factor->id}", ['factor_co2' => 2.7]);
+
+        $response = $this->actingAs($this->superadmin, 'api')
+             ->getJson("/api/admin/factors/{$factor->id}/versions");
+
+        $response->assertOk();
+        $versions = $response->json('versions');
+        $this->assertCount(2, $versions);
+        $this->assertSame('created', $versions[0]['action']);
+        $this->assertSame('updated', $versions[1]['action']);
+        $this->assertEquals(2.5, $versions[1]['changes']['old']['factor_co2']);
+        $this->assertEquals(2.7, $versions[1]['changes']['new']['factor_co2']);
+    }
+
+    public function test_admin_cannot_access_factor_versions()
+    {
+        $factor = EmissionFactor::factory()->create([
+            'emission_category_id' => $this->category->id,
+            'measurement_unit_id'  => $this->unit->id,
+        ]);
+
+        $this->actingAs($this->admin, 'api')
+             ->getJson("/api/admin/factors/{$factor->id}/versions")
+             ->assertForbidden();
+    }
+
     // ─── access control ──────────────────────────────────────────────────────
 
     public function test_admin_cannot_access_categories_endpoint()

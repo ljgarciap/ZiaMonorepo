@@ -162,8 +162,18 @@ class CarbonEmissionController extends Controller
      *     @OA\Response(response=204, description="Deleted successfully")
      * )
      */
-    public function destroy(CarbonEmission $emission)
+    public function destroy(Request $request, CarbonEmission $emission)
     {
+        // Reglas de seguridad spec 1.2.3: "Periodos cerrados: los datos no pueden ser
+        // editados por ningún rol, salvo corrección auditada por Superadmin." La
+        // eliminación ya queda registrada en bitácora vía LogsActivity — esto solo
+        // restringe QUIÉN puede hacerlo una vez el período está cerrado.
+        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+
+        if ($emission->period && $emission->period->status === 'closed' && $activeRole !== 'superadmin') {
+            return response()->json(['error' => 'Solo el Superadmin puede eliminar registros de un período cerrado.'], 403);
+        }
+
         $emission->delete();
         return response()->json(null, 204);
     }

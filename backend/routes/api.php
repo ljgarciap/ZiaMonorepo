@@ -84,6 +84,8 @@ Route::middleware('auth:api')->group(function () {
             Route::post('/factors', [\App\Http\Controllers\Api\Admin\AdminMasterDataController::class, 'storeFactor']);
             Route::put('/factors/{factor}', [\App\Http\Controllers\Api\Admin\AdminMasterDataController::class, 'updateFactor']);
             Route::delete('/factors/{factor}', [\App\Http\Controllers\Api\Admin\AdminMasterDataController::class, 'deleteFactor']);
+            // Versionado de factores (spec 1.2.3), sobre la bitácora ya existente
+            Route::get('/factors/{factor}/versions', [\App\Http\Controllers\Api\Admin\AdminMasterDataController::class, 'factorVersions']);
             Route::apiResource('/formulas', \App\Http\Controllers\Api\Admin\CalculationFormulaController::class);
             Route::apiResource('/units', \App\Http\Controllers\Api\Admin\AdminUnitController::class);
             Route::post('/units/{unit}/toggle', [\App\Http\Controllers\Api\Admin\AdminUnitController::class, 'toggle']);

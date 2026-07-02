@@ -304,4 +304,61 @@ class CarbonEmissionApiTest extends TestCase
         $response->assertOk()->assertJsonStructure(['data']);
         $this->assertGreaterThanOrEqual(1, count($response->json('data')));
     }
+
+    // ─── destroy: protección de período cerrado (spec 1.2.3) ───────────────────
+
+    public function test_admin_can_delete_emission_of_open_period()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'api')
+             ->deleteJson("/api/emissions/{$emission->id}")
+             ->assertNoContent();
+
+        $this->assertSoftDeleted('carbon_emissions', ['id' => $emission->id]);
+    }
+
+    public function test_admin_cannot_delete_emission_of_closed_period()
+    {
+        $this->period->update(['status' => 'closed']);
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'api')
+             ->deleteJson("/api/emissions/{$emission->id}")
+             ->assertStatus(403);
+
+        $this->assertDatabaseHas('carbon_emissions', ['id' => $emission->id, 'deleted_at' => null]);
+    }
+
+    public function test_superadmin_can_delete_emission_of_closed_period()
+    {
+        $this->period->update(['status' => 'closed']);
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+
+        $this->actingAs($superadmin, 'api')
+             ->deleteJson("/api/emissions/{$emission->id}")
+             ->assertNoContent();
+
+        $this->assertSoftDeleted('carbon_emissions', ['id' => $emission->id]);
+    }
+
+    public function test_deleting_emission_from_closed_period_is_logged_to_activity_log()
+    {
+        $this->period->update(['status' => 'closed']);
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+
+        $this->actingAs($superadmin, 'api')
+             ->deleteJson("/api/emissions/{$emission->id}");
+
+        $this->assertDatabaseHas('activity_logs', [
+            'model' => CarbonEmission::class,
+            'model_id' => $emission->id,
+            'action' => 'deleted',
+            'user_id' => $superadmin->id,
+        ]);
+    }
 }

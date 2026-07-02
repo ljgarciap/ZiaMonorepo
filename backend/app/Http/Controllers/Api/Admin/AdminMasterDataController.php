@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ActivityLog;
 use App\Models\EmissionCategory;
 use App\Models\EmissionFactor;
 use Illuminate\Http\Request;
@@ -102,5 +103,37 @@ class AdminMasterDataController extends Controller
     {
         $factor->delete();
         return response()->json(null, 204);
+    }
+
+    /**
+     * GET /admin/factors/{factor}/versions
+     * Spec 1.2.3: Superadmin "Configurar y versionar Factores de Emisión". El cálculo
+     * de huella siempre usa el valor vigente de EmissionFactor (sin cambios de
+     * comportamiento); esto solo expone el historial ya capturado por LogsActivity
+     * como una línea de tiempo de versiones, para trazabilidad metodológica.
+     */
+    public function factorVersions(EmissionFactor $factor)
+    {
+        $history = ActivityLog::where('model', EmissionFactor::class)
+            ->where('model_id', $factor->id)
+            ->whereIn('action', ['created', 'updated'])
+            ->with('user:id,name')
+            ->orderBy('created_at')
+            ->get()
+            ->values()
+            ->map(function ($log, $index) {
+                return [
+                    'version' => $index + 1,
+                    'action' => $log->action,
+                    'changed_by' => $log->user?->name,
+                    'changed_at' => $log->created_at,
+                    'changes' => $log->details,
+                ];
+            });
+
+        return response()->json([
+            'factor' => $factor,
+            'versions' => $history,
+        ]);
     }
 }
