@@ -32,13 +32,15 @@ export const routes: Routes = [
                 path: 'form',
                 component: FormComponent,
                 canActivate: [roleGuard],
-                data: { roles: ['admin', 'user', 'auditor', 'iot_tech'] } // SA-01: superadmin no captura datos operativos
+                // SA-01: superadmin no captura datos operativos. Auditor (solo lectura) e
+                // iot_tech (sin acceso a datos de emisiones) tampoco escriben en el formulario.
+                data: { roles: ['admin', 'user'] }
             },
             {
                 path: 'smart-intake',
                 loadComponent: () => import('./components/smart-intake/smart-intake').then(m => m.SmartIntakeComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['admin', 'user', 'auditor', 'iot_tech'] } // SA-01: superadmin no captura datos operativos
+                data: { roles: ['admin', 'user'] }
             },
             {
                 path: 'live',

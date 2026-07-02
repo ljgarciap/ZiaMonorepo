@@ -28,13 +28,22 @@ trait LogsActivity
 
         $details = null;
         if ($action === 'updated') {
-            $details = $model->getChanges();
+            $new = $model->getChanges();
+            $old = [];
+            foreach (array_keys($new) as $key) {
+                $old[$key] = $model->getOriginal($key);
+            }
+            $details = ['old' => $old, 'new' => $new];
         } else if ($action === 'created') {
              $details = $model->getAttributes();
         }
 
         // Avoid logging hidden attributes like passwords
         if ($details) {
+            foreach (['old', 'new'] as $side) {
+                if (isset($details[$side]['password'])) unset($details[$side]['password']);
+                if (isset($details[$side]['remember_token'])) unset($details[$side]['remember_token']);
+            }
             if (isset($details['password'])) unset($details['password']);
             if (isset($details['remember_token'])) unset($details['remember_token']);
         }

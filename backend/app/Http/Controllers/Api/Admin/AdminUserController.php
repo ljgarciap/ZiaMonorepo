@@ -53,7 +53,9 @@ class AdminUserController extends Controller
                     $myCompanyIds = $currentUser->companies->pluck('id')->toArray();
                     $companies = array_intersect($companies, $myCompanyIds);
                 }
-                $existingUser->companies()->syncWithoutDetaching($companies);
+                $existingUser->companies()->syncWithoutDetaching(
+                    $this->pivotData($companies, $existingUser->role, $request->access_expires_at)
+                );
             }
 
             return response()->json($existingUser->load('companies'), 200);
@@ -66,6 +68,7 @@ class AdminUserController extends Controller
             'role' => 'required|string|in:superadmin,admin,user,iot_tech,auditor',
             'companies' => 'array',
             'companies.*' => 'exists:companies,id',
+            'access_expires_at' => 'nullable|date',
         ]);
 
         if ($validator->fails()) {
@@ -92,7 +95,7 @@ class AdminUserController extends Controller
                 $myCompanyIds = $currentUser->companies->pluck('id')->toArray();
                 $companies = array_intersect($companies, $myCompanyIds);
             }
-            $user->companies()->sync($companies);
+            $user->companies()->sync($this->pivotData($companies, $user->role, $request->access_expires_at));
         }
 
         try {
@@ -131,7 +134,7 @@ class AdminUserController extends Controller
                 $myCompanyIds = $currentUser->companies->pluck('id')->toArray();
                 $companies = array_intersect($companies, $myCompanyIds);
             }
-            $user->companies()->sync($companies);
+            $user->companies()->sync($this->pivotData($companies, $user->role, $request->access_expires_at));
         }
 
         return response()->json($user->load('companies'));
@@ -155,5 +158,18 @@ class AdminUserController extends Controller
         $user = User::withTrashed()->findOrFail($id);
         $user->restore();
         return response()->json($user->load('companies'));
+    }
+
+    /**
+     * Builds sync() pivot data keyed by company id. The pivot 'role' must mirror
+     * the user's account role — otherwise a company-scoped context (used by
+     * RoleMiddleware to validate X-Context-Role) silently falls back to the
+     * column default ('user'), granting a broader role than the account has.
+     */
+    private function pivotData(array $companyIds, string $role, ?string $expiresAt): array
+    {
+        return collect($companyIds)->mapWithKeys(fn ($id) => [
+            $id => ['role' => $role, 'expires_at' => $expiresAt],
+        ])->all();
     }
 }

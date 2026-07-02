@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Carbon\Carbon;
 
 class AuthController extends Controller
 {
@@ -108,7 +109,10 @@ class AuthController extends Controller
 
             // 2. Company Contexts
             foreach ($user->companies as $company) {
-                 if ($company->pivot->is_active) {
+                 $expiresAt = $company->pivot->expires_at;
+                 $expired = $expiresAt && Carbon::parse($expiresAt)->isPast();
+
+                 if ($company->pivot->is_active && !$expired) {
                     $contexts[] = [
                         'type' => 'company',
                         'id' => $company->id,

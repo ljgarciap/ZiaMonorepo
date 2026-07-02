@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 use App\Models\User;
+use App\Models\Company;
+use App\Models\CompanySector;
 
 class AuthControllerTest extends TestCase
 {
@@ -85,5 +87,54 @@ class AuthControllerTest extends TestCase
 
         $response->assertStatus(200)
                  ->assertJson(['message' => 'Successfully logged out']);
+    }
+
+    // P1: acceso temporal de Auditor externo — el contexto vence automáticamente
+    public function test_login_excludes_expired_company_access(): void
+    {
+        $sector  = CompanySector::create(['name' => 'Servicios Test']);
+        $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+        $auditor = User::factory()->create([
+            'email'    => 'auditor@example.com',
+            'password' => bcrypt('secret123'),
+            'role'     => 'auditor',
+        ]);
+        $auditor->companies()->attach($company->id, [
+            'role' => 'auditor',
+            'is_active' => true,
+            'expires_at' => now()->subDay(),
+        ]);
+
+        $response = $this->postJson('/api/login', [
+            'email'    => 'auditor@example.com',
+            'password' => 'secret123',
+        ]);
+
+        // No contexts left once the only company assignment has expired.
+        $response->assertStatus(403);
+    }
+
+    public function test_login_includes_active_company_access(): void
+    {
+        $sector  = CompanySector::create(['name' => 'Servicios Test']);
+        $company = Company::factory()->create(['company_sector_id' => $sector->id]);
+        $auditor = User::factory()->create([
+            'email'    => 'auditor2@example.com',
+            'password' => bcrypt('secret123'),
+            'role'     => 'auditor',
+        ]);
+        $auditor->companies()->attach($company->id, [
+            'role' => 'auditor',
+            'is_active' => true,
+            'expires_at' => now()->addWeek(),
+        ]);
+
+        $response = $this->postJson('/api/login', [
+            'email'    => 'auditor2@example.com',
+            'password' => 'secret123',
+        ]);
+
+        $response->assertStatus(200)
+                 ->assertJsonPath('context.role', 'auditor');
     }
 }
