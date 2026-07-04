@@ -1,0 +1,169 @@
+# Manual de Usuario — Superadministrador
+
+**Rol**: `superadmin`
+**Última actualización**: 2026-07-04
+**Alcance**: ZIA Carbon Control
+**Audiencia**: uso interno del equipo (no se distribuye a empresas clientes)
+
+## ¿Qué puedes hacer con este rol?
+Eres el único rol con visibilidad y control sobre toda la plataforma —
+todas las empresas, todos los usuarios, y los catálogos globales que
+usan todas las empresas (factores de emisión, tags, sectores, unidades).
+El resto de los roles (`admin`, `user`, `iot_tech`, `auditor`, `viewer`)
+solo ven su propia empresa.
+
+## Panel ejecutivo de plataforma
+### Para qué sirve
+Ver el estado consolidado de todas las empresas: KPIs globales, top 5
+empresas por huella, tendencia de 5 años.
+
+### Paso a paso
+1. Entra a **Administración → Plataforma** (`/admin/platform`)
+2. El panel carga automáticamente el consolidado — no requiere seleccionar empresa
+
+### Qué vas a ver
+Solo tú ves esta pantalla. Ningún otro rol tiene acceso, ni siquiera admin.
+
+## Dashboard por empresa
+### Para qué sirve
+Ver el consolidado de huella de carbono de una empresa específica, igual
+que lo vería su Admin.
+
+### Paso a paso
+1. Selecciona la empresa desde el selector de contexto
+2. Entra a **Dashboard**
+
+### Qué vas a ver
+El consolidado completo (nunca scoped a "tus propias" emisiones — eso
+solo le pasa al rol `user`). También ves el Panel de Completitud
+Administrativa (por unidad/por usuario), que los roles `user`, `auditor`
+y `viewer` no ven.
+
+## Gestión de empresas
+### Para qué sirve
+Dar de alta nuevas empresas clientes y administrar las existentes.
+
+### Paso a paso
+1. **Administración → Empresas** (`/admin/companies`)
+2. Crear/editar/eliminar — eres el único rol que puede escribir aquí; el
+   Admin de una empresa solo puede **leer** los datos de la suya (pantalla
+   separada, de solo lectura)
+3. **Aprobar metodología**: cuando una empresa define su metodología de
+   cálculo (año base, enfoque de descarbonización), debes aprobarla
+   explícitamente. Si el Admin cambia metodología/año base después,
+   la aprobación se revoca automáticamente y debes volver a aprobarla
+
+### Qué vas a ver
+Un listado de todas las empresas de la plataforma, no solo las tuyas.
+
+## Gestión de usuarios
+### Para qué sirve
+Crear, editar, bloquear y eliminar cuentas de cualquier rol, en cualquier empresa.
+
+### Paso a paso
+1. **Administración → Usuarios** (`/admin/users`)
+2. Puedes asignar cualquier rol: `superadmin`, `admin`, `user`, `iot_tech`, `auditor`, `viewer`
+3. **Bloquear cuenta** (sin eliminarla): útil para suspender acceso temporalmente. Un usuario bloqueado no puede iniciar sesión, y si ya tenía una sesión abierta, se le rechaza en la siguiente petición — no basta con esperar a que expire el token
+4. **Eliminar cuenta**: acción exclusiva tuya — ni el Admin de empresa puede hacerlo
+
+### Qué vas a ver
+Todos los usuarios de la plataforma, incluidos los eliminados (marcados como tal).
+
+### Errores comunes
+- Si entras "como admin" (auto-degradado, sin seleccionar una empresa
+  específica) y no tienes tú mismo una fila de pertenencia a esa empresa,
+  vas a ver listas vacías de usuarios/empresas en ese contexto — no es un
+  bug, es que estás viendo la empresa desde el lente de "admin sin
+  empresa asignada"
+
+## Períodos de reporte
+### Para qué sirve
+Administrar el ciclo de vida completo de un período (crear, cerrar,
+reabrir, enviar a revisión, archivar).
+
+### Paso a paso
+1. **Administración → Períodos**
+2. Eres el único rol que puede cerrar/reabrir/archivar un período — el
+   Admin solo puede leerlo (ver nota abajo)
+
+### Errores comunes
+- La pantalla de gestión de períodos es visible para el Admin también,
+  pero si el Admin intenta cerrar/reabrir/archivar, la acción falla — esas
+  operaciones son exclusivas tuyas aunque la pantalla no lo distinga
+  visualmente. Si un Admin te reporta un error al intentarlo, es
+  comportamiento esperado, no un bug
+
+## Emisiones — borrado en período cerrado
+### Para qué sirve
+Corregir datos de un período ya cerrado, con auditoría completa vía bitácora.
+
+### Paso a paso
+1. Desde el histórico de emisiones de la empresa, localiza el registro
+2. Solo tú puedes borrar un registro si su período está `closed` — el
+   Admin puede borrar únicamente en períodos abiertos
+3. Cualquier borrado queda registrado en la bitácora de actividad
+
+## Catálogo de tags, factores de emisión y otros catálogos globales
+### Para qué sirve
+Mantener los catálogos que usan todas las empresas: tags, factores de
+emisión (con versionado — puedes ver el historial de cambios de cada
+factor), fórmulas, unidades, alcances, sectores.
+
+### Paso a paso
+1. **Administración → Tags / Factores / Sectores / Unidades** según corresponda
+2. Los cambios a un factor de emisión quedan versionados — el motor de
+   cálculo sigue usando el valor vigente, pero puedes consultar la línea
+   de tiempo de cambios
+
+### Errores comunes
+- Habilitar/deshabilitar qué factores usa una empresa específica también
+  lo puede hacer el Admin de esa empresa — no es exclusivo tuyo, a
+  diferencia del catálogo maestro
+
+## Dispositivos IoT
+### Para qué sirve
+Gestión completa de dispositivos de cualquier empresa, sin restricción de pertenencia.
+
+### Paso a paso
+1. **Administración → Dispositivos IoT** (vista global de toda la plataforma) o
+2. Navega directo a `/iot/devices` para gestionar los de una empresa puntual
+
+### Errores comunes
+- El link de "Dispositivos IoT" en el menú lateral solo aparece
+  automáticamente para el rol `iot_tech`. Como superadmin tienes acceso
+  a la pantalla, pero debes navegar directo a la URL — el link no
+  aparece en tu menú
+
+## Auditoría — asignación de auditores externos
+### Para qué sirve
+Dar de alta a un Auditor externo y definir a qué empresa y **período
+exacto** tiene acceso, con fecha de vencimiento.
+
+### Paso a paso
+1. **Administración → Asignaciones de Auditor** (`/admin/auditor-assignments`)
+2. Crea la asignación: auditor + empresa + período + vencimiento
+3. Esto es independiente de si el auditor ya tiene acceso general a la
+   empresa (esa es otra capa: pertenencia a empresa con su propio
+   vencimiento). Ambas capas deben estar vigentes para que el auditor
+   vea y dictamine sobre ese período puntual
+
+### Qué vas a ver
+También puedes crear observaciones de auditoría tú mismo (igual que el
+Auditor), y moderar/eliminar cualquier observación (igual que el Admin).
+
+## Cuestionarios (Smart Intake)
+### Para qué sirve
+Crear y versionar las plantillas de cuestionario que las empresas usan para capturar datos.
+
+### Paso a paso
+1. **Administración → Cuestionarios**
+2. Crear, versionar, publicar, archivar preguntas y plantillas
+
+## Gestión de Grupos de Empresas
+### Para qué sirve
+Agrupar empresas relacionadas (ej. holdings con varias subsidiarias).
+
+### Errores comunes
+- Esta funcionalidad existe en el backend pero **no tiene pantalla en el
+  frontend todavía**. Si necesitas usarla, es vía API directa — pregunta
+  al equipo técnico si surge la necesidad de un caso real
