@@ -199,7 +199,7 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
                     <mat-icon>download</mat-icon>
                   </button>
                 </div>
-                <label class="upload-label">
+                <label class="upload-label" *ngIf="canUploadEvidence">
                   <mat-icon>upload</mat-icon> Subir soporte (PDF, Excel, imagen)
                   <input type="file" hidden accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.webp"
                     (change)="uploadEvidence($event, row)">
@@ -353,6 +353,12 @@ export class HistoryComponent implements OnInit, AfterViewInit {
   get isAdmin(): boolean {
     const role = this.authService.currentContext()?.role || this.authService.currentUser()?.role || '';
     return role === 'admin' || role === 'superadmin';
+  }
+
+  // Backend solo autoriza POST /emissions/{id}/evidences para superadmin, admin y user
+  get canUploadEvidence(): boolean {
+    const role = this.authService.currentContext()?.role || this.authService.currentUser()?.role || '';
+    return role === 'admin' || role === 'superadmin' || role === 'user';
   }
 
   ngOnInit() {

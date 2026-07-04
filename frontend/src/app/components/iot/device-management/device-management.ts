@@ -36,9 +36,11 @@ import { IotDeviceService } from '../../../services/iot-device.service';
       <div class="header-section">
         <div class="title-group">
           <h1>Dispositivos IoT</h1>
-          <p class="subtitle">Registro, configuración y calibración de sensores de {{ companyName }}.</p>
+          <p class="subtitle">
+            {{ canManage ? 'Registro, configuración y calibración de sensores de ' + companyName + '.' : 'Consulta de sensores de ' + companyName + ' (solo lectura).' }}
+          </p>
         </div>
-        <button mat-flat-button color="primary" (click)="showCreateForm = !showCreateForm">
+        <button mat-flat-button color="primary" *ngIf="canManage" (click)="showCreateForm = !showCreateForm">
           <mat-icon>add</mat-icon> Registrar dispositivo
         </button>
       </div>
@@ -139,7 +141,7 @@ import { IotDeviceService } from '../../../services/iot-device.service';
             <span class="alert-device">{{ a.device?.name }}</span>
             <span class="alert-msg">{{ a.message }}</span>
           </div>
-          <button mat-stroked-button (click)="resolveAlert(a)">Diagnosticar y resolver</button>
+          <button mat-stroked-button *ngIf="canManage" (click)="resolveAlert(a)">Diagnosticar y resolver</button>
         </div>
       </div>
     </div>
@@ -185,7 +187,7 @@ export class IotDeviceManagementComponent implements OnInit {
     alerts: any[] = [];
     loading = false;
     showCreateForm = false;
-    columns = ['name', 'readings', 'alerts', 'calibration', 'actions'];
+    columns: string[] = [];
 
     newDevice: any = { name: '', type: 'energy', location: '', unit: '', thingsboard_id: '' };
 
@@ -197,7 +199,16 @@ export class IotDeviceManagementComponent implements OnInit {
         return this.authService.currentContext()?.label || 'tu empresa asignada';
     }
 
+    // Backend: Superadmin/Técnico IoT tienen CRUD completo; Admin solo lee (routes/api.php:197-206)
+    get canManage(): boolean {
+        const role = this.authService.currentContext()?.role;
+        return role === 'superadmin' || role === 'iot_tech';
+    }
+
     ngOnInit() {
+        this.columns = this.canManage
+            ? ['name', 'readings', 'alerts', 'calibration', 'actions']
+            : ['name', 'readings', 'alerts', 'calibration'];
         this.loadData();
     }
 

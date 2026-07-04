@@ -54,7 +54,7 @@ export const routes: Routes = [
                 path: 'iot/devices',
                 loadComponent: () => import('./components/iot/device-management/device-management').then(m => m.IotDeviceManagementComponent),
                 canActivate: [roleGuard],
-                data: { roles: ['iot_tech', 'superadmin'] } // Técnico IoT: registro/config/calibración de dispositivos
+                data: { roles: ['iot_tech', 'superadmin', 'admin'] } // Técnico IoT/Superadmin: gestión completa. Admin: solo lectura de su empresa
             },
             {
                 path: 'audit/observations',

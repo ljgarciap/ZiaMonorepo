@@ -22,7 +22,9 @@
                 <mat-icon matListItemIcon>sensors</mat-icon>
                 <div matListItemTitle>Zia Live</div>
             </a>
-            <a mat-list-item routerLink="/simulator" routerLinkActive="active-link">
+            <!-- Simulador de IA: solo admin/user/superadmin lo tienen habilitado en el backend -->
+            <a *ngIf="['superadmin','admin','user'].includes(authService.currentContext()?.role || '')"
+                mat-list-item routerLink="/simulator" routerLinkActive="active-link">
                 <mat-icon matListItemIcon>science</mat-icon>
                 <div matListItemTitle>Simulador</div>
             </a>
@@ -40,7 +42,7 @@
             </a>
             <!-- Historial: usuario ve sus propios registros; admin ve historial con panel de validación (A09);
                  viewer ve el historial de su empresa en solo lectura. -->
-            <a *ngIf="['user','admin','superadmin','viewer'].includes(authService.currentContext()?.role || '')"
+            <a *ngIf="['user','admin','superadmin','viewer','auditor'].includes(authService.currentContext()?.role || '')"
                 mat-list-item routerLink="/history" routerLinkActive="active-link">
                 <mat-icon matListItemIcon>history</mat-icon>
                 <div matListItemTitle>
@@ -94,6 +96,13 @@
                 <a mat-list-item routerLink="/admin/audit" routerLinkActive="active-link">
                     <mat-icon matListItemIcon>manage_search</mat-icon>
                     <div matListItemTitle>Auditoría</div>
+                </a>
+
+                <!-- Admin: solo lectura de dispositivos IoT de su empresa (Técnico IoT/Superadmin tienen el CRUD completo) -->
+                <a *ngIf="authService.currentContext()?.role === 'admin'"
+                    mat-list-item routerLink="/iot/devices" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>developer_board</mat-icon>
+                    <div matListItemTitle>Dispositivos IoT</div>
                 </a>
 
                 <!-- Superadmin-only: catálogos metodológicos globales (A04/A05/A06/A07) -->

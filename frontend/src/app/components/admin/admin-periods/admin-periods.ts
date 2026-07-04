@@ -78,7 +78,7 @@ const PERIOD_STATES: Record<string, { label: string; icon: string; color: string
             <ng-container matColumnDef="actions">
               <th mat-header-cell *matHeaderCellDef>Acciones</th>
               <td mat-cell *matCellDef="let row">
-                <div class="action-group">
+                <div class="action-group" *ngIf="canManagePeriods">
                   <!-- Abierto / Activo → Enviar a Revisión -->
                   <button mat-stroked-button class="action-review"
                     *ngIf="isOpenState(row.status)"
@@ -184,9 +184,16 @@ export class AdminPeriodsComponent implements OnInit {
   displayedColumns = ['company', 'year', 'status', 'actions'];
   loading = true;
   isSuperadmin = false;
+  canManagePeriods = false;
 
   ngOnInit() {
-    this.isSuperadmin = (this.authService.currentUser() as any)?.role === 'superadmin';
+    const role = this.authService.currentContext()?.role || (this.authService.currentUser() as any)?.role;
+    this.isSuperadmin = role === 'superadmin';
+    // A11: cerrar/reabrir/archivar/enviar a revisión son exclusivos de superadmin — admin ve solo el estado
+    this.canManagePeriods = this.isSuperadmin;
+    this.displayedColumns = this.canManagePeriods
+      ? ['company', 'year', 'status', 'actions']
+      : ['company', 'year', 'status'];
     this.load();
   }
 
