@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, ChangeDetectorRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -42,12 +42,12 @@ const PERIOD_STATES: Record<string, { label: string; icon: string; color: string
       </div>
 
       <div class="glass-card table-wrapper">
-        <div class="spinner-container" *ngIf="loading">
+        <div class="spinner-container" *ngIf="loading()">
           <mat-spinner diameter="40"></mat-spinner>
           <p>Cargando períodos...</p>
         </div>
 
-        <div class="table-container" *ngIf="!loading">
+        <div class="table-container" *ngIf="!loading()">
           <table mat-table [dataSource]="dataSource" class="prestige-table">
 
             <ng-container matColumnDef="company">
@@ -179,10 +179,11 @@ export class AdminPeriodsComponent implements OnInit {
   private adminService = inject(AdminService);
   private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
+  private cdr = inject(ChangeDetectorRef);
 
   dataSource = new MatTableDataSource<any>([]);
   displayedColumns = ['company', 'year', 'status', 'actions'];
-  loading = true;
+  loading = signal(true);
   isSuperadmin = false;
   canManagePeriods = false;
 
@@ -198,7 +199,7 @@ export class AdminPeriodsComponent implements OnInit {
   }
 
   load() {
-    this.loading = true;
+    this.loading.set(true);
     this.adminService.getCompanies().subscribe({
       next: (companies) => {
         const rows: any[] = [];
@@ -208,10 +209,14 @@ export class AdminPeriodsComponent implements OnInit {
           }
         }
         rows.sort((a, b) => b.year - a.year);
+        // MatTableDataSource is a Material API, not a plain value — it can't be
+        // wrapped in a signal usefully. markForCheck() as fallback ensures the
+        // row assignment is picked up even without a template-level signal read.
         this.dataSource.data = rows;
-        this.loading = false;
+        this.loading.set(false);
+        this.cdr.markForCheck();
       },
-      error: () => { this.loading = false; }
+      error: () => { this.loading.set(false); this.cdr.markForCheck(); }
     });
   }
 

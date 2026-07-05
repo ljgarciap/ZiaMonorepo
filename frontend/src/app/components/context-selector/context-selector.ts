@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
@@ -15,7 +15,7 @@ import { ContextService } from '../../services/context.service';
       <div class="selector-group">
         <span class="selector-label">Empresa</span>
         <mat-select [(ngModel)]="selectedCompany" (selectionChange)="onCompanyChange($event.value)" class="zia-select">
-          <mat-option *ngFor="let company of companies" [value]="company">
+          <mat-option *ngFor="let company of companies()" [value]="company">
             {{ company.name }}
           </mat-option>
         </mat-select>
@@ -24,7 +24,7 @@ import { ContextService } from '../../services/context.service';
       <div class="selector-group" *ngIf="selectedCompany">
         <span class="selector-label">Año</span>
         <mat-select [(ngModel)]="selectedPeriod" (selectionChange)="onPeriodChange($event.value)" class="zia-select">
-          <mat-option *ngFor="let period of periods" [value]="period">
+          <mat-option *ngFor="let period of periods()" [value]="period">
             {{ period.year }}
           </mat-option>
         </mat-select>
@@ -80,8 +80,8 @@ export class ContextSelectorComponent implements OnInit {
   masterData = inject(MasterDataService);
   context = inject(ContextService);
 
-  companies: any[] = [];
-  periods: any[] = [];
+  companies = signal<any[]>([]);
+  periods = signal<any[]>([]);
 
   selectedCompany: any;
   selectedPeriod: any;
@@ -100,10 +100,10 @@ export class ContextSelectorComponent implements OnInit {
     this.masterData.getCompanies().subscribe({
       next: (data) => {
         console.log('Loaded companies:', data);
-        this.companies = data;
+        this.companies.set(data);
         // Auto-select first if none selected
-        if (!this.selectedCompany && this.companies.length > 0) {
-          this.onCompanyChange(this.companies[0]);
+        if (!this.selectedCompany && this.companies().length > 0) {
+          this.onCompanyChange(this.companies()[0]);
         }
       },
       error: (e) => console.error('Error loading companies:', e)
@@ -112,10 +112,10 @@ export class ContextSelectorComponent implements OnInit {
 
   loadPeriods(companyId: number) {
     this.masterData.getPeriods(companyId).subscribe(data => {
-      this.periods = data;
+      this.periods.set(data);
       // Auto-select active/newest period
-      if (!this.selectedPeriod && this.periods.length > 0) {
-        this.onPeriodChange(this.periods[0]);
+      if (!this.selectedPeriod && this.periods().length > 0) {
+        this.onPeriodChange(this.periods()[0]);
       }
     });
   }

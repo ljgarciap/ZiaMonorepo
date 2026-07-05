@@ -257,12 +257,16 @@ export class SectorDialog {
             <mat-label>Rol / Nivel de Acceso</mat-label>
             <mat-select formControlName="role">
               <mat-option value="user">Usuario</mat-option>
+              <mat-option value="iot_tech" *ngIf="['superadmin'].includes(currentUserRole)">Técnico IoT</mat-option>
+              <mat-option value="auditor" *ngIf="['superadmin'].includes(currentUserRole)">Auditor Externo</mat-option>
+              <mat-option value="viewer" *ngIf="['superadmin'].includes(currentUserRole)">Viewer (Solo Lectura)</mat-option>
               <mat-option value="admin" *ngIf="['superadmin'].includes(currentUserRole)">Administrador</mat-option>
               <mat-option value="superadmin" *ngIf="['superadmin'].includes(currentUserRole)">Super Admin</mat-option>
             </mat-select>
+            <mat-hint>{{ roleHint() }}</mat-hint>
           </mat-form-field>
 
-          <mat-form-field appearance="outline" *ngIf="form.get('role')?.value === 'user'">
+          <mat-form-field appearance="outline" *ngIf="['user', 'iot_tech', 'auditor', 'viewer'].includes(form.get('role')?.value)">
             <mat-label>Empresas Asociadas</mat-label>
             <mat-select formControlName="companies" multiple>
               <mat-option *ngFor="let c of data.allCompanies" [value]="c.id">{{c.name}}</mat-option>
@@ -319,6 +323,16 @@ export class UserDialog {
 
   onCancel() {
     this.dialogRef.close();
+  }
+
+  roleHint(): string {
+    const hints: Record<string, string> = {
+      user: 'Registra datos de emisión y ve solo sus propias métricas.',
+      iot_tech: 'Gestiona dispositivos IoT de la empresa (alta, calibración, alertas). Sin acceso a emisiones ni dashboard.',
+      auditor: 'Acceso de solo lectura a la empresa, limitado al período que le asignes en Auditoría → Asignaciones. Puede dejar dictamen sobre ese período.',
+      viewer: 'Acceso de solo lectura a dashboard, histórico y reportes de la empresa. No registra ni administra nada.',
+    };
+    return hints[this.form.get('role')?.value] || '';
   }
 }
 

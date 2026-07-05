@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -79,12 +79,12 @@ import { IotDeviceService } from '../../../services/iot-device.service';
         </form>
       </mat-card>
 
-      <div class="spinner-wrap" *ngIf="loading">
+      <div class="spinner-wrap" *ngIf="loading()">
         <mat-spinner diameter="44"></mat-spinner>
       </div>
 
-      <div class="glass-card table-card" *ngIf="!loading">
-        <table mat-table [dataSource]="devices" class="device-table">
+      <div class="glass-card table-card" *ngIf="!loading()">
+        <table mat-table [dataSource]="devices()" class="device-table">
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Dispositivo</th>
             <td mat-cell *matCellDef="let d">
@@ -128,15 +128,15 @@ import { IotDeviceService } from '../../../services/iot-device.service';
           <tr mat-row *matRowDef="let row; columns: columns;"></tr>
         </table>
 
-        <div *ngIf="devices.length === 0" class="empty-state">
+        <div *ngIf="devices().length === 0" class="empty-state">
           <mat-icon>developer_board</mat-icon>
           <p>No hay dispositivos registrados en esta empresa.</p>
         </div>
       </div>
 
-      <div class="glass-card table-card alerts-card" *ngIf="!loading && alerts.length > 0">
+      <div class="glass-card table-card alerts-card" *ngIf="!loading() && alerts().length > 0">
         <h2>Alertas de telemetría sin resolver</h2>
-        <div class="alert-row" *ngFor="let a of alerts">
+        <div class="alert-row" *ngFor="let a of alerts()">
           <div class="alert-info">
             <span class="alert-device">{{ a.device?.name }}</span>
             <span class="alert-msg">{{ a.message }}</span>
@@ -183,9 +183,9 @@ export class IotDeviceManagementComponent implements OnInit {
     private iotDeviceService = inject(IotDeviceService);
     private snackBar = inject(MatSnackBar);
 
-    devices: any[] = [];
-    alerts: any[] = [];
-    loading = false;
+    devices = signal<any[]>([]);
+    alerts = signal<any[]>([]);
+    loading = signal(false);
     showCreateForm = false;
     columns: string[] = [];
 
@@ -214,18 +214,18 @@ export class IotDeviceManagementComponent implements OnInit {
 
     loadData() {
         if (!this.companyId) return;
-        this.loading = true;
+        this.loading.set(true);
 
         this.iotDeviceService.getDevices(this.companyId).subscribe({
             next: (devices) => {
-                this.devices = devices;
-                this.loading = false;
+                this.devices.set(devices);
+                this.loading.set(false);
             },
-            error: () => { this.loading = false; }
+            error: () => { this.loading.set(false); }
         });
 
         this.iotDeviceService.getLiveAlerts().subscribe({
-            next: (res) => { this.alerts = res.alerts || []; }
+            next: (res) => { this.alerts.set(res.alerts || []); }
         });
     }
 

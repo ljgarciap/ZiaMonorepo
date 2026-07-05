@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule } from '@angular/material/table';
@@ -48,7 +48,7 @@ import { AdminService } from '../../../services/admin.service';
               <mat-label>Sector (opcional)</mat-label>
               <mat-select [(ngModel)]="newTag.company_sector_id" name="company_sector_id">
                 <mat-option [value]="null">Global (todos los sectores)</mat-option>
-                <mat-option *ngFor="let s of sectors" [value]="s.id">{{ s.name }}</mat-option>
+                <mat-option *ngFor="let s of sectors()" [value]="s.id">{{ s.name }}</mat-option>
               </mat-select>
             </mat-form-field>
           </div>
@@ -59,7 +59,7 @@ import { AdminService } from '../../../services/admin.service';
       </div>
 
       <div class="glass-card table-card">
-        <table mat-table [dataSource]="tags" class="premium-table">
+        <table mat-table [dataSource]="tags()" class="premium-table">
           <ng-container matColumnDef="name">
             <th mat-header-cell *matHeaderCellDef>Nombre</th>
             <td mat-cell *matCellDef="let t">{{ t.name }}</td>
@@ -90,7 +90,7 @@ import { AdminService } from '../../../services/admin.service';
           <tr mat-row *matRowDef="let row; columns: columns;"></tr>
         </table>
 
-        <div *ngIf="tags.length === 0" class="empty-state">
+        <div *ngIf="tags().length === 0" class="empty-state">
           <mat-icon>sell</mat-icon>
           <p>Sin tags registrados todavía.</p>
         </div>
@@ -121,8 +121,8 @@ export class TagManagementComponent implements OnInit {
     private adminService = inject(AdminService);
     private snackBar = inject(MatSnackBar);
 
-    tags: any[] = [];
-    sectors: any[] = [];
+    tags = signal<any[]>([]);
+    sectors = signal<any[]>([]);
     columns = ['name', 'sector', 'active', 'actions'];
 
     newTag: { name: string; company_sector_id: number | null } = { name: '', company_sector_id: null };
@@ -130,13 +130,13 @@ export class TagManagementComponent implements OnInit {
     ngOnInit() {
         this.loadTags();
         this.adminService.getSectors().subscribe({
-            next: (sectors) => { this.sectors = sectors; }
+            next: (sectors) => { this.sectors.set(sectors); }
         });
     }
 
     loadTags() {
         this.adminService.getTags().subscribe({
-            next: (tags) => { this.tags = tags; }
+            next: (tags) => { this.tags.set(tags); }
         });
     }
 

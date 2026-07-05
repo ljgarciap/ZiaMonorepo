@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -25,13 +25,13 @@ import { AdminService } from '../../../services/admin.service';
         </div>
       </div>
 
-      <div class="spinner-container" *ngIf="loading">
+      <div class="spinner-container" *ngIf="loading()">
         <mat-spinner diameter="40"></mat-spinner>
       </div>
 
-      <ng-container *ngIf="!loading">
+      <ng-container *ngIf="!loading()">
         <div class="company-grid">
-          <div class="glass-card company-card" *ngFor="let company of companies">
+          <div class="glass-card company-card" *ngFor="let company of companies()">
             <div class="company-header">
               <div class="company-avatar">{{ company.name?.charAt(0) || '?' }}</div>
               <div>
@@ -94,7 +94,7 @@ import { AdminService } from '../../../services/admin.service';
           </div>
         </div>
 
-        <div class="empty-state" *ngIf="!companies.length">
+        <div class="empty-state" *ngIf="!companies().length">
           <mat-icon>domain_disabled</mat-icon>
           <p>No tienes empresas asignadas.</p>
         </div>
@@ -158,13 +158,13 @@ import { AdminService } from '../../../services/admin.service';
 export class AdminMyCompanyComponent implements OnInit {
   private adminService = inject(AdminService);
 
-  companies: any[] = [];
-  loading = true;
+  companies = signal<any[]>([]);
+  loading = signal(true);
 
   ngOnInit() {
     this.adminService.getCompanies().subscribe({
-      next: (data) => { this.companies = data || []; this.loading = false; },
-      error: () => { this.loading = false; }
+      next: (data) => { this.companies.set(data || []); this.loading.set(false); },
+      error: () => { this.loading.set(false); }
     });
   }
 }

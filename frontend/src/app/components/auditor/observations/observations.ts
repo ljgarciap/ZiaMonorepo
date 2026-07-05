@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -43,7 +43,7 @@ import { AuditObservationService } from '../../../services/audit-observation.ser
         <mat-form-field appearance="outline">
           <mat-label>Período</mat-label>
           <mat-select [(ngModel)]="selectedPeriodId" (selectionChange)="loadObservations()">
-            <mat-option *ngFor="let p of periods" [value]="p.id">{{ p.year }} ({{ p.status }})</mat-option>
+            <mat-option *ngFor="let p of periods()" [value]="p.id">{{ p.year }} ({{ p.status }})</mat-option>
           </mat-select>
         </mat-form-field>
       </div>
@@ -75,12 +75,12 @@ import { AuditObservationService } from '../../../services/audit-observation.ser
           </form>
         </mat-card>
 
-        <div class="spinner-wrap" *ngIf="loading">
+        <div class="spinner-wrap" *ngIf="loading()">
           <mat-spinner diameter="44"></mat-spinner>
         </div>
 
-        <div class="glass-card" *ngIf="!loading">
-          <div class="obs-row" *ngFor="let o of observations">
+        <div class="glass-card" *ngIf="!loading()">
+          <div class="obs-row" *ngFor="let o of observations()">
             <div class="obs-header">
               <span class="obs-author">{{ o.user?.name }}</span>
               <span class="obs-verdict" *ngIf="o.verdict" [ngClass]="o.verdict">{{ verdictLabel(o.verdict) }}</span>
@@ -92,7 +92,7 @@ import { AuditObservationService } from '../../../services/audit-observation.ser
             </button>
           </div>
 
-          <div *ngIf="observations.length === 0" class="empty-state">
+          <div *ngIf="observations().length === 0" class="empty-state">
             <mat-icon>fact_check</mat-icon>
             <p>Sin observaciones registradas para este período.</p>
           </div>
@@ -136,10 +136,10 @@ export class AuditObservationsComponent implements OnInit {
     private observationService = inject(AuditObservationService);
     private snackBar = inject(MatSnackBar);
 
-    periods: any[] = [];
-    observations: any[] = [];
+    periods = signal<any[]>([]);
+    observations = signal<any[]>([]);
     selectedPeriodId: number | null = null;
-    loading = false;
+    loading = signal(false);
 
     newObservation: { body: string; verdict: string | null } = { body: '', verdict: null };
 
@@ -172,7 +172,7 @@ export class AuditObservationsComponent implements OnInit {
 
         this.masterDataService.getPeriods(this.companyId).subscribe({
             next: (periods) => {
-                this.periods = periods;
+                this.periods.set(periods);
                 if (periods.length > 0) {
                     this.selectedPeriodId = periods[0].id;
                     this.loadObservations();
@@ -183,14 +183,14 @@ export class AuditObservationsComponent implements OnInit {
 
     loadObservations() {
         if (!this.companyId || !this.selectedPeriodId) return;
-        this.loading = true;
+        this.loading.set(true);
 
         this.observationService.getObservations(this.companyId, this.selectedPeriodId).subscribe({
             next: (observations) => {
-                this.observations = observations;
-                this.loading = false;
+                this.observations.set(observations);
+                this.loading.set(false);
             },
-            error: () => { this.loading = false; }
+            error: () => { this.loading.set(false); }
         });
     }
 

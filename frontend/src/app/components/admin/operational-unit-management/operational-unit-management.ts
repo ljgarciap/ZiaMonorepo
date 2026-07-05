@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -41,21 +41,21 @@ import { ConfirmDialog } from '../admin-dialogs';
       </div>
 
       <!-- Company selector -->
-      <div class="glass-card company-selector-card" *ngIf="companies.length > 1">
+      <div class="glass-card company-selector-card" *ngIf="companies().length > 1">
         <mat-form-field appearance="outline" class="company-select-field prestige-field">
           <mat-label>Empresa</mat-label>
           <mat-select [(ngModel)]="selectedCompanyId" (ngModelChange)="onCompanyChange($event)">
-            <mat-option *ngFor="let c of companies" [value]="c.id">{{ c.name }}</mat-option>
+            <mat-option *ngFor="let c of companies()" [value]="c.id">{{ c.name }}</mat-option>
           </mat-select>
         </mat-form-field>
       </div>
 
-      <div class="spinner-container" *ngIf="loading">
+      <div class="spinner-container" *ngIf="loading()">
         <mat-spinner diameter="40"></mat-spinner>
         <p>Cargando unidades...</p>
       </div>
 
-      <ng-container *ngIf="!loading && selectedCompanyId">
+      <ng-container *ngIf="!loading() && selectedCompanyId">
         <!-- Add unit form -->
         <div class="glass-card add-form-card">
           <h3 class="form-title">{{ editingUnit ? 'Editar Unidad' : 'Nueva Unidad Operativa' }}</h3>
@@ -68,7 +68,7 @@ import { ConfirmDialog } from '../admin-dialogs';
               <mat-label>Descripción (opcional)</mat-label>
               <input matInput [(ngModel)]="formData.description" placeholder="Descripción breve">
             </mat-form-field>
-            <button mat-flat-button class="btn-prestige" (click)="save()" [disabled]="saving || !formData.name.trim()">
+            <button mat-flat-button class="btn-prestige" (click)="save()" [disabled]="saving() || !formData.name.trim()">
               <mat-icon>{{ editingUnit ? 'save' : 'add' }}</mat-icon>
               {{ editingUnit ? 'Guardar' : 'Agregar' }}
             </button>
@@ -172,14 +172,15 @@ export class OperationalUnitManagementComponent implements OnInit {
   private adminService = inject(AdminService);
   private dialog = inject(MatDialog);
   private snackBar = inject(MatSnackBar);
+  private cdr = inject(ChangeDetectorRef);
 
-  companies: any[] = [];
+  companies = signal<any[]>([]);
   selectedCompanyId: number | null = null;
   units: any[] = [];
   dataSource = new MatTableDataSource<any>([]);
   displayedColumns = ['name', 'users_count', 'actions'];
-  loading = false;
-  saving = false;
+  loading = signal(false);
+  saving = signal(false);
 
   editingUnit: any = null;
   formData = { name: '', description: '' };
@@ -187,12 +188,10 @@ export class OperationalUnitManagementComponent implements OnInit {
   ngOnInit() {
     this.adminService.getCompanies().subscribe({
       next: (data) => {
-        this.companies = data || [];
-        if (this.companies.length === 1) {
-          this.selectedCompanyId = this.companies[0].id;
-          this.loadUnits();
-        } else if (this.companies.length > 1) {
-          this.selectedCompanyId = this.companies[0].id;
+        const companies = data || [];
+        this.companies.set(companies);
+        if (companies.length >= 1) {
+          this.selectedCompanyId = companies[0].id;
           this.loadUnits();
         }
       }
@@ -206,16 +205,20 @@ export class OperationalUnitManagementComponent implements OnInit {
 
   loadUnits() {
     if (!this.selectedCompanyId) return;
-    this.loading = true;
+    this.loading.set(true);
     this.adminService.getOperationalUnits(this.selectedCompanyId).subscribe({
-      next: (data) => { this.dataSource.data = data || []; this.loading = false; },
-      error: () => { this.loading = false; }
+      next: (data) => {
+        this.dataSource.data = data || [];
+        this.cdr.markForCheck();
+        this.loading.set(false);
+      },
+      error: () => { this.loading.set(false); }
     });
   }
 
   save() {
     if (!this.selectedCompanyId || !this.formData.name.trim()) return;
-    this.saving = true;
+    this.saving.set(true);
 
     const call = this.editingUnit
       ? this.adminService.updateOperationalUnit(this.selectedCompanyId, this.editingUnit.id, this.formData)
@@ -223,13 +226,13 @@ export class OperationalUnitManagementComponent implements OnInit {
 
     call.subscribe({
       next: () => {
-        this.saving = false;
+        this.saving.set(false);
         this.cancelEdit();
         this.loadUnits();
         this.snackBar.open('Unidad guardada correctamente.', '', { duration: 3000 });
       },
       error: () => {
-        this.saving = false;
+        this.saving.set(false);
         this.snackBar.open('Error al guardar la unidad.', '', { duration: 3000 });
       }
     });

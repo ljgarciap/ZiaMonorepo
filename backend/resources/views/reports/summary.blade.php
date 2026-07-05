@@ -333,9 +333,15 @@
             <td>GRI 305-4</td>
             <td>Intensidad de emisiones de GEI</td>
             <td>
-                @if($intensityPerSqm !== null){{ number_format($intensityPerSqm, 6) }} tCO₂e/m²<br>@endif
-                @if($intensityPerEmployee !== null){{ number_format($intensityPerEmployee, 4) }} tCO₂e/empleado@endif
-                @if($intensityPerSqm === null && $intensityPerEmployee === null)N/D@endif
+                @if($intensityPerSqm !== null)
+                    {{ number_format($intensityPerSqm, 6) }} tCO₂e/m²<br>
+                @endif
+                @if($intensityPerEmployee !== null)
+                    {{ number_format($intensityPerEmployee, 4) }} tCO₂e/empleado
+                @endif
+                @if($intensityPerSqm === null && $intensityPerEmployee === null)
+                    N/D
+                @endif
             </td>
         </tr>
         <tr>

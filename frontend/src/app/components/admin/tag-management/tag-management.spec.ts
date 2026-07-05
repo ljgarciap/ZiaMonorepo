@@ -52,8 +52,8 @@ describe('TagManagementComponent', () => {
 
     expect(adminServiceMock.getTags).toHaveBeenCalled();
     expect(adminServiceMock.getSectors).toHaveBeenCalled();
-    expect(component.tags).toEqual(mockTags);
-    expect(component.sectors).toEqual(mockSectors);
+    expect(component.tags()).toEqual(mockTags);
+    expect(component.sectors()).toEqual(mockSectors);
   });
 
   it('renders tag names and their sector in the table', () => {

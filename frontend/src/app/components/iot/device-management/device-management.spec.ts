@@ -64,8 +64,8 @@ describe('IotDeviceManagementComponent', () => {
 
     expect(iotServiceMock.getDevices).toHaveBeenCalledWith(42);
     expect(iotServiceMock.getLiveAlerts).toHaveBeenCalled();
-    expect(component.devices).toEqual(mockDevices);
-    expect(component.alerts).toEqual(mockAlerts);
+    expect(component.devices()).toEqual(mockDevices);
+    expect(component.alerts()).toEqual(mockAlerts);
   });
 
   it('does not call getDevices when there is no company context', () => {

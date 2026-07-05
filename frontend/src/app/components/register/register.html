@@ -30,7 +30,7 @@
                     <mat-error *ngIf="registerForm.get('password_confirmation')?.invalid">Requerido</mat-error>
                 </mat-form-field>
 
-                <p *ngIf="error" class="error-message">{{ error }}</p>
+                <p *ngIf="error()" class="error-message">{{ error() }}</p>
 
                 <br>
                 <button mat-raised-button color="primary" type="submit"

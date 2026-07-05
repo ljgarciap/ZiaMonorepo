@@ -62,9 +62,9 @@ describe('AuditorAssignmentsComponent', () => {
     fixture.detectChanges();
 
     expect(assignmentServiceMock.getAssignments).toHaveBeenCalled();
-    expect(component.assignments).toEqual(mockAssignments);
-    expect(component.auditors).toEqual([mockUsers[0]]);
-    expect(component.companies).toEqual(mockCompanies);
+    expect(component.assignments()).toEqual(mockAssignments);
+    expect(component.auditors()).toEqual([mockUsers[0]]);
+    expect(component.companies()).toEqual(mockCompanies);
   });
 
   it('loadPeriods fetches periods for the selected company', () => {
@@ -74,7 +74,7 @@ describe('AuditorAssignmentsComponent', () => {
     component.loadPeriods();
 
     expect(masterDataMock.getPeriods).toHaveBeenCalledWith(5);
-    expect(component.periods).toEqual(mockPeriods);
+    expect(component.periods()).toEqual(mockPeriods);
   });
 
   it('loadPeriods clears periods when no company is selected', () => {
@@ -84,7 +84,7 @@ describe('AuditorAssignmentsComponent', () => {
     component.loadPeriods();
 
     expect(masterDataMock.getPeriods).not.toHaveBeenCalled();
-    expect(component.periods).toEqual([]);
+    expect(component.periods()).toEqual([]);
   });
 
   it('grant calls the service with the selected auditor, period and expiry', () => {

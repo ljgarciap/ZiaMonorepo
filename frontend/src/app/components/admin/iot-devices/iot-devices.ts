@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
@@ -36,11 +36,11 @@ import { AdminService } from '../../../services/admin.service';
     </button>
   </div>
 
-  <div class="spinner-wrap" *ngIf="loading">
+  <div class="spinner-wrap" *ngIf="loading()">
     <mat-spinner diameter="44"></mat-spinner>
   </div>
 
-  <ng-container *ngIf="!loading && data">
+  <ng-container *ngIf="!loading() && data() as data">
     <!-- KPI cards -->
     <div class="kpi-row">
       <div class="kpi-card">
@@ -266,9 +266,10 @@ import { AdminService } from '../../../services/admin.service';
 })
 export class IotDevicesComponent implements OnInit {
   private adminService = inject(AdminService);
+  private cdr = inject(ChangeDetectorRef);
 
-  data: any = null;
-  loading = true;
+  data = signal<any>(null);
+  loading = signal(true);
   filterText = '';
   dataSource = new MatTableDataSource<any>([]);
   displayedColumns = ['status', 'name', 'company', 'last_seen', 'readings', 'alerts'];
@@ -278,14 +279,15 @@ export class IotDevicesComponent implements OnInit {
   }
 
   loadData() {
-    this.loading = true;
+    this.loading.set(true);
     this.adminService.getIotDevicesOverview().subscribe({
       next: (res) => {
-        this.data = res;
+        this.data.set(res);
         this.dataSource.data = res.devices || [];
-        this.loading = false;
+        this.cdr.markForCheck();
+        this.loading.set(false);
       },
-      error: () => { this.loading = false; }
+      error: () => { this.loading.set(false); }
     });
   }
 

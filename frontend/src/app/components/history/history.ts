@@ -1,5 +1,5 @@
 
-import { Component, OnInit, ViewChild, AfterViewInit, inject, Injectable } from '@angular/core';
+import { Component, OnInit, ViewChild, AfterViewInit, inject, Injectable, ChangeDetectorRef, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatPaginator, MatPaginatorModule, MatPaginatorIntl } from '@angular/material/paginator';
@@ -71,7 +71,7 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
       </div>
 
       <div class="table-container glass-card">
-        <mat-progress-bar mode="indeterminate" *ngIf="loading"></mat-progress-bar>
+        <mat-progress-bar mode="indeterminate" *ngIf="loading()"></mat-progress-bar>
 
         <table mat-table [dataSource]="dataSource" matSort (matSortChange)="onSortChange($event)">
 
@@ -215,12 +215,12 @@ export class CustomPaginatorIntl extends MatPaginatorIntl {
           <tr class="mat-row" *matNoDataRow>
             <td class="mat-cell" colspan="6" style="text-align: center; padding: 20px;">
                 <span *ngIf="input.value">No hay datos que coincidan con "{{input.value}}"</span>
-                <span *ngIf="!input.value && !loading">No hay registros históricos disponibles.</span>
+                <span *ngIf="!input.value && !loading()">No hay registros históricos disponibles.</span>
             </td>
           </tr>
         </table>
 
-        <mat-paginator [length]="totalResults"
+        <mat-paginator [length]="totalResults()"
                        [pageSize]="5"
                        [pageSizeOptions]="[5, 10, 25, 100]"
                        (page)="onPageChange($event)"
@@ -330,8 +330,8 @@ export class HistoryComponent implements OnInit, AfterViewInit {
   displayedColumns: string[] = [];
   dataSource = new MatTableDataSource<any>([]);
 
-  totalResults = 0;
-  loading = false;
+  totalResults = signal(0);
+  loading = signal(false);
 
   private searchSubject = new Subject<string>();
 
@@ -346,6 +346,7 @@ export class HistoryComponent implements OnInit, AfterViewInit {
   private contextService = inject(ContextService);
   private authService = inject(AuthService);
   private http = inject(HttpClient);
+  private cdr = inject(ChangeDetectorRef);
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
@@ -391,7 +392,7 @@ export class HistoryComponent implements OnInit, AfterViewInit {
     const company = this.contextService.selectedCompany();
     if (!company) return;
 
-    this.loading = true;
+    this.loading.set(true);
 
     this.carbonService.getHistory(company.id, {
       page: this.currentPage + 1, // API is 1-indexed
@@ -402,12 +403,14 @@ export class HistoryComponent implements OnInit, AfterViewInit {
     }).subscribe({
       next: (res) => {
         this.dataSource.data = res.data;
-        this.totalResults = res.total;
-        this.loading = false;
+        this.totalResults.set(res.total);
+        this.loading.set(false);
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error(err);
-        this.loading = false;
+        this.loading.set(false);
+        this.cdr.markForCheck();
       }
     });
   }
@@ -436,13 +439,15 @@ export class HistoryComponent implements OnInit, AfterViewInit {
 
   toggleEvidences(row: any) {
     row._showEvidences = !row._showEvidences;
+    this.cdr.markForCheck();
     if (row._showEvidences && !row._evidences) {
       this.http.get<any[]>(`/api/emissions/${row.id}/evidences`).subscribe({
         next: (evs) => {
           row._evidences = evs;
           row._evidenceCount = evs.length;
+          this.cdr.markForCheck();
         },
-        error: () => { row._evidences = []; }
+        error: () => { row._evidences = []; this.cdr.markForCheck(); }
       });
     }
   }
@@ -458,6 +463,7 @@ export class HistoryComponent implements OnInit, AfterViewInit {
       next: (ev) => {
         row._evidences = [...(row._evidences || []), ev];
         row._evidenceCount = (row._evidenceCount || 0) + 1;
+        this.cdr.markForCheck();
       },
       error: (err) => console.error('Error subiendo evidencia:', err)
     });
@@ -467,24 +473,27 @@ export class HistoryComponent implements OnInit, AfterViewInit {
   validateEmission(row: any) {
     const prev = row.validation_status;
     row.validation_status = 'validated';
+    this.cdr.markForCheck();
     this.http.post(`/api/emissions/${row.id}/validate`, {}).subscribe({
-      error: () => { row.validation_status = prev; }
+      error: () => { row.validation_status = prev; this.cdr.markForCheck(); }
     });
   }
 
   flagEmission(row: any) {
     const prev = row.validation_status;
     row.validation_status = 'needs_review';
+    this.cdr.markForCheck();
     this.http.post(`/api/emissions/${row.id}/flag`, {}).subscribe({
-      error: () => { row.validation_status = prev; }
+      error: () => { row.validation_status = prev; this.cdr.markForCheck(); }
     });
   }
 
   resetValidation(row: any) {
     const prev = row.validation_status;
     row.validation_status = 'pending';
+    this.cdr.markForCheck();
     this.http.post(`/api/emissions/${row.id}/reset-validation`, {}).subscribe({
-      error: () => { row.validation_status = prev; }
+      error: () => { row.validation_status = prev; this.cdr.markForCheck(); }
     });
   }
 

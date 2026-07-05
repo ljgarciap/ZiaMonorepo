@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -17,11 +17,11 @@ import { AdminService } from '../../../services/admin.service';
         <p class="subtitle">Vista global de todas las organizaciones, usuarios y dispositivos registrados.</p>
     </div>
 
-    <div class="spinner-wrap" *ngIf="loading">
+    <div class="spinner-wrap" *ngIf="loading()">
         <mat-spinner diameter="48"></mat-spinner>
     </div>
 
-    <ng-container *ngIf="!loading && stats">
+    <ng-container *ngIf="!loading() && stats() as stats">
         <!-- KPI Cards -->
         <div class="kpi-grid">
             <div class="glass-card kpi-card">
@@ -169,31 +169,33 @@ import { AdminService } from '../../../services/admin.service';
 export class SuperadminDashboardComponent implements OnInit {
     private adminService = inject(AdminService);
 
-    stats: any = null;
-    loading = true;
+    stats = signal<any>(null);
+    loading = signal(true);
     currentYear = new Date().getFullYear();
 
     ngOnInit() {
         this.adminService.getPlatformStats().subscribe({
-            next: (data) => { this.stats = data; this.loading = false; },
-            error: () => { this.loading = false; }
+            next: (data) => { this.stats.set(data); this.loading.set(false); },
+            error: () => { this.loading.set(false); }
         });
     }
 
     getBarPct(value: number): number {
-        if (!this.stats?.top_companies?.length) return 0;
-        const max = Math.max(...this.stats.top_companies.map((c: any) => c.total_co2e));
+        const stats = this.stats();
+        if (!stats?.top_companies?.length) return 0;
+        const max = Math.max(...stats.top_companies.map((c: any) => c.total_co2e));
         return max > 0 ? (value / max) * 100 : 0;
     }
 
     getTrendPct(value: number): number {
-        if (!this.stats?.emissions_trend?.length) return 0;
-        const max = Math.max(...this.stats.emissions_trend.map((t: any) => t.total_co2e));
+        const stats = this.stats();
+        if (!stats?.emissions_trend?.length) return 0;
+        const max = Math.max(...stats.emissions_trend.map((t: any) => t.total_co2e));
         return max > 0 ? (value / max) * 100 : 0;
     }
 
     getDelta(i: number): number {
-        const trend = this.stats?.emissions_trend || [];
+        const trend = this.stats()?.emissions_trend || [];
         if (i === 0 || !trend[i - 1]) return 0;
         return trend[i].total_co2e - trend[i - 1].total_co2e;
     }

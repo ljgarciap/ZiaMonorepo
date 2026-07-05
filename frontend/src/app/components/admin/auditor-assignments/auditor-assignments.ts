@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -45,19 +45,19 @@ import { AuditorAssignmentService } from '../../../services/auditor-assignment.s
             <mat-form-field appearance="outline">
               <mat-label>Auditor</mat-label>
               <mat-select [(ngModel)]="newGrant.user_id" name="user_id" required>
-                <mat-option *ngFor="let a of auditors" [value]="a.id">{{ a.name }} ({{ a.email }})</mat-option>
+                <mat-option *ngFor="let a of auditors()" [value]="a.id">{{ a.name }} ({{ a.email }})</mat-option>
               </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Empresa</mat-label>
               <mat-select [(ngModel)]="selectedCompanyId" name="company_id" (selectionChange)="loadPeriods()">
-                <mat-option *ngFor="let c of companies" [value]="c.id">{{ c.name }}</mat-option>
+                <mat-option *ngFor="let c of companies()" [value]="c.id">{{ c.name }}</mat-option>
               </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline">
               <mat-label>Período</mat-label>
-              <mat-select [(ngModel)]="newGrant.period_id" name="period_id" required [disabled]="!periods.length">
-                <mat-option *ngFor="let p of periods" [value]="p.id">{{ p.year }} ({{ p.status }})</mat-option>
+              <mat-select [(ngModel)]="newGrant.period_id" name="period_id" required [disabled]="!periods().length">
+                <mat-option *ngFor="let p of periods()" [value]="p.id">{{ p.year }} ({{ p.status }})</mat-option>
               </mat-select>
             </mat-form-field>
             <mat-form-field appearance="outline">
@@ -72,7 +72,7 @@ import { AuditorAssignmentService } from '../../../services/auditor-assignment.s
       </div>
 
       <div class="glass-card table-card">
-        <table mat-table [dataSource]="assignments" class="premium-table">
+        <table mat-table [dataSource]="assignments()" class="premium-table">
           <ng-container matColumnDef="auditor">
             <th mat-header-cell *matHeaderCellDef>Auditor</th>
             <td mat-cell *matCellDef="let a">{{ a.user?.name }}</td>
@@ -106,7 +106,7 @@ import { AuditorAssignmentService } from '../../../services/auditor-assignment.s
           <tr mat-row *matRowDef="let row; columns: columns;"></tr>
         </table>
 
-        <div *ngIf="assignments.length === 0" class="empty-state">
+        <div *ngIf="assignments().length === 0" class="empty-state">
           <mat-icon>verified_user</mat-icon>
           <p>Sin autorizaciones de auditoría registradas.</p>
         </div>
@@ -139,10 +139,10 @@ export class AuditorAssignmentsComponent implements OnInit {
     private assignmentService = inject(AuditorAssignmentService);
     private snackBar = inject(MatSnackBar);
 
-    assignments: any[] = [];
-    auditors: any[] = [];
-    companies: any[] = [];
-    periods: any[] = [];
+    assignments = signal<any[]>([]);
+    auditors = signal<any[]>([]);
+    companies = signal<any[]>([]);
+    periods = signal<any[]>([]);
     columns = ['auditor', 'company', 'period', 'expires', 'actions'];
 
     selectedCompanyId: number | null = null;
@@ -152,26 +152,26 @@ export class AuditorAssignmentsComponent implements OnInit {
     ngOnInit() {
         this.loadAssignments();
         this.adminService.getUsers().subscribe({
-            next: (users) => { this.auditors = users.filter(u => u.role === 'auditor'); }
+            next: (users) => { this.auditors.set(users.filter(u => u.role === 'auditor')); }
         });
         this.adminService.getCompanies().subscribe({
-            next: (companies) => { this.companies = companies; }
+            next: (companies) => { this.companies.set(companies); }
         });
     }
 
     loadAssignments() {
         this.assignmentService.getAssignments().subscribe({
-            next: (assignments) => { this.assignments = assignments; }
+            next: (assignments) => { this.assignments.set(assignments); }
         });
     }
 
     loadPeriods() {
-        this.periods = [];
+        this.periods.set([]);
         this.newGrant.period_id = null;
         if (!this.selectedCompanyId) return;
 
         this.masterDataService.getPeriods(this.selectedCompanyId).subscribe({
-            next: (periods) => { this.periods = periods; }
+            next: (periods) => { this.periods.set(periods); }
         });
     }
 

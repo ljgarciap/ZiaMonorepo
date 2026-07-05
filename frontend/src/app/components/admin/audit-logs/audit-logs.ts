@@ -1,4 +1,4 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatTableDataSource, MatTableModule } from '@angular/material/table';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
@@ -176,17 +176,17 @@ import { AdminService } from '../../../services/admin.service';
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
           </table>
 
-          <div *ngIf="dataSource.data.length === 0 && !loading" class="empty-state">
+          <div *ngIf="dataSource.data.length === 0 && !loading()" class="empty-state">
             <mat-icon>history</mat-icon>
             <p>No se encontraron registros de auditoría.</p>
           </div>
-          
-          <div *ngIf="loading" class="spinner-container">
+
+          <div *ngIf="loading()" class="spinner-container">
             Cargando registros...
           </div>
         </div>
 
-        <mat-paginator [length]="totalLogs"
+        <mat-paginator [length]="totalLogs()"
                        [pageSize]="pageSize"
                        [pageSizeOptions]="[10, 20, 50]"
                        (page)="onPageChange($event)">
@@ -261,14 +261,15 @@ import { AdminService } from '../../../services/admin.service';
 export class AuditLogsComponent implements OnInit {
     adminService = inject(AdminService);
     fb = inject(FormBuilder);
+    private cdr = inject(ChangeDetectorRef);
 
     dataSource = new MatTableDataSource<any>([]);
     displayedColumns = ['user', 'action', 'details', 'date'];
 
-    totalLogs = 0;
+    totalLogs = signal(0);
     pageSize = 20;
     currentPage = 1;
-    loading = false;
+    loading = signal(false);
 
     filterForm: FormGroup;
 
@@ -288,7 +289,7 @@ export class AuditLogsComponent implements OnInit {
     }
 
     loadLogs() {
-        this.loading = true;
+        this.loading.set(true);
         const filters = this.filterForm.value;
 
         // Format dates if present
@@ -303,12 +304,13 @@ export class AuditLogsComponent implements OnInit {
         this.adminService.getAuditLogs(params).subscribe({
             next: (res) => {
                 this.dataSource.data = res.data;
-                this.totalLogs = res.total;
-                this.loading = false;
+                this.cdr.markForCheck();
+                this.totalLogs.set(res.total);
+                this.loading.set(false);
             },
             error: (err) => {
                 console.error('Error loading logs', err);
-                this.loading = false;
+                this.loading.set(false);
             }
         });
     }

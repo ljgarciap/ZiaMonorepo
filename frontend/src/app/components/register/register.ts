@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -16,7 +16,7 @@ import { Router, RouterModule } from '@angular/router';
 })
 export class RegisterComponent {
   registerForm: FormGroup;
-  error: string | null = null;
+  error = signal<string | null>(null);
 
   constructor(
     private fb: FormBuilder,
@@ -34,7 +34,7 @@ export class RegisterComponent {
   onSubmit() {
     if (this.registerForm.valid) {
       if (this.registerForm.value.password !== this.registerForm.value.password_confirmation) {
-        this.error = 'Las contraseñas no coinciden';
+        this.error.set('Las contraseñas no coinciden');
         return;
       }
 
@@ -43,7 +43,7 @@ export class RegisterComponent {
           this.router.navigate(['/login']);
         },
         error: (err) => {
-          this.error = 'Error al registrar usuario.';
+          this.error.set('Error al registrar usuario.');
           console.error(err);
         }
       });
