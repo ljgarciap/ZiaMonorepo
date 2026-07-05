@@ -159,6 +159,12 @@
   height: 150px;
 }
 
+/* El logo por defecto es oscuro (para fondo claro) — en modo oscuro se
+   invisibiliza contra el fondo, así que se usa la variante clara. */
+:host-context(.dark-theme) .logo {
+  content: url('/assets/zia-logo.png');
+}
+
 .title {
   display: none;
 }
