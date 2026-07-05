@@ -122,6 +122,7 @@ export class ContextSelectorComponent implements OnInit {
 
   onCompanyChange(company: any) {
     this.selectedCompany = company;
+    this.selectedPeriod = null;
     this.context.setCompany(company);
     this.loadPeriods(company.id);
   }
