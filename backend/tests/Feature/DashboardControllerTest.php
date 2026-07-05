@@ -11,6 +11,7 @@ use App\Models\Scope;
 use App\Models\EmissionCategory;
 use App\Models\EmissionFactor;
 use App\Models\CarbonEmission;
+use App\Models\AuditorAssignment;
 
 class DashboardControllerTest extends TestCase
 {
@@ -262,5 +263,63 @@ class DashboardControllerTest extends TestCase
 
         $response->assertOk();
         $this->assertEqualsWithDelta(5.0, $response->json('revenue_trend.datasets.0.data.0'), 0.01);
+    }
+
+    // ─── trends(): auditor solo ve los períodos que audita, no todo el histórico ──
+
+    public function test_trends_only_includes_periods_assigned_to_auditor()
+    {
+        $auditor = User::factory()->create(['role' => 'auditor']);
+
+        // Períodos previos NO asignados al auditor
+        $olderPeriod = Period::factory()->create(['company_id' => $this->company->id, 'year' => $this->period->year - 2]);
+        $middlePeriod = Period::factory()->create(['company_id' => $this->company->id, 'year' => $this->period->year - 1]);
+
+        // Solo tiene asignación activa para $this->period
+        AuditorAssignment::factory()->create([
+            'user_id'    => $auditor->id,
+            'company_id' => $this->company->id,
+            'period_id'  => $this->period->id,
+            'expires_at' => null,
+        ]);
+
+        $scope    = Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
+        $category = EmissionCategory::factory()->create(['scope_id' => $scope->id]);
+        $factor   = EmissionFactor::factory()->create(['emission_category_id' => $category->id]);
+
+        foreach ([$olderPeriod, $middlePeriod, $this->period] as $period) {
+            CarbonEmission::factory()->create([
+                'period_id' => $period->id, 'emission_factor_id' => $factor->id, 'calculated_co2e' => 10.0,
+            ]);
+        }
+
+        $response = $this->actingAs($auditor, 'api')
+             ->getJson("/api/dashboard/trends?company_id={$this->company->id}");
+
+        $response->assertOk();
+        $labels = $response->json('revenue_trend.labels');
+        $this->assertCount(1, $labels);
+        $this->assertEquals((string) $this->period->year, $labels[0]);
+    }
+
+    public function test_trends_returns_all_periods_for_auditor_with_multiple_assignments()
+    {
+        $auditor = User::factory()->create(['role' => 'auditor']);
+        $secondPeriod = Period::factory()->create(['company_id' => $this->company->id, 'year' => $this->period->year - 1]);
+
+        foreach ([$this->period, $secondPeriod] as $period) {
+            AuditorAssignment::factory()->create([
+                'user_id'    => $auditor->id,
+                'company_id' => $this->company->id,
+                'period_id'  => $period->id,
+                'expires_at' => null,
+            ]);
+        }
+
+        $response = $this->actingAs($auditor, 'api')
+             ->getJson("/api/dashboard/trends?company_id={$this->company->id}");
+
+        $response->assertOk();
+        $this->assertCount(2, $response->json('revenue_trend.labels'));
     }
 }

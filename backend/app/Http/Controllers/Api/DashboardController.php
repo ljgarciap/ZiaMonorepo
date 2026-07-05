@@ -245,9 +245,21 @@ class DashboardController extends Controller
         $ownScopeOnly = $activeRole === 'user';
 
         // Get all periods for this company, ordered by year
-        $periods = Period::where('company_id', $companyId)
-            ->orderBy('year')
-            ->get();
+        $periodsQuery = Period::where('company_id', $companyId)->orderBy('year');
+
+        // Decisión de producto (2026-07-05): un auditor solo debe ver tendencia
+        // de los períodos para los que tiene asignación activa, no el histórico
+        // completo de la empresa — su acceso es por período, no por empresa.
+        if ($activeRole === 'auditor') {
+            $assignedPeriodIds = AuditorAssignment::where('user_id', $user->id)
+                ->where('company_id', $companyId)
+                ->active()
+                ->pluck('period_id');
+
+            $periodsQuery->whereIn('id', $assignedPeriodIds);
+        }
+
+        $periods = $periodsQuery->get();
 
         // Temporal Evolution: Emissions by period
         $periodLabels = [];

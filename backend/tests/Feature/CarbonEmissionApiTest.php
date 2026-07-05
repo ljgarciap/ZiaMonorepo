@@ -361,4 +361,142 @@ class CarbonEmissionApiTest extends TestCase
             'user_id' => $superadmin->id,
         ]);
     }
+
+    // ─── A09: validate/flag/reset-validation (solo Admin/Superadmin) ───────────
+
+    public function test_admin_can_validate_emission()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin, 'api')
+             ->postJson("/api/emissions/{$emission->id}/validate", ['notes' => 'Revisado y correcto']);
+
+        $response->assertOk()->assertJsonPath('validation_status', 'validated');
+
+        $this->assertDatabaseHas('carbon_emissions', [
+            'id'                 => $emission->id,
+            'validation_status'  => 'validated',
+            'validation_notes'   => 'Revisado y correcto',
+            'validated_by'       => $admin->id,
+        ]);
+        $this->assertNotNull($emission->fresh()->validated_at);
+    }
+
+    public function test_superadmin_can_validate_emission()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+
+        $this->actingAs($superadmin, 'api')
+             ->postJson("/api/emissions/{$emission->id}/validate")
+             ->assertOk()
+             ->assertJsonPath('validation_status', 'validated');
+    }
+
+    public function test_user_role_cannot_validate_emission_returns_403()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $user = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($user, 'api')
+             ->postJson("/api/emissions/{$emission->id}/validate")
+             ->assertStatus(403);
+
+        $this->assertDatabaseHas('carbon_emissions', [
+            'id'                => $emission->id,
+            'validation_status' => 'pending',
+        ]);
+    }
+
+    public function test_auditor_role_cannot_validate_emission_returns_403()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $auditor = User::factory()->create(['role' => 'auditor']);
+
+        $this->actingAs($auditor, 'api')
+             ->postJson("/api/emissions/{$emission->id}/validate")
+             ->assertStatus(403);
+    }
+
+    public function test_validate_without_auth_returns_401()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+
+        $this->app['auth']->forgetGuards();
+
+        $this->postJson("/api/emissions/{$emission->id}/validate")
+             ->assertStatus(401);
+    }
+
+    public function test_admin_can_flag_emission_as_needs_review()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $response = $this->actingAs($admin, 'api')
+             ->postJson("/api/emissions/{$emission->id}/flag", ['notes' => 'Falta soporte documental']);
+
+        $response->assertOk()->assertJsonPath('validation_status', 'needs_review');
+
+        $this->assertDatabaseHas('carbon_emissions', [
+            'id'                => $emission->id,
+            'validation_status' => 'needs_review',
+            'validation_notes'  => 'Falta soporte documental',
+            'validated_by'      => $admin->id,
+        ]);
+    }
+
+    public function test_user_role_cannot_flag_emission_returns_403()
+    {
+        $emission = CarbonEmission::factory()->create(['period_id' => $this->period->id]);
+        $user = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($user, 'api')
+             ->postJson("/api/emissions/{$emission->id}/flag")
+             ->assertStatus(403);
+    }
+
+    public function test_admin_can_reset_validation_to_pending()
+    {
+        $admin = User::factory()->create(['role' => 'admin']);
+        $emission = CarbonEmission::factory()->create([
+            'period_id'          => $this->period->id,
+            'validation_status'  => 'validated',
+            'validation_notes'   => 'Revisado',
+            'validated_by'       => $admin->id,
+            'validated_at'       => now(),
+        ]);
+
+        $response = $this->actingAs($admin, 'api')
+             ->postJson("/api/emissions/{$emission->id}/reset-validation");
+
+        $response->assertOk()->assertJsonPath('validation_status', 'pending');
+
+        $this->assertDatabaseHas('carbon_emissions', [
+            'id'                => $emission->id,
+            'validation_status' => 'pending',
+            'validation_notes'  => null,
+            'validated_by'      => null,
+            'validated_at'      => null,
+        ]);
+    }
+
+    public function test_user_role_cannot_reset_validation_returns_403()
+    {
+        $emission = CarbonEmission::factory()->create([
+            'period_id'         => $this->period->id,
+            'validation_status' => 'validated',
+        ]);
+        $user = User::factory()->create(['role' => 'user']);
+
+        $this->actingAs($user, 'api')
+             ->postJson("/api/emissions/{$emission->id}/reset-validation")
+             ->assertStatus(403);
+
+        $this->assertDatabaseHas('carbon_emissions', [
+            'id'                => $emission->id,
+            'validation_status' => 'validated',
+        ]);
+    }
 }
