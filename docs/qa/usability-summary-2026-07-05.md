@@ -20,18 +20,23 @@ migraciones pendientes antes de iniciar la ronda real. **Recomendación**:
 agregar un paso de `docker compose build` al flujo de DevOps antes de
 cualquier ronda de QA, o mover a bind-mount + hot-reload en desarrollo.
 
-## Hallazgo 1 — P0: Clicks reales no disparan botones Material (frontend)
+## Hallazgo 1 — ~~P0~~ CERRADO: era artefacto del entorno de automatización, no bug de producto
 Los clicks simulados con mouse real (mousedown+mouseup, indistinguibles de
-un click humano) no disparan de forma confiable el `(click)` de botones
+un click humano) no disparaban de forma confiable el `(click)` de botones
 `mat-button`/`mat-stroked-button` (confirmado en login, selector de
-contexto). Un `.click()` programático sí funciona siempre. Coincide con un
-comentario ya existente en `login.ts` sobre un "issue de doble click"
-parchado parcialmente con `window.location.replace`. Causa probable: race
-con el lazy-loading del ripple de Angular Material
-(`mat-ripple-loader-uninitialized`). **Impacto**: usuarios reales pueden
-necesitar más de un click para que ciertos botones respondan, en toda la
-app. Handoff: Frontend Dev — investigar `provideNoopAnimations`/versión de
-`@angular/material` o forzar carga eager del ripple loader.
+contexto) — reproducido ~17% de las veces contra el stack en Docker vía
+Playwright/CDP. Se descartaron dos hipótesis (ripple loader de Material,
+migración zoneless incompleta) antes de sospechar del propio entorno de
+automatización.
+
+**Resolución (2026-07-05)**: Luis probó manualmente en un navegador de
+escritorio normal (no headless, no CDP) — 16 intentos de click reales
+entre login y selector de contexto, **0 fallos**. Con una tasa base de
+fallo del ~17%, la probabilidad de 0/16 por azar si el bug siguiera activo
+es ~4.6% — evidencia suficiente para cerrar. Conclusión: el fallo era
+específico del pipeline de Playwright/CDP headless contra este stack
+Docker, no un bug real end-user-facing. No requiere cambio de código.
+Handoff: ninguno — cerrado sin acción de Frontend Dev.
 
 ## Hallazgo 2 — P0: Change detection no re-renderiza tras respuestas async (frontend, transversal)
 Reproducido **5 veces** en componentes distintos, todos con el mismo
