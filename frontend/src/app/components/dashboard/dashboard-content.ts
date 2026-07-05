@@ -95,7 +95,13 @@ import { MatDividerModule } from '@angular/material/divider';
         <p>Por favor, seleccione una empresa y un año para ver los resultados.</p>
     </div>
 
-    <div *ngIf="selectedCompany && selectedPeriod">
+    <!-- Acceso denegado: el rol actual no tiene dashboard (ej. Técnico IoT) -->
+    <div *ngIf="selectedCompany && selectedPeriod && accessDenied" class="empty-state-card glass-card">
+        <mat-icon>block</mat-icon>
+        <p>Tu rol no tiene acceso al Dashboard. Usa el menú lateral para ir a la sección que te corresponde.</p>
+    </div>
+
+    <div *ngIf="selectedCompany && selectedPeriod && !accessDenied">
         <!-- Top Summary Cards -->
         <div class="summary-grid">
             <div class="glass-card summary-card">
@@ -469,6 +475,7 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
   @ViewChild('barChart') barCanvas!: ElementRef;
 
   summary: any = null;
+  accessDenied = false;
   loading = false; // Start as false to prevent blocking initial screen
 
   selectedCompany: any = null;
@@ -531,6 +538,7 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
   loadDashboardData(companyId: number, periodId: number) {
     console.log('Starting Dashboard API Fetch...', { companyId, periodId });
     this.loading = true;
+    this.accessDenied = false;
     this.cdr.detectChanges();
 
     this.dashboardService.getSummary(companyId, periodId).subscribe({
@@ -543,6 +551,8 @@ export class DashboardContentComponent implements OnInit, AfterViewInit, OnDestr
       },
       error: (err) => {
         console.error('Error loading dashboard summary:', err);
+        this.summary = null;
+        this.accessDenied = err.status === 403;
         this.loading = false;
         this.cdr.detectChanges();
       }

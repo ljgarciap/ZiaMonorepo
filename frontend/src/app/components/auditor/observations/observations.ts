@@ -42,7 +42,7 @@ import { AuditObservationService } from '../../../services/audit-observation.ser
       <div class="glass-card period-picker" *ngIf="!noCompany">
         <mat-form-field appearance="outline">
           <mat-label>Período</mat-label>
-          <mat-select [(ngModel)]="selectedPeriodId" (selectionChange)="loadObservations()">
+          <mat-select [ngModel]="selectedPeriodId()" (ngModelChange)="selectedPeriodId.set($event)" (selectionChange)="loadObservations()">
             <mat-option *ngFor="let p of periods()" [value]="p.id">{{ p.year }} ({{ p.status }})</mat-option>
           </mat-select>
         </mat-form-field>
@@ -53,7 +53,7 @@ import { AuditObservationService } from '../../../services/audit-observation.ser
         <p>Selecciona una empresa en tu contexto de sesión para ver sus observaciones de auditoría.</p>
       </div>
 
-      <ng-container *ngIf="selectedPeriodId && !noCompany">
+      <ng-container *ngIf="selectedPeriodId() && !noCompany">
         <mat-card class="glass-card form-card" *ngIf="canCreate">
           <form (ngSubmit)="createObservation()">
             <mat-form-field appearance="outline" class="body-field">
@@ -138,7 +138,7 @@ export class AuditObservationsComponent implements OnInit {
 
     periods = signal<any[]>([]);
     observations = signal<any[]>([]);
-    selectedPeriodId: number | null = null;
+    selectedPeriodId = signal<number | null>(null);
     loading = signal(false);
 
     newObservation: { body: string; verdict: string | null } = { body: '', verdict: null };
@@ -174,7 +174,7 @@ export class AuditObservationsComponent implements OnInit {
             next: (periods) => {
                 this.periods.set(periods);
                 if (periods.length > 0) {
-                    this.selectedPeriodId = periods[0].id;
+                    this.selectedPeriodId.set(periods[0].id);
                     this.loadObservations();
                 }
             }
@@ -182,10 +182,11 @@ export class AuditObservationsComponent implements OnInit {
     }
 
     loadObservations() {
-        if (!this.companyId || !this.selectedPeriodId) return;
+        const periodId = this.selectedPeriodId();
+        if (!this.companyId || !periodId) return;
         this.loading.set(true);
 
-        this.observationService.getObservations(this.companyId, this.selectedPeriodId).subscribe({
+        this.observationService.getObservations(this.companyId, periodId).subscribe({
             next: (observations) => {
                 this.observations.set(observations);
                 this.loading.set(false);
@@ -195,9 +196,10 @@ export class AuditObservationsComponent implements OnInit {
     }
 
     createObservation() {
-        if (!this.companyId || !this.selectedPeriodId || !this.newObservation.body) return;
+        const periodId = this.selectedPeriodId();
+        if (!this.companyId || !periodId || !this.newObservation.body) return;
 
-        this.observationService.createObservation(this.companyId, this.selectedPeriodId, this.newObservation).subscribe({
+        this.observationService.createObservation(this.companyId, periodId, this.newObservation).subscribe({
             next: () => {
                 this.snackBar.open('Observación registrada', 'Cerrar', { duration: 3000 });
                 this.newObservation = { body: '', verdict: null };
@@ -208,10 +210,11 @@ export class AuditObservationsComponent implements OnInit {
     }
 
     deleteObservation(observation: any) {
-        if (!this.companyId || !this.selectedPeriodId) return;
+        const periodId = this.selectedPeriodId();
+        if (!this.companyId || !periodId) return;
         if (!window.confirm('¿Eliminar esta observación?')) return;
 
-        this.observationService.deleteObservation(this.companyId, this.selectedPeriodId, observation.id).subscribe({
+        this.observationService.deleteObservation(this.companyId, periodId, observation.id).subscribe({
             next: () => {
                 this.snackBar.open('Observación eliminada', 'Cerrar', { duration: 3000 });
                 this.loadObservations();

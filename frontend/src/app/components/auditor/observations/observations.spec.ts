@@ -63,7 +63,7 @@ describe('AuditObservationsComponent', () => {
     fixture.detectChanges();
 
     expect(masterDataMock.getPeriods).toHaveBeenCalledWith(7);
-    expect(component.selectedPeriodId).toBe(10);
+    expect(component.selectedPeriodId()).toBe(10);
     expect(observationServiceMock.getObservations).toHaveBeenCalledWith(7, 10);
     expect(component.observations()).toEqual(mockObservations);
   });

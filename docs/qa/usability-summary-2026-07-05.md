@@ -87,15 +87,28 @@ Usuario/Administrador/Super Admin. No hay forma de crear usuarios
 soporta plenamente. Se tuvieron que crear vía `tinker` para poder ejecutar
 el resto de la ronda. Handoff: UX/UI Designer + Frontend Dev.
 
-## Hallazgos menores
-- Historial de versiones de factores de emisión (`/versions`) funciona
-  mas no tiene ningún punto de entrada en la UI.
-- Mensajes de acceso denegado silenciosos (dashboard bloqueado para
-  `iot_tech` no muestra ningún aviso, solo ceros).
-- Menú lateral inconsistente según ruta actual para el mismo rol/usuario
-  (visto en `iot_tech` y `auditor`).
-- Selector de Período en Observaciones de Auditoría no comunica que ya
-  tiene un valor preseleccionado.
+## Hallazgos menores — todos cerrados (2026-07-05)
+- ~~Historial de versiones de factores de emisión (`/versions`) funciona
+  mas no tiene ningún punto de entrada en la UI.~~ **Resuelto**: botón
+  "Ver historial" en el diálogo de edición de factor (`FactorDialog`),
+  abre `FactorVersionsDialog` con el diff de campos entre versiones.
+- ~~Mensajes de acceso denegado silenciosos (dashboard bloqueado para
+  `iot_tech` no muestra ningún aviso, solo ceros).~~ **Resuelto**:
+  `dashboard-content.ts` detecta 403 y muestra un aviso explícito en vez
+  de dejar los valores en cero.
+- ~~Menú lateral inconsistente según ruta actual para el mismo rol/usuario
+  (visto en `iot_tech` y `auditor`).~~ **Cerrado sin cambio de código**:
+  el sidebar (`dashboard.html`) es un único shell compartido, gateado
+  solo por `authService.currentContext()?.role` (un signal), sin ninguna
+  lógica dependiente de la ruta. Luis verificó manualmente navegando
+  `/dashboard` ↔ `/iot/devices` (iot_tech) y `/dashboard` ↔
+  `/audit/observations` (auditor): el menú no cambió. No reproducible en
+  el código actual — probablemente artefacto del entorno de Playwright,
+  igual que H1.
+- ~~Selector de Período en Observaciones de Auditoría no comunica que ya
+  tiene un valor preseleccionado.~~ **Resuelto**: `selectedPeriodId` era
+  una propiedad plana mutada dentro de un `.subscribe()` (mismo patrón
+  de bug de Hallazgo 2) — convertida a signal en `observations.ts`.
 
 ## Positivos confirmados (no tocar)
 - Restricción de rol en "Invitar Usuario" para `admin` (solo ve "Usuario").

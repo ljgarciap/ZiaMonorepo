@@ -1,7 +1,7 @@
 import { Component, Inject, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormGroup, FormBuilder, Validators } from '@angular/forms';
-import { MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
+import { MatDialog, MatDialogModule, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -425,6 +425,9 @@ export class UserDialog {
         </form>
       </mat-dialog-content>
       <mat-dialog-actions align="end">
+        <button mat-button *ngIf="data.factor?.id" (click)="onViewHistory()" style="margin-right: auto;">
+          Ver historial
+        </button>
         <button mat-button (click)="onCancel()">Cancelar</button>
         <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="onSave()">
           {{ data.factor?.id ? 'Actualizar Factor' : 'Crear Factor' }}
@@ -436,6 +439,8 @@ export class UserDialog {
 })
 export class FactorDialog {
   form: FormGroup;
+  private dialog = inject(MatDialog);
+  private adminService = inject(AdminService);
 
   constructor(
     private fb: FormBuilder,
@@ -464,6 +469,70 @@ export class FactorDialog {
 
   onCancel() {
     this.dialogRef.close();
+  }
+
+  onViewHistory() {
+    this.adminService.getFactorVersions(this.data.factor.id).subscribe(res => {
+      this.dialog.open(FactorVersionsDialog, {
+        data: { factorName: this.data.factor.name, versions: res.versions },
+        width: '600px'
+      });
+    });
+  }
+}
+
+@Component({
+  selector: 'app-factor-versions-dialog',
+  standalone: true,
+  imports: [CommonModule, MatDialogModule, MatButtonModule, MatIconModule, MatDividerModule],
+  template: `
+    <div class="zia-dialog-premium">
+      <h2 mat-dialog-title>Historial de "{{ data.factorName }}"</h2>
+      <mat-dialog-content style="max-height: 60vh;">
+        <div *ngIf="data.versions.length === 0" class="empty-history">
+          Sin cambios registrados todavía.
+        </div>
+        <div *ngFor="let v of data.versions; let last = last" class="version-row">
+          <div class="version-header">
+            <span class="version-badge">v{{ v.version }}</span>
+            <span class="version-action">{{ v.action === 'created' ? 'Creado' : 'Actualizado' }}</span>
+            <span class="version-meta">{{ v.changed_by || 'Sistema' }} · {{ v.changed_at | date:'medium' }}</span>
+          </div>
+          <ul class="version-changes" *ngIf="v.action === 'updated' && diffFields(v.changes) as fields">
+            <li *ngFor="let f of fields">
+              <strong>{{ f.key }}</strong>: {{ f.old }} → {{ f.new }}
+            </li>
+          </ul>
+          <mat-divider *ngIf="!last"></mat-divider>
+        </div>
+      </mat-dialog-content>
+      <mat-dialog-actions align="end">
+        <button mat-button mat-dialog-close>Cerrar</button>
+      </mat-dialog-actions>
+    </div>
+  `,
+  styles: [`
+    .empty-history { color: var(--prestige-text-muted); padding: 16px 0; }
+    .version-row { padding: 12px 0; }
+    .version-header { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .version-badge { font-weight: 700; font-size: 12px; background: var(--prestige-primary); color: #fff; border-radius: 6px; padding: 2px 8px; }
+    .version-action { font-size: 13px; font-weight: 600; }
+    .version-meta { font-size: 11px; color: var(--prestige-text-muted); margin-left: auto; }
+    .version-changes { margin: 4px 0 0; padding-left: 20px; font-size: 12px; }
+  `]
+})
+export class FactorVersionsDialog {
+  constructor(
+    @Inject(MAT_DIALOG_DATA) public data: { factorName: string, versions: any[] }
+  ) {}
+
+  private readonly ignoredFields = ['id', 'created_at', 'updated_at', 'emission_category_id', 'calculation_formula_id'];
+
+  diffFields(changes: { old: Record<string, any>, new: Record<string, any> } | null): { key: string, old: any, new: any }[] {
+    if (!changes?.old || !changes?.new) return [];
+    return Object.keys(changes.new)
+      .filter(key => !this.ignoredFields.includes(key) && changes.old[key] !== changes.new[key])
+      .map(key => ({ key, old: changes.old[key], new: changes.new[key] }));
   }
 }
 

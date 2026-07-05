@@ -97,6 +97,10 @@ export class AdminService {
         return this.http.delete(`${this.apiUrl}/factors/${id}`);
     }
 
+    getFactorVersions(id: number): Observable<any> {
+        return this.http.get(`${this.apiUrl}/factors/${id}/versions`);
+    }
+
     // Sectors
     getSectors(): Observable<any[]> {
         return this.http.get<any[]>(`${this.apiUrl}/sectors`);
