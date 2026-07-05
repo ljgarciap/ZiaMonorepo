@@ -4,24 +4,46 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\Models\AuditorAssignment;
 use App\Models\Company;
 use App\Models\Period;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function summary(Request $request)
     {
-        $companyId = $request->query('company_id');
+        $requestCompanyId = $request->query('company_id');
         $periodId = $request->query('period_id');
 
-        if (!$companyId || !$periodId) {
+        if (!$requestCompanyId || !$periodId) {
             return response()->json(['error' => 'Company and Period are required'], 400);
         }
 
+        // IDOR fix (fast-follow de H4, diseño finalizado por Cybersecurity): el
+        // período es la fuente de verdad del scoping de empresa, nunca el
+        // company_id que manda el cliente. X-Company-ID / company_id quedan como
+        // "hint" de UI (qué empresa preseleccionar), no como fuente de autorización.
+        $period = Period::find($periodId);
+        if (!$period) {
+            return response()->json(['error' => 'Period not found'], 404);
+        }
+
+        if ((int) $requestCompanyId !== (int) $period->company_id) {
+            return response()->json(['error' => "company_id does not match the period's company"], 400);
+        }
+
+        $companyId = $period->company_id;
         $company = Company::find($companyId);
 
-        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        $user = auth()->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
+
+        if ($accessError = $this->assertCompanyPeriodAccess($user, $activeRole, $company, $period)) {
+            return $accessError;
+        }
+
         // Matriz CRUD spec 1.2.3: "Dashboard: Usuario = R (métricas propias)" — a
         // diferencia de Admin/Superadmin (empresa completa), el rol Usuario solo debe
         // ver el consolidado de lo que él mismo capturó, no el de toda la empresa.
@@ -99,8 +121,13 @@ class DashboardController extends Controller
         ];
 
         // A01: Panel de completitud para admin y superadmin
+        // H4 (QA 2026-07-05, regla de Cybersecurity): default-deny — la clave
+        // admin_panel debe estar AUSENTE del array de respuesta para roles no
+        // privilegiados, no presente con valor null (evita filtrar la forma de
+        // datos admin-only vía inspección de red a roles sin permiso).
         $adminPanel = null;
-        if (in_array($activeRole, ['admin', 'superadmin'])) {
+        $isPrivilegedRole = in_array($activeRole, ['admin', 'superadmin']);
+        if ($isPrivilegedRole) {
             // Emisiones por unidad operativa (una query con join)
             $byUnit = DB::table('carbon_emissions')
                 ->leftJoin('operational_units', 'carbon_emissions.unit_id', '=', 'operational_units.id')
@@ -173,7 +200,7 @@ class DashboardController extends Controller
             'huella_total' => round($huellaTotal, 2),
             'neutralizados' => 0,
             'scope' => $ownScopeOnly ? 'own' : 'company',
-            'admin_panel' => $adminPanel,
+            ...($isPrivilegedRole ? ['admin_panel' => $adminPanel] : []),
             'alcances' => $alcancesRes,
             'equivalency' => [
                 'value' => $eqValue,
@@ -189,9 +216,32 @@ class DashboardController extends Controller
 
     public function trends(Request $request)
     {
-        $companyId = (int)$request->query('company_id', 1);
+        $requestCompanyId = $request->query('company_id');
 
-        $activeRole = $request->header('X-Context-Role') ?: auth()->user()->role;
+        if (!$requestCompanyId) {
+            return response()->json(['error' => 'Company is required'], 400);
+        }
+
+        $company = Company::find($requestCompanyId);
+        if (!$company) {
+            return response()->json(['error' => 'Company not found'], 404);
+        }
+
+        $companyId = $company->id;
+
+        $user = auth()->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
+
+        // IDOR fix: trends() no recibe period_id (agrega todos los períodos de la
+        // empresa), a diferencia de summary(). No hay un período único que pueda
+        // servir de fuente de verdad aquí — el company_id es en sí el ancho de
+        // scoping, así que se valida directamente contra $company. Ver el caso
+        // 'auditor' dentro de assertCompanyPeriodAccess() para la limitación
+        // conocida cuando no se pasa $period.
+        if ($accessError = $this->assertCompanyPeriodAccess($user, $activeRole, $company, null)) {
+            return $accessError;
+        }
+
         $ownScopeOnly = $activeRole === 'user';
 
         // Get all periods for this company, ordered by year
@@ -258,5 +308,63 @@ class DashboardController extends Controller
                 ]
             ]
         ]);
+    }
+
+    /**
+     * IDOR fix (fast-follow de H4, diseño finalizado por Cybersecurity):
+     * default-deny para acceso a un company+period desde el dashboard.
+     *
+     * - superadmin: acceso total, sin chequeo adicional.
+     * - admin / user / iot_tech / viewer: requieren fila activa (is_active=true,
+     *   no vencida) en company_user para esa empresa — mismo shape que ya
+     *   valida ContextAwareMiddleware, pero evaluado aquí directamente porque el
+     *   middleware está gateado por header y es saltable.
+     * - auditor: el pivot company_user NO es suficiente — exige además un
+     *   AuditorAssignment activo (scope active()) para ese user_id+company_id
+     *   y, cuando se conoce el período exacto, también period_id. Mismo patrón
+     *   que AuditObservationController::authorizeAccess().
+     *
+     * $period es nullable porque trends() no recibe period_id (agrega todos los
+     * períodos de la empresa); en ese caso el auditor se valida contra
+     * cualquier asignación vigente en la empresa, no contra un período exacto
+     * — ver nota en trends() sobre esta limitación conocida.
+     *
+     * Devuelve null si el acceso está autorizado, o una respuesta 403 lista
+     * para hacer "return" temprano si no lo está.
+     */
+    private function assertCompanyPeriodAccess($user, string $activeRole, Company $company, ?Period $period): ?JsonResponse
+    {
+        if ($activeRole === 'superadmin') {
+            return null;
+        }
+
+        if (in_array($activeRole, ['admin', 'user', 'iot_tech', 'viewer'])) {
+            $belongs = $user->companies()
+                ->where('companies.id', $company->id)
+                ->wherePivot('is_active', true)
+                ->where(function ($q) {
+                    $q->whereNull('company_user.expires_at')
+                        ->orWhere('company_user.expires_at', '>', now());
+                })
+                ->exists();
+
+            return $belongs ? null : response()->json(['error' => 'Sin permiso.'], 403);
+        }
+
+        if ($activeRole === 'auditor') {
+            $query = AuditorAssignment::where('user_id', $user->id)
+                ->where('company_id', $company->id)
+                ->active();
+
+            if ($period) {
+                $query->where('period_id', $period->id);
+            }
+
+            return $query->exists()
+                ? null
+                : response()->json(['error' => 'No tienes autorización de auditoría para este período.'], 403);
+        }
+
+        return response()->json(['error' => 'Sin permiso.'], 403);
     }
 }

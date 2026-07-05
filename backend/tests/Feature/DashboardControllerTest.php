@@ -27,6 +27,7 @@ class DashboardControllerTest extends TestCase
         $this->user    = User::factory()->create(['role' => 'admin']);
         $this->company = Company::factory()->create();
         $this->period  = Period::factory()->create(['company_id' => $this->company->id]);
+        $this->user->companies()->attach($this->company->id, ['role' => 'admin', 'is_active' => true]);
 
         $this->actingAs($this->user, 'api');
     }
@@ -123,6 +124,7 @@ class DashboardControllerTest extends TestCase
             'num_employees' => 10,
         ]);
         $period = Period::factory()->create(['company_id' => $company->id]);
+        $this->user->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
 
         $scope    = Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
         $category = EmissionCategory::factory()->create(['scope_id' => $scope->id]);
@@ -149,6 +151,7 @@ class DashboardControllerTest extends TestCase
     {
         $company = Company::factory()->create(['floor_sqm' => null, 'num_employees' => null]);
         $period  = Period::factory()->create(['company_id' => $company->id]);
+        $this->user->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
 
         $response = $this->getJson(
             "/api/dashboard/summary?company_id={$company->id}&period_id={$period->id}"
@@ -180,6 +183,7 @@ class DashboardControllerTest extends TestCase
 
         $operativeUser = User::factory()->create(['role' => 'user']);
         $otherUser = User::factory()->create(['role' => 'user']);
+        $operativeUser->companies()->attach($this->company->id, ['role' => 'user', 'is_active' => true]);
 
         CarbonEmission::factory()->create([
             'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
@@ -224,6 +228,7 @@ class DashboardControllerTest extends TestCase
         $company = Company::factory()->create(['floor_sqm' => 100, 'num_employees' => 10]);
         $period  = Period::factory()->create(['company_id' => $company->id]);
         $operativeUser = User::factory()->create(['role' => 'user']);
+        $operativeUser->companies()->attach($company->id, ['role' => 'user', 'is_active' => true]);
 
         $response = $this->actingAs($operativeUser, 'api')->getJson(
             "/api/dashboard/summary?company_id={$company->id}&period_id={$period->id}"
@@ -241,6 +246,7 @@ class DashboardControllerTest extends TestCase
 
         $operativeUser = User::factory()->create(['role' => 'user']);
         $otherUser = User::factory()->create(['role' => 'user']);
+        $operativeUser->companies()->attach($this->company->id, ['role' => 'user', 'is_active' => true]);
 
         CarbonEmission::factory()->create([
             'period_id' => $this->period->id, 'emission_factor_id' => $factor->id,
