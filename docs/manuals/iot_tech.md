@@ -1,7 +1,7 @@
 # Manual de Usuario — Técnico IoT
 
 **Rol**: `iot_tech`
-**Última actualización**: 2026-07-04
+**Última actualización**: 2026-07-05
 **Alcance**: ZIA Carbon Control
 
 ## ¿Qué puedes hacer con este rol?
@@ -31,16 +31,14 @@ Consultar las lecturas en tiempo real e históricas de los dispositivos.
 1. **Telemetría en Vivo**
 
 ## Lo que no puedes hacer
-- **No tienes acceso al Dashboard** de huella de carbono — aunque el
-  link aparezca en tu menú, la pantalla no cargará datos para tu rol.
-  Esto es esperado: tu rol no participa del cálculo ni consulta de
-  emisiones
+- **No tienes acceso al Dashboard** de huella de carbono — el link
+  aparece en tu menú (es el mismo para todos los roles), pero al entrar
+  verás un aviso explícito de que tu rol no tiene acceso, en vez de
+  datos en cero. Esto es esperado: tu rol no participa del cálculo ni
+  consulta de emisiones
 - **No puedes** registrar, ver ni exportar datos de emisiones ni reportes
-- **No tienes acceso** al Simulador de IA — aunque el link aparezca en
-  el menú, no está disponible para tu rol
-- **No tienes acceso** a la bitácora de auditoría, observaciones, ni a
-  ninguna pantalla de "Administración"
-
-Si ves un link en el menú que no funciona al hacer clic, es porque
-corresponde a otro rol — el menú no oculta todavía todos los accesos
-que no te corresponden.
+- **No tienes acceso** al Simulador de IA, Huella de Carbono/Smart
+  Intake, Historial, ni Observaciones de Auditoría — tu menú lateral
+  solo muestra Dashboard, Zia Live y Dispositivos IoT
+- **No tienes acceso** a la bitácora de auditoría ni a ninguna pantalla
+  de "Administración"

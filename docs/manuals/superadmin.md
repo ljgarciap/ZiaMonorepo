@@ -1,7 +1,7 @@
 # Manual de Usuario — Superadministrador
 
 **Rol**: `superadmin`
-**Última actualización**: 2026-07-04
+**Última actualización**: 2026-07-05
 **Alcance**: ZIA Carbon Control
 **Audiencia**: uso interno del equipo (no se distribuye a empresas clientes)
 
@@ -113,7 +113,9 @@ factor), fórmulas, unidades, alcances, sectores.
 1. **Administración → Tags / Factores / Sectores / Unidades** según corresponda
 2. Los cambios a un factor de emisión quedan versionados — el motor de
    cálculo sigue usando el valor vigente, pero puedes consultar la línea
-   de tiempo de cambios
+   de tiempo de cambios: al editar un factor, el botón **"Ver historial"**
+   (esquina inferior izquierda del diálogo) muestra cada versión con
+   quién la cambió, cuándo, y qué campos exactos cambiaron
 
 ### Errores comunes
 - Habilitar/deshabilitar qué factores usa una empresa específica también
@@ -161,9 +163,25 @@ Crear y versionar las plantillas de cuestionario que las empresas usan para capt
 
 ## Gestión de Grupos de Empresas
 ### Para qué sirve
-Agrupar empresas relacionadas (ej. holdings con varias subsidiarias).
+Agrupar empresas que comparten infraestructura (ej. varios inquilinos de
+un mismo edificio) o pertenecen al mismo holding, para ver su huella de
+carbono **consolidada** como si fueran una sola unidad — sin mezclar sus
+datos individuales de forma permanente.
+
+### Paso a paso
+1. **Administración → Grupos de Empresas** (`/admin/company-groups`)
+2. **Nuevo Grupo**: nombre, descripción opcional, y opcionalmente
+   selecciona ya las empresas que lo integran
+3. **Ver Resumen**: abre el detalle del grupo — huella total, desglose
+   por alcance y por empresa, con selector de año (o "Todos los
+   períodos" para ver el histórico completo)
+4. Desde el detalle puedes **agregar** o **quitar** empresas del grupo
+   en cualquier momento
+5. **Eliminar grupo**: las empresas no se eliminan, solo se desagrupan
 
 ### Errores comunes
-- Esta funcionalidad existe en el backend pero **no tiene pantalla en el
-  frontend todavía**. Si necesitas usarla, es vía API directa — pregunta
-  al equipo técnico si surge la necesidad de un caso real
+- No hay forma de renombrar o editar la descripción de un grupo ya
+  creado — si te equivocaste, elimina el grupo (es barato, solo tiene
+  nombre/descripción/empresas) y crea uno nuevo
+- Un grupo sin empresas asignadas, o sin datos en el año seleccionado,
+  muestra el resumen en cero — no es un error
