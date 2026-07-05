@@ -1169,3 +1169,74 @@ export class UserCompaniesDialog implements OnInit {
     this.dialogRef.close(this.hasChanges);
   }
 }
+
+@Component({
+  selector: 'app-company-group-dialog',
+  standalone: true,
+  imports: [
+    CommonModule,
+    MatDialogModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatButtonModule,
+    MatSelectModule,
+    MatOptionModule,
+    FormsModule,
+    ReactiveFormsModule
+  ],
+  template: `
+    <div class="zia-dialog-premium">
+      <h2 mat-dialog-title>Nuevo Grupo de Empresas</h2>
+      <mat-dialog-content style="min-width: 460px">
+        <form [formGroup]="form" class="zia-form-compact">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Nombre del Grupo</mat-label>
+            <input matInput formControlName="name" placeholder="Ej: Edificio Parque Tecnológico">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Descripción (opcional)</mat-label>
+            <input matInput formControlName="description">
+          </mat-form-field>
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Empresas (opcional)</mat-label>
+            <mat-select formControlName="company_ids" multiple>
+              <mat-option *ngFor="let c of data.allCompanies" [value]="c.id">{{ c.name }}</mat-option>
+            </mat-select>
+            <mat-hint>Puedes agregar empresas después de crear el grupo.</mat-hint>
+          </mat-form-field>
+        </form>
+      </mat-dialog-content>
+      <mat-dialog-actions align="end">
+        <button mat-button (click)="onCancel()">Cancelar</button>
+        <button mat-flat-button color="primary" [disabled]="form.invalid" (click)="onSave()">
+          Crear Grupo
+        </button>
+      </mat-dialog-actions>
+    </div>
+  `
+})
+export class CompanyGroupDialog {
+  form: FormGroup;
+
+  constructor(
+    private fb: FormBuilder,
+    public dialogRef: MatDialogRef<CompanyGroupDialog>,
+    @Inject(MAT_DIALOG_DATA) public data: { allCompanies: any[] }
+  ) {
+    this.form = this.fb.group({
+      name: ['', Validators.required],
+      description: [''],
+      company_ids: [[]]
+    });
+  }
+
+  onSave() {
+    if (this.form.valid) {
+      this.dialogRef.close(this.form.value);
+    }
+  }
+
+  onCancel() {
+    this.dialogRef.close();
+  }
+}

@@ -319,4 +319,30 @@ export class AdminService {
     reorderQuestions(templateId: number, order: { id: number; order: number }[]): Observable<any> {
         return this.http.post(`${this.apiUrl}/questionnaires/${templateId}/questions/reorder`, { order });
     }
+
+    // Company Groups (Gap-10 — grupos de empresas para reporte consolidado, ej. edificio compartido)
+    getCompanyGroups(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/groups`);
+    }
+
+    createCompanyGroup(data: { name: string; description?: string; company_ids?: number[] }): Observable<any> {
+        return this.http.post(`${this.apiUrl}/groups`, data);
+    }
+
+    addCompanyToGroup(groupId: number, companyId: number): Observable<any> {
+        return this.http.post(`${this.apiUrl}/groups/${groupId}/companies`, { company_id: companyId });
+    }
+
+    removeCompanyFromGroup(groupId: number, companyId: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/groups/${groupId}/companies`, { body: { company_id: companyId } });
+    }
+
+    deleteCompanyGroup(groupId: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/groups/${groupId}`);
+    }
+
+    getCompanyGroupSummary(groupId: number, year?: number): Observable<any> {
+        const query = year ? `?year=${year}` : '';
+        return this.http.get(`${this.apiUrl}/groups/${groupId}/summary${query}`);
+    }
 }

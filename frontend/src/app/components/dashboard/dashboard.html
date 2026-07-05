@@ -136,6 +136,13 @@
                     <mat-icon matListItemIcon>verified_user</mat-icon>
                     <div matListItemTitle>Acceso de Auditores</div>
                 </a>
+
+                <!-- Gap-10: grupos de empresas (ej. edificio compartido) para reporte consolidado -->
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
+                    routerLink="/admin/company-groups" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>domain_add</mat-icon>
+                    <div matListItemTitle>Grupos de Empresas</div>
+                </a>
                 <!-- SA-12: Seguimiento IoT — superadmin -->
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/iot-devices" routerLinkActive="active-link">
