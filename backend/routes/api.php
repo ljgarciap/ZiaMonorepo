@@ -13,6 +13,9 @@ Route::middleware(\App\Http\Middleware\InternalOnly::class)
 Route::middleware(\App\Http\Middleware\InternalOnly::class)
     ->post('/internal/search-documents', [App\Http\Controllers\Api\InternalDocumentSearchController::class, 'search']);
 
+Route::middleware(\App\Http\Middleware\InternalOnly::class)
+    ->get('/internal/credentials', [App\Http\Controllers\Api\InternalCredentialController::class, 'index']);
+
 Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
@@ -131,6 +134,11 @@ Route::middleware('auth:api')->group(function () {
             Route::put('/questionnaires/{template}/questions/{question}', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'updateQuestion']);
             Route::delete('/questionnaires/{template}/questions/{question}', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'destroyQuestion']);
             Route::post('/questionnaires/{template}/questions/reorder', [\App\Http\Controllers\Api\Admin\AdminQuestionnaireController::class, 'reorderQuestions']);
+
+            // API Keys / credenciales de integraciones externas (Mistral, Anthropic, Langfuse, ThingsBoard)
+            Route::get('/api-credentials', [\App\Http\Controllers\Api\Admin\AdminApiCredentialController::class, 'index']);
+            Route::put('/api-credentials/{key}', [\App\Http\Controllers\Api\Admin\AdminApiCredentialController::class, 'update']);
+            Route::delete('/api-credentials/{key}', [\App\Http\Controllers\Api\Admin\AdminApiCredentialController::class, 'destroy']);
         });
     });
 

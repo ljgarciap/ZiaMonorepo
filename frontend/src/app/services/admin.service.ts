@@ -360,4 +360,17 @@ export class AdminService {
     deleteCompanyDocument(companyId: number, documentId: number): Observable<any> {
         return this.http.delete(`${this.apiUrl}/companies/${companyId}/documents/${documentId}`);
     }
+
+    // API Keys de integraciones externas (Mistral, Anthropic, Langfuse, ThingsBoard)
+    getApiCredentials(): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/api-credentials`);
+    }
+
+    updateApiCredential(key: string, value: string): Observable<any> {
+        return this.http.put(`${this.apiUrl}/api-credentials/${key}`, { value });
+    }
+
+    deleteApiCredential(key: string): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/api-credentials/${key}`);
+    }
 }

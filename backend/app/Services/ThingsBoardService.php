@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -15,9 +16,11 @@ class ThingsBoardService
 
     public function __construct()
     {
-        $this->host = env('THINGSBOARD_HOST', 'https://thingsboard.cloud');
-        $this->username = env('THINGSBOARD_USERNAME');
-        $this->password = env('THINGSBOARD_PASSWORD');
+        $this->host = SystemSetting::resolve('THINGSBOARD_HOST', 'https://thingsboard.cloud');
+        $this->username = SystemSetting::resolve('THINGSBOARD_USERNAME');
+        $this->password = SystemSetting::resolve('THINGSBOARD_PASSWORD');
+        // THINGSBOARD_MOCK es una bandera de entorno, no una credencial — se
+        // queda en .env, no es gestionable desde la UI de API Keys.
         $this->mockMode = filter_var(env('THINGSBOARD_MOCK', true), FILTER_VALIDATE_BOOLEAN);
     }
 

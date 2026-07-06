@@ -150,6 +150,12 @@ export const routes: Routes = [
                 data: { roles: ['superadmin', 'admin'] } // RAG: documentos que el agente puede consultar via search_company_documents
             },
             {
+                path: 'admin/api-credentials',
+                loadComponent: () => import('./components/admin/api-credentials/api-credentials').then(m => m.ApiCredentialsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin'] } // credenciales de integraciones externas (Mistral, Anthropic, Langfuse, ThingsBoard)
+            },
+            {
                 path: 'admin/audit',
                 loadComponent: () => import('./components/admin/audit-logs/audit-logs').then(m => m.AuditLogsComponent),
                 canActivate: [roleGuard],

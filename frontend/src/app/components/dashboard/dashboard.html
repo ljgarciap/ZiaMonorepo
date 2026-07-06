@@ -155,6 +155,12 @@
                     <mat-icon matListItemIcon>device_hub</mat-icon>
                     <div matListItemTitle>Dispositivos IoT</div>
                 </a>
+                <!-- Credenciales de integraciones externas (Mistral, Anthropic, Langfuse, ThingsBoard) — superadmin -->
+                <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
+                    routerLink="/admin/api-credentials" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>vpn_key</mat-icon>
+                    <div matListItemTitle>API Keys</div>
+                </a>
                 <!-- SA-10: Cuestionarios Smart Intake — superadmin -->
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/questionnaires" routerLinkActive="active-link">

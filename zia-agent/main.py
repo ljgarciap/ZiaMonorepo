@@ -1,6 +1,7 @@
 import os
 import json
 import asyncio
+from contextlib import asynccontextmanager
 from typing import AsyncIterator
 
 import anthropic
@@ -20,7 +21,19 @@ try:
 except ImportError:
     Langfuse = None
 
-app = FastAPI(title="ZIA Agent", version="2.0.0")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # refresh_credentials/_credentials_refresh_loop se definen más abajo en
+    # este mismo módulo — se resuelven por nombre recién cuando arranca el
+    # servidor, no cuando se define este lifespan, así que el orden es seguro.
+    await refresh_credentials()
+    task = asyncio.create_task(_credentials_refresh_loop())
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="ZIA Agent", version="2.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,6 +55,16 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY", "")
 LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY", "")
 LANGFUSE_HOST       = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
+# Copia inmutable de lo que este contenedor trajo en su propio .env — Laravel
+# solo conoce overrides guardados en su BD (nunca el .env de este servicio),
+# así que "sin override" debe caer aquí, no a una cadena vacía. Sin esto, un
+# superadmin que borra un override (pensando "vuelve al default") deja al
+# agente sin ninguna key, así haya una real en este .env.
+_ENV_ANTHROPIC_KEY = ANTHROPIC_KEY
+_ENV_MISTRAL_KEY = MISTRAL_KEY
+_ENV_LANGFUSE_PUBLIC_KEY = LANGFUSE_PUBLIC_KEY
+_ENV_LANGFUSE_SECRET_KEY = LANGFUSE_SECRET_KEY
+
 langfuse_client: "Langfuse | None" = None
 if Langfuse and LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY:
     langfuse_client = Langfuse(
@@ -49,6 +72,63 @@ if Langfuse and LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY:
         secret_key=LANGFUSE_SECRET_KEY,
         host=LANGFUSE_HOST,
     )
+
+CREDENTIALS_REFRESH_INTERVAL = int(os.getenv("CREDENTIALS_REFRESH_INTERVAL_SECONDS", "60"))
+
+
+async def refresh_credentials() -> None:
+    """Refresca las credenciales de IA/Langfuse consultando a Laravel
+    (/api/internal/credentials), para que un superadmin pueda rotarlas desde
+    la UI sin reiniciar este contenedor. Si Laravel no responde, o no hay
+    INTERNAL_API_SECRET configurado, conserva silenciosamente los clientes
+    actuales — nunca debe tumbar el servicio por un refresco fallido."""
+    global anthropic_client, mistral_client, langfuse_client
+    global ANTHROPIC_KEY, MISTRAL_KEY, LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY
+
+    if not INTERNAL_SECRET:
+        return
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as http:
+            r = await http.get(
+                f"{BACKEND_URL}/api/internal/credentials",
+                headers={"X-Internal-Secret": INTERNAL_SECRET},
+            )
+        if r.status_code != 200:
+            return
+        data = r.json()
+    except Exception:
+        return
+
+    # None/ausente = "sin override en Laravel" -> cae al .env propio de este
+    # contenedor, nunca a cadena vacía (ver _ENV_* arriba).
+    new_anthropic = data.get("anthropic_api_key") or _ENV_ANTHROPIC_KEY
+    new_mistral = data.get("mistral_api_key") or _ENV_MISTRAL_KEY
+    new_lf_public = data.get("langfuse_public_key") or _ENV_LANGFUSE_PUBLIC_KEY
+    new_lf_secret = data.get("langfuse_secret_key") or _ENV_LANGFUSE_SECRET_KEY
+
+    if new_anthropic != ANTHROPIC_KEY:
+        ANTHROPIC_KEY = new_anthropic
+        anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_KEY) if ANTHROPIC_KEY else None
+
+    if new_mistral != MISTRAL_KEY:
+        MISTRAL_KEY = new_mistral
+        mistral_client = Mistral(api_key=MISTRAL_KEY) if (Mistral and MISTRAL_KEY) else None
+
+    if (new_lf_public, new_lf_secret) != (LANGFUSE_PUBLIC_KEY, LANGFUSE_SECRET_KEY):
+        LANGFUSE_PUBLIC_KEY = new_lf_public
+        LANGFUSE_SECRET_KEY = new_lf_secret
+        langfuse_client = (
+            Langfuse(public_key=LANGFUSE_PUBLIC_KEY, secret_key=LANGFUSE_SECRET_KEY, host=LANGFUSE_HOST)
+            if Langfuse and LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY
+            else None
+        )
+
+
+async def _credentials_refresh_loop() -> None:
+    while True:
+        await asyncio.sleep(CREDENTIALS_REFRESH_INTERVAL)
+        await refresh_credentials()
 
 # ─── Tool definitions (Anthropic format) ─────────────────────────────────────
 
