@@ -8,7 +8,6 @@
 #   COOLIFY_API_TOKEN — Bearer token de Coolify (Keys & Tokens en el dashboard,
 #                        usar uno dedicado a CI, no el token de administración manual)
 #
-# Variables requeridas en GitHub → Settings → Secrets and variables → Variables:
 #   COOLIFY_URL           — ej. http://2.25.79.64:8000
 #   COOLIFY_SERVICE_UUID  — UUID del servicio docker-compose en Coolify
 #   BACKEND_HEALTH_URL    — ej. https://apiziaccb.softclass.co/api/health
@@ -110,13 +109,13 @@ jobs:
     steps:
       - name: Trigger Coolify deploy
         run: |
-          curl -fsS -X GET "${{ vars.COOLIFY_URL }}/api/v1/deploy?uuid=${{ vars.COOLIFY_SERVICE_UUID }}" \
+          curl -fsS -X GET "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_SERVICE_UUID }}" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
 
       - name: Wait for health check
         run: |
           for i in $(seq 1 20); do
-            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.BACKEND_HEALTH_URL }}")
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.BACKEND_HEALTH_URL }}")
             if [ "$code" = "200" ]; then
               echo "✅ Deploy exitoso — /api/health respondió 200"
               exit 0
