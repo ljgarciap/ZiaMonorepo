@@ -11,7 +11,7 @@ validación.
 - `Emanuel_Requerimientos_de_la_plataforma_de_Zia.md` — 18 requerimientos técnicos detallados
 - `Desglose Estratégico Luis (v3.0)` — SLA técnico con 2 hitos de pago y su "Definition of Done"
 
-**Cómo se generó este documento**: cada estado (✅/⚠️/❌) se verificó
+**Cómo se generó este documento**: cada estado (Cumple/Parcial/No cumple) se verificó
 leyendo el código fuente real del repositorio (`ZiaMonorepo`, commit
 `14fa5bd` en adelante), no a partir de lo que se planeó o se supone que
 existe. Donde hay una desviación del requerimiento original, se explica
@@ -24,9 +24,9 @@ ambigüedad y más barata de cerrar. El estado de ese punto ya refleja el
 resultado final, no el hallazgo original.
 
 **Segunda revisión 2026-07-05**: se re-examinaron todas las brechas
-marcadas ⚠️ para distinguir "implementación distinta que igual cumple
+marcadas como parciales para distinguir "implementación distinta que igual cumple
 el objetivo" de "gap funcional real". Resultado: el punto 14 pasó de
-⚠️ a ✅ (el mecanismo de guardado atómico por pregunta logra el mismo
+parcial a cumple (el mecanismo de guardado atómico por pregunta logra el mismo
 objetivo que un borrador, sin necesitar uno). El punto 1 se matiza
 (la severidad real depende de cómo esté configurado Coolify, no
 verificable desde el código). Los puntos 12/13 y 16 se mantienen como
@@ -47,31 +47,31 @@ hallazgo del agente junto con otro pendiente, se hizo un barrido
 sistemático de aislamiento multi-tenant (punto 3) que encontró y cerró
 6 endpoints reales sin verificación de acceso cross-empresa — ver
 detalle en el punto 3. No cambia el estado de cumplimiento de ningún
-punto (ya estaban marcados ✅ con la implementación por capa de
+punto (ya estaban marcados como "cumple" con la implementación por capa de
 aplicación), pero es evidencia concreta de un proceso de revisión activo.
 
 ## Resumen ejecutivo
 
 | # | Requerimiento | Estado |
 |---|---|---|
-| 1 | Repos separados frontend/backend + CI/CD Coolify | ⚠️ Organización distinta — a confirmar con DevOps |
-| 2 | API REST con OAuth2.0/JWT | ✅ Cumple |
-| 3 | Multitenancy con aislamiento de datos | ✅ Cumple |
-| 4 | Roles y permisos por organización | ✅ Cumple |
-| 5 | Rol superadministrador protegido | ✅ Cumple |
-| 6 | Bases de datos políglota (PostgreSQL + Qdrant + RustFS) | ⚠️ Parcial — PostgreSQL + pgvector (no Qdrant); sin RustFS |
-| 7 | Logging estándar | ✅ Cumple |
-| 8 | Configuración vía variables de entorno | ✅ Cumple |
-| 9 | Documentación OpenAPI/Swagger | ✅ Cumple (implementado 2026-07-05) |
-| 10 | Todos los endpoints protegidos | ✅ Cumple |
-| 11 | Motor de fórmulas dinámico (tipo mathjs) | ✅ Cumple (adaptado a PHP) |
-| 12 | Formularios dinámicos con banco de preguntas + tags | ⚠️ Parcial — más simple que lo especificado |
-| 13 | Pre-formulario que resuelve tags | ⚠️ Parcial — ligado al punto anterior |
-| 14 | Almacenamiento de formularios + borradores | ✅ Cumple (guardado atómico por pregunta, no requiere borrador) |
-| 15 | Generación de reportes (GHG Protocol / ISO 14064) | ✅ Cumple |
-| 16 | Agente LLM (Flowise/n8n) con RAG (Qdrant) | ✅ Cumple (RAG implementado 2026-07-06 con pgvector; Flowise/n8n sigue sin usarse, ver ADR-002) |
-| 17 | Observabilidad del agente (Langfuse) | ✅ Cumple |
-| 18 | Integración IoT vía ThingsBoard | ✅ Cumple |
+| 1 | Repos separados frontend/backend + CI/CD Coolify | PARCIAL — Organización distinta, a confirmar con DevOps |
+| 2 | API REST con OAuth2.0/JWT | CUMPLE |
+| 3 | Multitenancy con aislamiento de datos | CUMPLE |
+| 4 | Roles y permisos por organización | CUMPLE |
+| 5 | Rol superadministrador protegido | CUMPLE |
+| 6 | Bases de datos políglota (PostgreSQL + Qdrant + RustFS) | PARCIAL — PostgreSQL + pgvector (no Qdrant); sin RustFS |
+| 7 | Logging estándar | CUMPLE |
+| 8 | Configuración vía variables de entorno | CUMPLE |
+| 9 | Documentación OpenAPI/Swagger | CUMPLE (implementado 2026-07-05) |
+| 10 | Todos los endpoints protegidos | CUMPLE |
+| 11 | Motor de fórmulas dinámico (tipo mathjs) | CUMPLE (adaptado a PHP) |
+| 12 | Formularios dinámicos con banco de preguntas + tags | PARCIAL — más simple que lo especificado |
+| 13 | Pre-formulario que resuelve tags | PARCIAL — ligado al punto anterior |
+| 14 | Almacenamiento de formularios + borradores | CUMPLE (guardado atómico por pregunta, no requiere borrador) |
+| 15 | Generación de reportes (GHG Protocol / ISO 14064) | CUMPLE |
+| 16 | Agente LLM (Flowise/n8n) con RAG (Qdrant) | CUMPLE (RAG implementado 2026-07-06 con pgvector; Flowise/n8n sigue sin usarse, ver ADR-002) |
+| 17 | Observabilidad del agente (Langfuse) | CUMPLE |
+| 18 | Integración IoT vía ThingsBoard | CUMPLE |
 
 **Hitos de pago (SLA)**:
 - **Entregable 1** (infra, JWT, multitenancy, motor de fórmulas, docs API): cumplido salvo la estructura de repos.
@@ -86,7 +86,7 @@ aplicación), pero es evidencia concreta de un proceso de revisión activo.
 **Requerido**: repositorios separados para frontend y backend, cada uno
 con Dockerfile propio, desplegados vía Coolify con CI/CD automático por rama.
 
-**Estado real**: ⚠️ **Es un monorepo, pero la severidad real es
+**Estado real**: **Es un monorepo, pero la severidad real es
 incierta sin ver la configuración de Coolify.** `backend/`, `frontend/`
 y `zia-agent/` viven en un solo repositorio Git (`ZiaMonorepo`,
 `github.com/ljgarciap/ZiaMonorepo`). Cada carpeta sí tiene su propio
@@ -123,7 +123,7 @@ Ricardo/DevOps si Coolify está conectado a este repo y con qué rama.
 
 ## 2. API REST con OAuth2.0/JWT
 
-**Estado**: ✅ Cumple. Laravel Passport (`config/auth.php`, guard `api`
+**Estado**: Cumple. Laravel Passport (`config/auth.php`, guard `api`
 → driver `passport`). Login devuelve un JWT firmado (RS256) con
 expiración de largo plazo.
 
@@ -145,7 +145,7 @@ curl http://localhost:8000/api/dashboard/summary \
 **Requerido**: cada organización con datos aislados; sugerencia de
 `organization_id` + row level security (RLS) a nivel de base de datos.
 
-**Estado real**: ✅ **Cumple el objetivo, con una implementación
+**Estado real**: **Cumple el objetivo, con una implementación
 distinta a la sugerida.** El aislamiento se hace en la capa de
 aplicación (Laravel), no con RLS nativo de PostgreSQL: cada tabla con
 datos de empresa lleva `company_id`, y cada controller valida
@@ -205,7 +205,7 @@ curl http://localhost:8000/api/companies/<ID_EMPRESA_B>/emissions/history \
 
 ## 4. Roles y permisos por organización
 
-**Estado**: ✅ Cumple. 6 roles: `superadmin`, `admin`, `user`,
+**Estado**: Cumple. 6 roles: `superadmin`, `admin`, `user`,
 `iot_tech`, `auditor`, `viewer`. Un usuario puede pertenecer a varias
 empresas con roles distintos en cada una (tabla `company_user` con
 `role` propio por fila). Matriz completa de permisos documentada en
@@ -220,7 +220,7 @@ iniciando sesión con ese rol.
 
 ## 5. Rol superadministrador protegido
 
-**Estado**: ✅ Cumple. Un superadmin no puede eliminar su propia cuenta.
+**Estado**: Cumple. Un superadmin no puede eliminar su propia cuenta.
 
 **Cómo validarlo**:
 ```bash
@@ -241,10 +241,10 @@ por OTRO superadmin. Si esto importa, es una validación adicional a pedir.
 **Requerido**: PostgreSQL (relacional) + Qdrant o pgVector (vectores,
 para RAG) + RustFS/MinIO (almacenamiento de objetos S3-compatible).
 
-**Estado real**: ⚠️ **PostgreSQL + pgvector cumplen la mitad del
+**Estado real**: **PostgreSQL + pgvector cumplen la mitad del
 requerimiento; RustFS/MinIO sigue sin implementarse.**
-- PostgreSQL: ✅ (`docker-compose.yml`, servicio `db`)
-- Vectores: ✅ **implementado 2026-07-06** — el propio requerimiento
+- PostgreSQL: Sí (`docker-compose.yml`, servicio `db`)
+- Vectores: **implementado 2026-07-06** — el propio requerimiento
   dice "Qdrant **o** pgVector", y se optó por pgvector sobre el
   PostgreSQL ya existente (`pgvector/pgvector:pg16`) en vez de levantar
   Qdrant como servicio nuevo — ver ADR-002, adenda 2026-07-06, y
@@ -253,7 +253,7 @@ requerimiento; RustFS/MinIO sigue sin implementarse.**
   embeddings se guardan como JSON, no como columna nativa `vector`
   (razón: compatibilidad con la suite de tests en sqlite) — la
   extensión está habilitada para migrar a eso si el volumen lo justifica.
-- RustFS/MinIO: ❌ sigue sin implementarse — los archivos (evidencias
+- RustFS/MinIO: No implementado — los archivos (evidencias
   de soporte, documentos del RAG) se guardan en disco local del
   contenedor (`FILESYSTEM_DISK=local` en Laravel), no en almacenamiento
   de objetos S3-compatible
@@ -271,7 +271,7 @@ servicio Qdrant, MinIO o RustFS.
 
 ## 7. Logging estándar
 
-**Estado**: ✅ Cumple (el propio requerimiento dice que "logging
+**Estado**: Cumple (el propio requerimiento dice que "logging
 estándar a stdout o archivo es suficiente para esta fase"). Laravel
 escribe logs vía su driver por defecto; no hay integración con
 OpenTelemetry/Grafana/Loki (mencionado en el diagrama de arquitectura
@@ -282,7 +282,7 @@ documento de requerimientos.
 
 ## 8. Configuración vía variables de entorno
 
-**Estado**: ✅ Cumple ampliamente. Todo secreto/config específico de
+**Estado**: Cumple ampliamente. Todo secreto/config específico de
 entorno pasa por `.env`: `DB_*`, `MISTRAL_API_KEY`, `ANTHROPIC_API_KEY`,
 `INTERNAL_API_SECRET`, `LANGFUSE_*`, `APP_KEY`, etc. No se encontraron
 credenciales hardcodeadas en el código fuente durante esta sesión.
@@ -294,7 +294,7 @@ variables esperadas sin valores reales.
 
 ## 9. Documentación OpenAPI/Swagger
 
-**Estado**: ✅ **Cumple — implementado el 2026-07-05.** Hallazgo
+**Estado**: **Cumple — implementado el 2026-07-05.** Hallazgo
 original: había una dependencia declarada (`darkaonline/l5-swagger`)
 pero completamente sin usar — sin config publicada, sin anotaciones,
 cero cobertura real. Se reemplazó por
@@ -327,7 +327,7 @@ Bearer detectado correctamente, 325 tests backend sin regresión.
 
 ## 10. Todos los endpoints protegidos por autenticación/autorización
 
-**Estado**: ✅ Cumple. Todos los endpoints de negocio requieren
+**Estado**: Cumple. Todos los endpoints de negocio requieren
 `auth:api` + verificación de rol (`role:` middleware) o de pertenencia
 a empresa/asignación. Rate limiting es explícitamente opcional según el
 requerimiento y no está implementado.
@@ -345,7 +345,7 @@ muchos específicamente para esto).
 intérprete de expresiones (mathjs sugerido), para agregar fórmulas
 nuevas sin tocar código.
 
-**Estado real**: ✅ **Cumple el objetivo, con una librería equivalente
+**Estado real**: **Cumple el objetivo, con una librería equivalente
 en PHP.** `mathjs` es una librería de JavaScript — no aplica
 directamente a un backend PHP. En su lugar:
 - `FormulaEvaluationService` (`backend/app/Services/FormulaEvaluationService.php`)
@@ -373,7 +373,7 @@ permite crear un factor nuevo sin ningún cambio de código.
 múltiples tags jerárquicos (ej. `alcance_1.fuentes_moviles.diesel`), el
 backend arma el JSON del formulario según los tags resueltos.
 
-**Estado real**: ⚠️ **Cumple el objetivo central, no la flexibilidad
+**Estado real**: **Cumple el objetivo central, no la flexibilidad
 completa — es un gap funcional real, no solo una diferencia de
 arquitectura.** La tabla real es `sector_questionnaire_rules`
 (`SectorQuestionnaireRule`): cada fila mapea directamente `sector_code`
@@ -407,7 +407,7 @@ el patrón real de datos.
 
 ## 13. Pre-formulario que resuelve tags
 
-**Estado real**: ⚠️ Ligado directamente al punto 12 — no existe un
+**Estado real**: Ligado directamente al punto 12 — no existe un
 pre-formulario de caracterización separado con preguntas propias. El
 "pre-formulario" equivalente es simplemente el campo sector/subsector
 ya guardado en `Company` al momento de crear la empresa. No hay
@@ -418,7 +418,7 @@ partes del formulario dinámico de forma independiente del sector.
 
 ## 14. Almacenamiento de formularios + borradores
 
-**Estado real**: ✅ **Cumple el objetivo, con un mecanismo distinto al
+**Estado real**: **Cumple el objetivo, con un mecanismo distinto al
 sugerido — no es un gap.** Las respuestas quedan guardadas asociadas a
 organización y período (`CarbonEmission` con `period_id`). No existe un
 estado `draft` explícito, pero tampoco hace falta: en Smart Intake
@@ -447,7 +447,7 @@ cero; queda reflejada en el histórico de emisiones del período.
 
 ## 15. Generación de reportes (GHG Protocol / ISO 14064)
 
-**Estado**: ✅ Cumple. Reportes PDF (resumen ejecutivo), Excel
+**Estado**: Cumple. Reportes PDF (resumen ejecutivo), Excel
 (detallado), de avance, y de dispositivos IoT, agregados por alcance
 (1/2/3) y por gas. El PDF tuvo un bug de compilación Blade corregido
 esta misma semana (commit `a8a2110`).
@@ -469,7 +469,7 @@ curl http://localhost:8000/api/reports/periods/<PERIOD_ID>/pdf \
 automático sobre documentos subidos por organización (Qdrant), el
 agente sugiere fórmulas/tags/preguntas nuevas via structured output.
 
-**Estado real**: ✅ **Cumple.** Orquestación custom (no Flowise/n8n) —
+**Estado real**: **Cumple.** Orquestación custom (no Flowise/n8n) —
 desviación deliberada y documentada (ver ADR-002) — pero el RAG
 documental y el resto del requerimiento sí están resueltos.
 - El agente (`zia-agent/`, servicio FastAPI en Python, puerto 8001) NO
@@ -517,7 +517,7 @@ solo esté en ese documento — confirma la recuperación semántica real.
 
 ## 17. Observabilidad del agente (Langfuse)
 
-**Estado**: ✅ Cumple. `langfuse` está en las dependencias y se
+**Estado**: Cumple. `langfuse` está en las dependencias y se
 inicializa con `LANGFUSE_PUBLIC_KEY`/`LANGFUSE_SECRET_KEY` si están
 configuradas — esta es la única pieza de la sección de IA que coincide
 exactamente con lo especificado en el SLA.
@@ -529,7 +529,7 @@ exactamente con lo especificado en el SLA.
 **Contrato técnico completo (endpoints, formato de datos, cómo se
 procesa cada lectura, checklist para pasar de mock a real)**: [`docs/architecture/thingsboard-integration.md`](architecture/thingsboard-integration.md).
 
-**Estado**: ✅ Cumple a nivel de código/arquitectura. `ThingsBoardService.php`
+**Estado**: Cumple a nivel de código/arquitectura. `ThingsBoardService.php`
 + `SyncTelemetryCommand` (cron cada 5 minutos,
 `Schedule::command('zia:sync-telemetry')->everyFiveMinutes()` en
 `routes/console.php`) consultan la API REST de ThingsBoard y alimentan
