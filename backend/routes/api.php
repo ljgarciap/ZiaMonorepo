@@ -10,6 +10,9 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware(\App\Http\Middleware\InternalOnly::class)
     ->post('/internal/calculate', [App\Http\Controllers\Api\InternalCalculationController::class, 'calculate']);
 
+Route::middleware(\App\Http\Middleware\InternalOnly::class)
+    ->post('/internal/search-documents', [App\Http\Controllers\Api\InternalDocumentSearchController::class, 'search']);
+
 Route::get('/health', function () {
     return response()->json([
         'status' => 'ok',
@@ -39,6 +42,11 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/companies/{company}/units/{unit}', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'destroy']);
         Route::post('/companies/{company}/units/{unit}/assign', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'assignUser']);
         Route::post('/companies/{company}/units/{unit}/unassign', [\App\Http\Controllers\Api\Admin\AdminOperationalUnitController::class, 'unassignUser']);
+
+        // Company Documents — insumos para el RAG del agente (subida, listado, borrado)
+        Route::get('/companies/{company}/documents', [\App\Http\Controllers\Api\Admin\CompanyDocumentController::class, 'index']);
+        Route::post('/companies/{company}/documents', [\App\Http\Controllers\Api\Admin\CompanyDocumentController::class, 'store']);
+        Route::delete('/companies/{company}/documents/{document}', [\App\Http\Controllers\Api\Admin\CompanyDocumentController::class, 'destroy']);
 
         // Users Management (admin: CRU only — destroy is superadmin-only, enforced in controller)
         Route::get('/users', [\App\Http\Controllers\Api\Admin\AdminUserController::class, 'index']);

@@ -77,7 +77,7 @@ sequenceDiagram
 
 ## Tools disponibles (MCP)
 
-El agente dispone de 6 tools que mapean a endpoints del backend Laravel.
+El agente dispone de 7 tools que mapean a endpoints del backend Laravel.
 
 ### `get_company_profile`
 
@@ -220,6 +220,36 @@ GET /api/periods/{period_id}/emissions
 
 ---
 
+### `search_company_documents`
+
+RAG sobre los documentos que la empresa subió (facturas, certificados, reportes previos). Búsqueda por similitud de coseno sobre embeddings de Mistral (`mistral-embed`, 1024 dim), calculada en PHP sobre los chunks de esa empresa — ver `docs/architecture/thingsboard-integration.md` para el patrón equivalente aplicado a otra integración, y ADR-002 para el detalle completo de esta decisión.
+
+```python
+# Input
+{ "query": "¿Cuántos galones de diésel consumió el generador de respaldo?" }
+
+# Calls
+POST /api/internal/search-documents  (X-Internal-Secret requerido)
+
+# Output
+{
+  "results": [
+    {
+      "document_id": 1,
+      "document_title": "factura_prueba.txt",
+      "content": "FACTURA DE CONSUMO ENERGÉTICO — ECONOVA S.A.S. ...",
+      "similarity": 0.82
+    }
+  ]
+}
+```
+
+**Importante — `company_id` NO es un parámetro de la tool.** Se toma directamente del `company_id` ya autenticado en el request original, nunca de lo que el modelo decida escribir. Una prueba real detectó que Mistral podía alucinar un `company_id` plausible pero inventado cuando se exponía como campo del schema (ver adenda 2026-07-06 en ADR-002) — el mismo riesgo late hoy en `get_pending_questions`, que sí toma `company_id` del modelo.
+
+**Cuándo usarla:** cuando el usuario pregunta algo que podría estar en un documento subido (no en los datos estructurados de ZIA) — antes de responder que no tiene esa información.
+
+---
+
 ## Normalización de historial (Mistral ↔ Anthropic)
 
 Los dos proveedores usan formatos incompatibles para tool calls en el historial de conversación. ZIA normaliza automáticamente antes de cada llamada al LLM:
@@ -297,7 +327,7 @@ Endpoint principal — recibe la solicitud y retorna SSE stream.
 ```bash
 cd zia-agent
 source .venv/bin/activate
-pytest                          # 51 tests
+pytest                          # 61 tests
 pytest tests/test_history_normalization.py   # 16 tests de normalización Mistral↔Anthropic
 ```
 

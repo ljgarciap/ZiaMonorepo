@@ -55,6 +55,11 @@ class Company extends Model
         return $this->hasMany(IotDevice::class);
     }
 
+    public function companyDocuments()
+    {
+        return $this->hasMany(CompanyDocument::class);
+    }
+
     public function factors()
     {
         return $this->belongsToMany(EmissionFactor::class, 'company_emission_factor')

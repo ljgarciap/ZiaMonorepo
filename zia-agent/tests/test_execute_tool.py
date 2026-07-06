@@ -293,6 +293,88 @@ async def test_get_pending_questions_all_registered(backend_url, auth_token, com
         assert result["remaining"] == 0
 
 
+# ─── search_company_documents ─────────────────────────────────────────────────
+
+async def test_search_company_documents_returns_results(backend_url, auth_token, company_id):
+    """200 response with results is passed through as-is."""
+    search_result = {
+        "results": [
+            {"document_id": 1, "document_title": "factura.pdf", "content": "Consumo de diésel...", "similarity": 0.91},
+        ]
+    }
+    with respx.mock:
+        respx.post(f"{backend_url}/api/internal/search-documents").mock(
+            return_value=httpx.Response(200, json=search_result)
+        )
+        raw = await execute_tool(
+            "search_company_documents",
+            {"query": "¿Cuánto diésel consumió la flota?"},
+            auth_token=auth_token,
+            company_id=company_id,
+        )
+        result = json.loads(raw)
+        assert len(result["results"]) == 1
+        assert result["results"][0]["document_title"] == "factura.pdf"
+
+
+async def test_search_company_documents_no_matches_returns_friendly_message(backend_url, auth_token, company_id):
+    """Empty results list still returns 200 — surface a helpful message, not an error."""
+    with respx.mock:
+        respx.post(f"{backend_url}/api/internal/search-documents").mock(
+            return_value=httpx.Response(200, json={"results": []})
+        )
+        raw = await execute_tool(
+            "search_company_documents",
+            {"query": "algo que no existe"},
+            auth_token=auth_token,
+            company_id=company_id,
+        )
+        result = json.loads(raw)
+        assert result["results"] == []
+        assert "message" in result
+
+
+async def test_search_company_documents_backend_error(backend_url, auth_token, company_id):
+    """500 response from backend returns an error dict, not a crash."""
+    with respx.mock:
+        respx.post(f"{backend_url}/api/internal/search-documents").mock(
+            return_value=httpx.Response(500, text="Internal Server Error")
+        )
+        raw = await execute_tool(
+            "search_company_documents",
+            {"query": "algo"},
+            auth_token=auth_token,
+            company_id=company_id,
+        )
+        result = json.loads(raw)
+        assert "error" in result
+
+
+async def test_search_company_documents_ignores_a_company_id_hallucinated_by_the_llm(
+    backend_url, auth_token, company_id
+):
+    """Regression test: a Mistral run once hallucinated company_id=12345 when it was
+    exposed as a model-fillable tool parameter. The tool no longer accepts it from
+    tool_input at all — this confirms the trusted request-level company_id is what
+    actually gets sent to the backend, even if a model somehow injects one anyway."""
+    captured = {}
+
+    def capture_request(request):
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(200, json={"results": []})
+
+    with respx.mock:
+        respx.post(f"{backend_url}/api/internal/search-documents").mock(side_effect=capture_request)
+        await execute_tool(
+            "search_company_documents",
+            {"company_id": 999999, "query": "algo"},  # como si el modelo lo hubiera inventado
+            auth_token=auth_token,
+            company_id=company_id,
+        )
+
+    assert captured["body"]["company_id"] == company_id
+
+
 # ─── unknown tool ─────────────────────────────────────────────────────────────
 
 async def test_execute_tool_unknown_tool_returns_gracefully(auth_token, company_id):

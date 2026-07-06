@@ -143,6 +143,12 @@
                     <mat-icon matListItemIcon>domain_add</mat-icon>
                     <div matListItemTitle>Grupos de Empresas</div>
                 </a>
+
+                <!-- RAG: documentos que el agente ZIA puede consultar (admin + superadmin) -->
+                <a mat-list-item routerLink="/admin/company-documents" routerLinkActive="active-link">
+                    <mat-icon matListItemIcon>description</mat-icon>
+                    <div matListItemTitle>Documentos</div>
+                </a>
                 <!-- SA-12: Seguimiento IoT — superadmin -->
                 <a *ngIf="authService.currentContext()?.role === 'superadmin'" mat-list-item
                     routerLink="/admin/iot-devices" routerLinkActive="active-link">

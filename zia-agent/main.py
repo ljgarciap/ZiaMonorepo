@@ -168,6 +168,23 @@ TOOLS = [
             "required": ["company_id", "period_id", "sector_code"],
         },
     },
+    {
+        "name": "search_company_documents",
+        "description": (
+            "Searches the documents uploaded by this company (invoices, prior reports, "
+            "certificates) for content relevant to a query, using semantic similarity. "
+            "Use this when the user asks about something that might be documented in "
+            "files they've uploaded, rather than in ZIA's structured data. "
+            "Scoped automatically to the current company — do not ask the user for a company ID."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "What to search for, in natural language"},
+            },
+            "required": ["query"],
+        },
+    },
 ]
 
 # Mistral/OpenAI tool format derived from TOOLS
@@ -194,6 +211,7 @@ REGLAS CRÍTICAS:
 4. Si el usuario confirma guardar, SIEMPRE llama save_emission con los parámetros exactos de calculate_ghg.
 5. Si el usuario da un dato ambiguo de unidad, pregunta la unidad antes de calcular.
 6. El inventario GHG es un documento legal/auditable. La exactitud es prioritaria sobre la velocidad.
+7. Si el usuario pregunta algo que podría estar en un documento que subió (facturas, certificados, reportes previos) en vez de en los datos estructurados de ZIA, usa search_company_documents antes de responder que no tienes esa información.
 
 FLUJO RECOMENDADO para onboarding de un período nuevo:
 1. Llama get_company_profile para conocer sector y período activo.
@@ -327,6 +345,26 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
                     if q["emission_factor_id"] not in registered_factor_ids
                 ]
                 return json.dumps({"pending": pending, "total": len(all_questions), "remaining": len(pending)})
+
+            elif tool_name == "search_company_documents":
+                # company_id viene del request autenticado, NUNCA del modelo — un
+                # LLM puede alucinar un ID numérico plausible si se lo pedimos
+                # como parámetro (confirmado: Mistral inventó 12345 en una prueba
+                # real). Ver ADR-002 para el detalle de este hallazgo.
+                r = await http.post(
+                    f"{BACKEND_URL}/api/internal/search-documents",
+                    json={
+                        "company_id": company_id,
+                        "query":      tool_input["query"],
+                    },
+                    headers=internal_headers,
+                )
+                if r.status_code != 200:
+                    return json.dumps({"error": r.text})
+                results = r.json().get("results", [])
+                if not results:
+                    return json.dumps({"results": [], "message": "No hay documentos que coincidan, o la empresa no tiene documentos subidos todavía."})
+                return json.dumps({"results": results})
 
             else:
                 return json.dumps({"error": f"Unknown tool: {tool_name}"})
@@ -701,6 +739,24 @@ async def chat(req: ChatRequest):
             "X-Accel-Buffering": "no",
         },
     )
+
+
+class EmbedRequest(BaseModel):
+    texts: list[str]
+
+
+@app.post("/embed")
+async def embed(req: EmbedRequest):
+    """Genera embeddings via Mistral (mistral-embed) para el RAG de documentos.
+    Llamado internamente por el backend Laravel — no por el usuario final."""
+    if not mistral_client:
+        raise HTTPException(status_code=503, detail="Mistral no está configurado (requerido para embeddings)")
+
+    if not req.texts:
+        return {"embeddings": []}
+
+    response = mistral_client.embeddings.create(model="mistral-embed", inputs=req.texts)
+    return {"embeddings": [item.embedding for item in response.data]}
 
 
 @app.get("/health")

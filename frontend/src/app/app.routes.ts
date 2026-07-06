@@ -144,6 +144,12 @@ export const routes: Routes = [
                 data: { roles: ['superadmin'] } // Gap-10: agrupar empresas (ej. edificio compartido) para reporte consolidado
             },
             {
+                path: 'admin/company-documents',
+                loadComponent: () => import('./components/admin/company-documents/company-documents').then(m => m.CompanyDocumentsComponent),
+                canActivate: [roleGuard],
+                data: { roles: ['superadmin', 'admin'] } // RAG: documentos que el agente puede consultar via search_company_documents
+            },
+            {
                 path: 'admin/audit',
                 loadComponent: () => import('./components/admin/audit-logs/audit-logs').then(m => m.AuditLogsComponent),
                 canActivate: [roleGuard],

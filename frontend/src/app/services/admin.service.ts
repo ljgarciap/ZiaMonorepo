@@ -345,4 +345,19 @@ export class AdminService {
         const query = year ? `?year=${year}` : '';
         return this.http.get(`${this.apiUrl}/groups/${groupId}/summary${query}`);
     }
+
+    // Company Documents — insumos para el RAG del agente
+    getCompanyDocuments(companyId: number): Observable<any[]> {
+        return this.http.get<any[]>(`${this.apiUrl}/companies/${companyId}/documents`);
+    }
+
+    uploadCompanyDocument(companyId: number, file: File): Observable<any> {
+        const form = new FormData();
+        form.append('file', file);
+        return this.http.post(`${this.apiUrl}/companies/${companyId}/documents`, form);
+    }
+
+    deleteCompanyDocument(companyId: number, documentId: number): Observable<any> {
+        return this.http.delete(`${this.apiUrl}/companies/${companyId}/documents/${documentId}`);
+    }
 }

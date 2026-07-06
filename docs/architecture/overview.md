@@ -17,10 +17,11 @@ Plataforma de gestión de huella de carbono corporativa que permite a las empres
 | Frontend SPA | Angular | 21 |
 | Backend API | Laravel | 11 (PHP 8.4) |
 | Agente IA | FastAPI | Python 3.12 |
-| Base de datos | PostgreSQL | 16 |
+| Base de datos | PostgreSQL + pgvector | 16 (`pgvector/pgvector:pg16`) |
 | Caché / colas | Redis | 7 |
 | IA primaria | Mistral AI | `mistral-small-latest` (configurable) |
 | IA fallback | Anthropic Claude | `claude-haiku-4-5` |
+| Embeddings (RAG) | Mistral AI | `mistral-embed` (1024 dim) |
 | IoT telemetría | ThingsBoard | Cloud (mock en dev) |
 | Orquestación | Docker Compose | — |
 
@@ -98,6 +99,21 @@ Cron (cada 15 min) → zia:sync-telemetry command
                   → genera TelemetryAlert si supera umbrales
 ```
 
+### RAG de documentos (agente ZIA)
+
+```
+Usuario sube documento → CompanyDocumentController → ProcessCompanyDocument (job en cola)
+                       → DocumentTextExtractor (pdfparser / texto plano)
+                       → TextChunker (~800 chars, con overlap)
+                       → POST /embed en zia-agent (mistral-embed)
+                       → guarda DocumentChunk (contenido + embedding)
+
+Usuario pregunta al chat → tool search_company_documents
+                        → POST /api/internal/search-documents
+                        → similarity search (coseno, en PHP, acotado por company_id)
+                        → chunks relevantes de vuelta al agente
+```
+
 ---
 
 ## Roles y permisos
@@ -164,4 +180,5 @@ Ver [`data-model.md`](data-model.md) para el diagrama ER completo.
 | `sector_questionnaire_rules` | Mapea preguntas del cuestionario a factores de emisión por sector |
 | `company_groups` + `company_group_members` | Grupos de empresas para análisis agregado (ej. edificio) — solo superadmin |
 | `telemetry_readings` + `telemetry_alerts` | Lecturas IoT y alertas automáticas de consumo |
+| `company_documents` + `document_chunks` | Documentos subidos por empresa (facturas, certificados) y sus chunks con embedding para el RAG del agente |
 | `activity_logs` | Auditoría de acciones de usuario |

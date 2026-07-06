@@ -1,7 +1,7 @@
 services:
-  # Database Service (PostgreSQL 16)
+  # Database Service (PostgreSQL 16 + pgvector, para embeddings del RAG del agente)
   db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     container_name: zia_postgres
     restart: always
     environment:

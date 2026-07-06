@@ -36,9 +36,10 @@ directo, en vez de usar Flowise o n8n como capa de orquestación visual.
 única pieza de la sección de IA que coincide exactamente con lo
 especificado.
 
-**RAG sobre documentos (Qdrant) no se implementó** — ver sección
-"Lo que esto no resuelve" más abajo. Esto es una brecha real, no una
-decisión deliberada de mejora.
+**RAG sobre documentos: implementado el 2026-07-06** (ver adenda al
+final de este documento) — usando `pgvector` sobre el PostgreSQL ya
+existente en vez de Qdrant, exactamente el camino de mejora que esta
+ADR ya proponía.
 
 ## Por qué se decidió así
 
@@ -96,39 +97,76 @@ proyecto, sin herramientas ni procesos adicionales.
 - Observabilidad end-to-end vía Langfuse en cada tool call, igual que
   el requerimiento pedía.
 
-## Lo que esto no resuelve (brecha real, no cubierta por lo anterior)
-
-El **RAG automático sobre documentos de la organización** (subida de
-facturas/certificados → embeddings en Qdrant → contexto para el
-agente) **no existe**. El agente de hoy solo puede razonar sobre datos
-estructurados que están en la base de datos de Zia via sus tools — no
-puede leer el contenido de un PDF subido por el usuario. Esta es la
-única parte del requerimiento 17 que sigue sin resolverse, y no hay
-forma de reencuadrarla como "cumplida de otra forma": es una capacidad
-que simplemente no existe hoy.
-
-**Camino de mejora si se decide cerrar esto**: no hace falta adoptar
-Flowise para tener RAG — se puede agregar un vector store (Qdrant o
-`pgvector` sobre el PostgreSQL ya existente, más simple
-operacionalmente) y una tool nueva (`search_company_documents`) que el
-agente invoque igual que las 6 actuales, sin cambiar la arquitectura
-base. `pgvector` en particular evita levantar un servicio nuevo en el
-`docker-compose.yml`.
-
 ## Consecuencias
 
 **Positivas:**
-- Cobertura de tests real (51 tests Python) sobre la lógica crítica del agente
+- Cobertura de tests real (61 tests Python) sobre la lógica crítica del agente
 - Sin dependencia de una plataforma externa (Flowise/n8n) para el flujo core del producto
 - Fallback multi-proveedor y normalización de historial resueltos con código propio, versionado junto al resto del sistema
 
 **Negativas / limitaciones aceptadas:**
-- Sin RAG documental — el agente no puede usar contexto de documentos subidos
 - Cualquier cambio al comportamiento del agente requiere un deploy de código (vs. editar un flow visual sin deploy) — tradeoff aceptado a cambio de testabilidad
 
 ## Referencias
 
 - `docs/architecture/ai-agent.md` — arquitectura técnica completa, tools, SSE, normalización de historial
 - `zia-agent/main.py` — implementación
-- `zia-agent/tests/` — 51 tests
+- `zia-agent/tests/` — 61 tests
 - `docs/roadmap-auditor-walkthrough.md`, punto 16 — estado de cumplimiento contra el requerimiento original
+
+---
+
+## Adenda 2026-07-06 — RAG implementado con pgvector
+
+**Decisión**: se cerró la brecha de RAG documental exactamente por el
+camino que esta ADR ya proponía — sin Flowise, sin Qdrant.
+
+- **Storage de vectores**: `pgvector` sobre el PostgreSQL existente
+  (`docker-compose.yml` cambia de `postgres:16-alpine` a
+  `pgvector/pgvector:pg16`, drop-in compatible). Los embeddings en sí
+  se guardan como **JSON**, no como columna nativa `vector` — la suite
+  de tests de Laravel corre sobre sqlite en memoria, que no soporta el
+  tipo `vector`, y la similitud de coseno se calcula en PHP sobre el
+  set ya acotado por `company_id`. A esta escala (MVP, documentos de
+  unas pocas empresas piloto) es una decisión de simplicidad razonable;
+  si el volumen de chunks crece lo suficiente para que el cálculo en
+  PHP sea el cuello de botella, ahí sí vale migrar la columna a `vector`
+  nativo con un índice ANN (la extensión ya está habilitada para eso).
+- **Embeddings**: `mistral-embed` (1024 dimensiones), vía un endpoint
+  nuevo `/embed` en `zia-agent` — reutiliza el cliente Mistral que ya
+  existía, en vez de duplicar lógica de llamadas a Mistral en PHP.
+- **Ingesta**: subir un documento (`CompanyDocument`) dispara un Job
+  Laravel en cola (`ProcessCompanyDocument`) que extrae texto
+  (`smalot/pdfparser` para PDF), lo trocea (`TextChunker`), pide los
+  embeddings, y guarda los `DocumentChunk`. **Esto requirió agregar un
+  worker de cola al `supervisord.conf`** — no existía ninguno antes
+  (`QUEUE_CONNECTION=database` estaba configurado pero nada lo
+  consumía; esta era la primera vez que algo en el código dispatchaba
+  un job).
+- **Tool nueva**: `search_company_documents`, wireada igual que las 6 anteriores.
+
+**Hallazgo real durante la verificación end-to-end — vale la pena que
+quede documentado**: la primera versión de la tool exponía `company_id`
+como parámetro que el modelo debía llenar (mismo patrón que
+`get_pending_questions` ya usaba). En una prueba real conversacional,
+**Mistral alucinó `company_id: 12345`** — un valor plausible pero
+inventado — en vez de usar la empresa real de la sesión, y la búsqueda
+no encontró nada. Se corrigió quitando `company_id` del schema de la
+tool por completo: el valor que realmente se usa viene del `company_id`
+ya autenticado en el request original, nunca de lo que el modelo
+decida escribir. Un test de regresión (`test_search_company_documents_ignores_a_company_id_hallucinated_by_the_llm`)
+confirma esto explícitamente. **Este mismo patrón de riesgo sigue
+presente en `get_pending_questions`** (no corregido en este cambio,
+por estar fuera de alcance — pero es la misma clase de fragilidad).
+
+**Verificado end-to-end con datos reales** (no solo con mocks): se
+subió un documento de prueba con un dato concreto ("85 galones de
+diésel"), y una pregunta conversacional real al agente recuperó ese
+dato exacto vía `search_company_documents` con un embedding real de
+Mistral — no un test aislado con stubs.
+
+**Estado de la brecha original de esta ADR**: cerrada. Ver
+`docs/architecture/thingsboard-integration.md` para un ejemplo del
+mismo nivel de detalle aplicado a otra integración, y
+`docs/roadmap-auditor-walkthrough.md` punto 16 para el estado de
+cumplimiento actualizado.

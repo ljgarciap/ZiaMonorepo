@@ -33,6 +33,15 @@ verificable desde el código). Los puntos 12/13 y 16 se mantienen como
 brechas reales tras la revisión — no todo lo "diferente" resultó
 cumplir el objetivo.
 
+**Actualización 2026-07-06**: se implementó el RAG documental del
+agente (punto 16) que la revisión anterior había confirmado como brecha
+real — pgvector sobre PostgreSQL existente, embeddings de Mistral,
+ingesta en cola, y una tool nueva (`search_company_documents`).
+Verificado end-to-end con datos reales, no solo mocks. Detalle completo
+en `docs/adr/ADR-002-agente-ia-custom-vs-flowise.md` (adenda al final).
+De paso se encontró y corrigió un problema real: el modelo alucinaba un
+`company_id` inventado cuando se exponía como parámetro de la tool.
+
 ## Resumen ejecutivo
 
 | # | Requerimiento | Estado |
@@ -42,7 +51,7 @@ cumplir el objetivo.
 | 3 | Multitenancy con aislamiento de datos | ✅ Cumple |
 | 4 | Roles y permisos por organización | ✅ Cumple |
 | 5 | Rol superadministrador protegido | ✅ Cumple |
-| 6 | Bases de datos políglota (PostgreSQL + Qdrant + RustFS) | ⚠️ Parcial — solo PostgreSQL |
+| 6 | Bases de datos políglota (PostgreSQL + Qdrant + RustFS) | ⚠️ Parcial — PostgreSQL + pgvector (no Qdrant); sin RustFS |
 | 7 | Logging estándar | ✅ Cumple |
 | 8 | Configuración vía variables de entorno | ✅ Cumple |
 | 9 | Documentación OpenAPI/Swagger | ✅ Cumple (implementado 2026-07-05) |
@@ -52,13 +61,13 @@ cumplir el objetivo.
 | 13 | Pre-formulario que resuelve tags | ⚠️ Parcial — ligado al punto anterior |
 | 14 | Almacenamiento de formularios + borradores | ✅ Cumple (guardado atómico por pregunta, no requiere borrador) |
 | 15 | Generación de reportes (GHG Protocol / ISO 14064) | ✅ Cumple |
-| 16 | Agente LLM (Flowise/n8n) con RAG (Qdrant) | ⚠️ Desviación importante |
+| 16 | Agente LLM (Flowise/n8n) con RAG (Qdrant) | ✅ Cumple (RAG implementado 2026-07-06 con pgvector; Flowise/n8n sigue sin usarse, ver ADR-002) |
 | 17 | Observabilidad del agente (Langfuse) | ✅ Cumple |
 | 18 | Integración IoT vía ThingsBoard | ✅ Cumple |
 
 **Hitos de pago (SLA)**:
 - **Entregable 1** (infra, JWT, multitenancy, motor de fórmulas, docs API): cumplido salvo la estructura de repos.
-- **Entregable 2** (Smart Intake, ThingsBoard, Agente IA): ThingsBoard operativo (en este entorno, en modo simulado — ver punto 18); Agente IA operativo pero sin Flowise/RAG; Smart Intake es una versión simplificada de lo especificado.
+- **Entregable 2** (Smart Intake, ThingsBoard, Agente IA): ThingsBoard operativo (en este entorno, en modo simulado — ver punto 18); Agente IA operativo con RAG documental implementado (sin Flowise, decisión documentada en ADR-002); Smart Intake es una versión simplificada de lo especificado.
 
 ---
 
@@ -192,21 +201,31 @@ por OTRO superadmin. Si esto importa, es una validación adicional a pedir.
 **Requerido**: PostgreSQL (relacional) + Qdrant o pgVector (vectores,
 para RAG) + RustFS/MinIO (almacenamiento de objetos S3-compatible).
 
-**Estado real**: ⚠️ **Solo PostgreSQL está implementado.**
+**Estado real**: ⚠️ **PostgreSQL + pgvector cumplen la mitad del
+requerimiento; RustFS/MinIO sigue sin implementarse.**
 - PostgreSQL: ✅ (`docker-compose.yml`, servicio `db`)
-- Qdrant/pgVector: ❌ no encontrado en el repo ni en dependencias del agente
-- RustFS/MinIO: ❌ no encontrado — los archivos (evidencias de soporte)
-  se guardan en disco local del contenedor (`FILESYSTEM_DISK=local` en
-  Laravel), no en almacenamiento de objetos S3-compatible
+- Vectores: ✅ **implementado 2026-07-06** — el propio requerimiento
+  dice "Qdrant **o** pgVector", y se optó por pgvector sobre el
+  PostgreSQL ya existente (`pgvector/pgvector:pg16`) en vez de levantar
+  Qdrant como servicio nuevo — ver ADR-002, adenda 2026-07-06, y
+  `docs/architecture/thingsboard-integration.md` para el patrón de
+  integración equivalente en otro punto del sistema. Nota técnica: los
+  embeddings se guardan como JSON, no como columna nativa `vector`
+  (razón: compatibilidad con la suite de tests en sqlite) — la
+  extensión está habilitada para migrar a eso si el volumen lo justifica.
+- RustFS/MinIO: ❌ sigue sin implementarse — los archivos (evidencias
+  de soporte, documentos del RAG) se guardan en disco local del
+  contenedor (`FILESYSTEM_DISK=local` en Laravel), no en almacenamiento
+  de objetos S3-compatible
 
-**Por qué importa**: sin una base vectorial, el Agente IA no puede
-hacer RAG sobre documentos (ver punto 16). Sin object storage, los
-archivos subidos (evidencias) no sobreviven si el contenedor se destruye
-sin volumen persistente — hay que confirmar que el volumen Docker del
-backend esté correctamente respaldado en el entorno de producción.
+**Por qué importa lo que falta**: sin object storage, los archivos
+subidos no sobreviven si el contenedor se destruye sin volumen
+persistente — hay que confirmar que el volumen Docker del backend esté
+correctamente respaldado en el entorno de producción.
 
-**Cómo validarlo**: `docker compose config` no muestra ningún servicio
-Qdrant, MinIO o RustFS — solo `db` (Postgres) y `redis`.
+**Cómo validarlo**: `docker compose config` muestra `db` usando la
+imagen `pgvector/pgvector:pg16` (no `postgres:16-alpine`); ningún
+servicio Qdrant, MinIO o RustFS.
 
 ---
 
@@ -410,47 +429,49 @@ curl http://localhost:8000/api/reports/periods/<PERIOD_ID>/pdf \
 automático sobre documentos subidos por organización (Qdrant), el
 agente sugiere fórmulas/tags/preguntas nuevas via structured output.
 
-**Estado real**: ⚠️ **Desviación significativa en la parte de RAG
-documental; la parte conversacional/operativa cumple e incluso va más
-allá de un chatbot básico.**
+**Estado real**: ✅ **Cumple.** Orquestación custom (no Flowise/n8n) —
+desviación deliberada y documentada (ver ADR-002) — pero el RAG
+documental y el resto del requerimiento sí están resueltos.
 - El agente (`zia-agent/`, servicio FastAPI en Python, puerto 8001) NO
   usa Flowise ni n8n — es un servicio custom con `anthropic` y
   `mistralai` como SDKs directos, con tool-calling estructurado.
-- **Lo que SÍ hace bien**: no es solo un chat pasivo. Tiene herramientas
-  (`calculate_ghg`, `save_emission`, `get_pending_questions`) que le
-  permiten **operar la captura de emisiones conversacionalmente** —
-  calcular, guardar (con confirmación explícita del usuario) y comparar
-  el cuestionario del sector contra lo ya registrado para guiar
-  proactivamente hacia un inventario completo. Esto sí cumple el
-  espíritu de "analizar la data ingresada y generar insights".
-- **No hay RAG — esta parte sí es un gap real, no una diferencia de
-  arquitectura.** No se encontró Qdrant ni ningún vector store en las
-  dependencias (`zia-agent/requirements.txt`) ni en el código. El
-  agente no puede "consultar documentos de la organización" como
-  describe el requerimiento — responde con datos que pide en vivo a la
-  API del backend, no con búsqueda semántica sobre documentos subidos.
-- No se encontró la funcionalidad de "sugerir nuevas fórmulas/tags/
-  preguntas" como salida estructurada — el agente conversa y consulta
-  datos, pero no se verificó que proponga cambios al banco de fórmulas
-  o preguntas.
+- Tiene herramientas (`calculate_ghg`, `save_emission`,
+  `get_pending_questions`) que le permiten **operar la captura de
+  emisiones conversacionalmente** — calcular, guardar (con confirmación
+  explícita del usuario) y comparar el cuestionario del sector contra
+  lo ya registrado para guiar proactivamente hacia un inventario
+  completo. Esto cumple el espíritu de "analizar la data ingresada y
+  generar insights".
+- **RAG implementado (2026-07-06)**: `search_company_documents` — el
+  agente puede buscar semánticamente sobre documentos que la empresa
+  sube (facturas, certificados, reportes), vía embeddings de Mistral
+  (`mistral-embed`) y similarity search en pgvector. Verificado
+  end-to-end con datos reales (no solo mocks): un documento de prueba
+  con un dato concreto ("85 galones de diésel") fue recuperado
+  correctamente por una pregunta conversacional real.
+- Durante esa verificación se encontró y corrigió un problema real: el
+  modelo (Mistral) alucinaba un `company_id` inventado cuando se le
+  pedía como parámetro de la tool — corregido tomando ese valor del
+  request autenticado en vez del modelo (detalle completo en ADR-002,
+  adenda 2026-07-06).
+- No se implementó "sugerir nuevas fórmulas/tags/preguntas" como salida
+  estructurada — el agente consulta y opera datos, pero no propone
+  cambios al banco de fórmulas o preguntas. Gap menor, no bloqueante.
 
-**Por qué probablemente se tomó esta decisión**: Flowise/n8n son
-plataformas de orquestación visual pensadas para no-programadores o
-para iterar rápido sin código; un servicio FastAPI custom con
-tool-calling directo es más simple de mantener y depurar para un equipo
-que ya sabe programar, a costa de perder la promesa de "no programar
-frameworks de IA desde cero" del requerimiento. Es una decisión de
-ingeniería razonable, pero es una desviación real del documento
-contractual — vale la pena que quede explícita y aceptada, no asumida.
+**Por qué la orquestación custom sigue siendo la decisión correcta,
+incluso con RAG ya resuelto**: ver ADR-002 — la garantía de que el
+agente nunca calcule tCO2e por su cuenta, y ahora también el hallazgo
+de la alucinación de `company_id`, refuerzan el argumento original de
+que el tool-calling directo es más testeable y auditable que una
+plataforma visual para este dominio.
 
 **Cómo validarlo**:
 ```bash
-cat zia-agent/requirements.txt   # sin qdrant, sin flowise
 curl http://localhost:8001/health
 ```
-Conversar con el chat ZIA (ícono flotante en la app) y pedirle que
-analice un documento subido — actualmente no puede, porque no hay
-pipeline de ingesta de documentos a un vector store.
+Subir un documento en `Administración → Documentos`, esperar a que su
+estado pase a "Listo", y conversar con el chat ZIA preguntando algo que
+solo esté en ese documento — confirma la recuperación semántica real.
 
 ---
 
@@ -514,41 +535,42 @@ el modo actual: `grep THINGSBOARD_MOCK backend/.env`.
    `zia:sync-telemetry` trae datos (punto 18)
 10. **Abrir el chat ZIA** y hacer una pregunta sobre los datos de la
     empresa — confirma que el agente responde con datos reales vía
-    tool-calling (no vía documentos subidos, punto 16)
-11. **Abrir `http://localhost:8000/docs/api`** — confirma la
+    tool-calling
+11. **Subir un documento en `Administración → Documentos`** (ej. un
+    .txt o .pdf con un dato concreto), esperar a que su estado pase de
+    "Procesando" a "Listo", y preguntarle al chat ZIA algo que solo esté
+    en ese documento — confirma el RAG (punto 16)
+12. **Abrir `http://localhost:8000/docs/api`** — confirma la
     documentación OpenAPI (punto 9), incluyendo que los endpoints
     aparecen marcados como protegidos por Bearer auth
 
 ## Resumen de brechas para decisión de negocio
 
 Si este documento se usa para decidir si un hito de pago se acepta o no,
-estas son las brechas que **se confirmaron como reales** tras una
-segunda revisión (no solo diferencias de arquitectura), ordenadas por
-relevancia contractual. OpenAPI/Swagger (punto 9) y borradores de
-formulario (punto 14) se cerraron/descartaron como gaps en esa revisión
-y ya no aparecen aquí:
+estas son las brechas que quedan abiertas, ordenadas por relevancia
+contractual. OpenAPI/Swagger (punto 9), borradores de formulario
+(punto 14), y RAG documental del agente (punto 16, con su parte de
+almacenamiento vectorial en el punto 6) se cerraron y ya no aparecen
+aquí:
 
-1. **Agente sin RAG documental** (punto 16) — gap real confirmado. La
-   parte conversacional/operativa del agente (calcular, guardar,
-   guiar hacia inventario completo) sí cumple e incluso va más allá de
-   lo mínimo pedido; lo que falta es específicamente la capacidad de
-   analizar documentos subidos (facturas, certificados) via RAG/Qdrant.
-2. **Smart Intake sin combinación de características** (puntos 12-13)
+1. **Smart Intake sin combinación de características** (puntos 12-13)
    — gap real confirmado. Agregar preguntas sin tocar código sí
    funciona; lo que no funciona es diferenciar formularios dentro de un
    mismo sector según características operativas de cada empresa
    (flota, refrigerantes, etc.), tal como el propio requerimiento
    ejemplifica que debería pasar.
-3. **ThingsBoard en modo simulado en este entorno** (punto 18) — el
+2. **ThingsBoard en modo simulado en este entorno** (punto 18) — el
    código real existe, pero hoy corre con `THINGSBOARD_MOCK=true`;
    confirmar si el entorno que verá el auditor debe conectarse a una
    instancia real.
-4. **Monorepo en vez de repos separados** (punto 1) — pendiente de
+3. **Monorepo en vez de repos separados** (punto 1) — pendiente de
    confirmar con Ricardo/DevOps si Coolify despliega cada carpeta de
    forma independiente; si es así, este punto deja de ser un gap real
    y queda solo como una diferencia de organización de repositorios.
-5. **Sin Qdrant/RustFS** (punto 6) — consecuencia directa de no tener
-   RAG (punto 16); si se resuelve el punto 16, este también se resuelve.
+4. **Sin RustFS/MinIO** (punto 6) — los archivos (evidencias,
+   documentos del RAG) viven en disco local del contenedor, no en
+   almacenamiento de objetos S3-compatible. Riesgo de persistencia si
+   el volumen Docker no está bien respaldado en producción.
 
 **Descartados en la segunda revisión** (implementación distinta, mismo
 objetivo cumplido): borradores de formulario (punto 14, guardado
