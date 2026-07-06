@@ -64,6 +64,8 @@ cumplir el objetivo.
 
 ## 1. Repos separados frontend/backend + CI/CD Coolify
 
+**Justificación completa de la decisión**: [`docs/adr/ADR-001-docker-compose-monorepo.md`](adr/ADR-001-docker-compose-monorepo.md) (ver adenda 2026-07-05 al final, específica sobre repos separados).
+
 **Requerido**: repositorios separados para frontend y backend, cada uno
 con Dockerfile propio, desplegados vía Coolify con CI/CD automático por rama.
 
@@ -306,6 +308,8 @@ permite crear un factor nuevo sin ningún cambio de código.
 
 ## 12. Formularios dinámicos con banco de preguntas + tags jerárquicos
 
+**Justificación completa de la decisión y camino de mejora**: [`docs/adr/ADR-003-smart-intake-sector-vs-tags.md`](adr/ADR-003-smart-intake-sector-vs-tags.md).
+
 **Requerido**: banco de preguntas en BD, cada una etiquetada con
 múltiples tags jerárquicos (ej. `alcance_1.fuentes_moviles.diesel`), el
 backend arma el JSON del formulario según los tags resueltos.
@@ -400,6 +404,8 @@ curl http://localhost:8000/api/reports/periods/<PERIOD_ID>/pdf \
 
 ## 16. Agente LLM (Flowise/n8n) con RAG automático (Qdrant)
 
+**Justificación completa de la decisión y camino de mejora**: [`docs/adr/ADR-002-agente-ia-custom-vs-flowise.md`](adr/ADR-002-agente-ia-custom-vs-flowise.md). Arquitectura técnica detallada: [`docs/architecture/ai-agent.md`](architecture/ai-agent.md).
+
 **Requerido**: orquestación vía Flowise o n8n (no código custom), RAG
 automático sobre documentos subidos por organización (Qdrant), el
 agente sugiere fórmulas/tags/preguntas nuevas via structured output.
@@ -458,6 +464,9 @@ exactamente con lo especificado en el SLA.
 ---
 
 ## 18. Integración IoT vía ThingsBoard
+
+**Contrato técnico completo (endpoints, formato de datos, cómo se
+procesa cada lectura, checklist para pasar de mock a real)**: [`docs/architecture/thingsboard-integration.md`](architecture/thingsboard-integration.md).
 
 **Estado**: ✅ Cumple a nivel de código/arquitectura. `ThingsBoardService.php`
 + `SyncTelemetryCommand` (cron cada 5 minutos,

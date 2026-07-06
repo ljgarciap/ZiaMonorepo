@@ -103,3 +103,54 @@ El MVP no tiene requisitos de alta disponibilidad, auto-scaling ni rolling deplo
 - `docker-compose.dev.yml` — overlay de desarrollo
 - `docs/ops/docker.md` — referencia operacional
 - `docs/guides/getting-started.md` — guía de configuración inicial
+
+---
+
+## Adenda 2026-07-05 — Por qué un solo repositorio Git (no repos separados)
+
+**Contexto adicional**: el documento de requerimientos técnicos del
+proyecto (`Emanuel_Requerimientos_de_la_plataforma_de_Zia.md`, sección
+1) pide explícitamente "repositorios separados para el frontend y
+backend, cada uno con ramas que Coolify pueda jalar automáticamente
+para el despliegue continuo". Esta ADR ya justificaba Docker Compose
+como orquestador, pero no abordaba directamente esa pregunta específica
+— esta adenda la cierra.
+
+**Decisión**: un solo repositorio Git (`ZiaMonorepo`) con `backend/`,
+`frontend/` y `zia-agent/` como carpetas de primer nivel, cada una con
+su propio `Dockerfile` independiente.
+
+**Por qué esto no compromete el objetivo real del requerimiento**: la
+razón detrás de "repos separados" en un contrato de este tipo casi
+siempre es **poder desplegar cada servicio de forma independiente**,
+sin que un cambio de frontend obligue a rebuildear/redeployar el
+backend (y viceversa). Eso se logra igual en un monorepo si el
+orquestador de despliegue (Coolify) trata cada carpeta como un recurso
+independiente, disparado solo por cambios en su propio path — un
+patrón de "monorepo con despliegues independientes" ampliamente
+soportado por Coolify y no exclusivo de repos separados.
+
+**Por qué se prefirió el monorepo en la práctica**: durante el
+desarrollo de este proyecto, la gran mayoría de los cambios funcionales
+tocan frontend y backend **a la vez** (un endpoint nuevo casi siempre
+viene con su consumo en la UI en el mismo cambio). Con repos separados,
+cada uno de esos cambios requeriría dos PRs, dos revisiones, y
+coordinar manualmente que ambos lados queden en versiones compatibles
+— con el riesgo real de desincronización (backend en v12, frontend
+todavía esperando la v11). Un monorepo con commits atómicos across
+frontend/backend elimina esa clase de bug por construcción.
+
+**Mejora concreta sobre la alternativa contractual**: ningún commit de
+este proyecto puede dejar el backend y el frontend en un estado
+mutuamente incompatible sin que se note en el mismo diff — la revisión
+de código ve ambos lados del cambio junto. Con repos separados, esa
+garantía depende de disciplina humana (recordar actualizar el otro
+repo), no de la estructura del proyecto.
+
+**Lo que falta para cerrar esto del todo**: confirmar con quien
+administre la instancia de Coolify si, en efecto, está configurada con
+un recurso por carpeta (despliegue independiente) o si cualquier push
+dispara un rebuild de los tres servicios. Si es lo segundo, ahí sí hay
+una brecha real que vale la pena resolver — moviendo la configuración
+de Coolify a "watch paths" por carpeta, sin necesidad de separar los
+repos Git.
