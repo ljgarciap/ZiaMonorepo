@@ -67,8 +67,11 @@ class CarbonEmissionController extends Controller
             'notes' => 'nullable|string'
         ]);
 
-        if ($period->status === 'closed') {
-            return response()->json(['error' => 'No se pueden registrar emisiones en un período cerrado.'], 422);
+        // Lista blanca (no negra): solo 'open'/'active' aceptan escritura. Antes
+        // solo se bloqueaba 'closed' explícitamente, dejando pasar sin querer
+        // los estados del ciclo de vida agregados después (in_review, archived).
+        if (!in_array($period->status, ['open', 'active'], true)) {
+            return response()->json(['error' => 'No se pueden registrar emisiones en este período (estado: ' . $period->status . ').'], 422);
         }
 
         $factor = EmissionFactor::with(['formula', 'category.scope'])->findOrFail($validated['emission_factor_id']);

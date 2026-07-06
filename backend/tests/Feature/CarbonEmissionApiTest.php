@@ -272,7 +272,37 @@ class CarbonEmissionApiTest extends TestCase
         ]);
 
         $response->assertStatus(422)
-                 ->assertJsonFragment(['error' => 'No se pueden registrar emisiones en un período cerrado.']);
+                 ->assertJsonFragment(['error' => 'No se pueden registrar emisiones en este período (estado: closed).']);
+    }
+
+    public function test_store_in_review_period_returns_422()
+    {
+        $this->period->update(['status' => 'in_review']);
+
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ])->assertStatus(422);
+    }
+
+    public function test_store_in_archived_period_returns_422()
+    {
+        $this->period->update(['status' => 'archived']);
+
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ])->assertStatus(422);
+    }
+
+    public function test_store_in_active_period_succeeds()
+    {
+        $this->period->update(['status' => 'active']);
+
+        $this->postJson("/api/periods/{$this->period->id}/emissions", [
+            'emission_factor_id' => $this->factor->id,
+            'quantity'           => 100,
+        ])->assertCreated();
     }
 
     // ─── 10-4: multi-year comparison ─────────────────────────────────────────
