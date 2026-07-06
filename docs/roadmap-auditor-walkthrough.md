@@ -23,11 +23,21 @@ primera versión de este documento, por ser la única brecha sin
 ambigüedad y más barata de cerrar. El estado de ese punto ya refleja el
 resultado final, no el hallazgo original.
 
+**Segunda revisión 2026-07-05**: se re-examinaron todas las brechas
+marcadas ⚠️ para distinguir "implementación distinta que igual cumple
+el objetivo" de "gap funcional real". Resultado: el punto 14 pasó de
+⚠️ a ✅ (el mecanismo de guardado atómico por pregunta logra el mismo
+objetivo que un borrador, sin necesitar uno). El punto 1 se matiza
+(la severidad real depende de cómo esté configurado Coolify, no
+verificable desde el código). Los puntos 12/13 y 16 se mantienen como
+brechas reales tras la revisión — no todo lo "diferente" resultó
+cumplir el objetivo.
+
 ## Resumen ejecutivo
 
 | # | Requerimiento | Estado |
 |---|---|---|
-| 1 | Repos separados frontend/backend + CI/CD Coolify | ⚠️ Desviación — monorepo |
+| 1 | Repos separados frontend/backend + CI/CD Coolify | ⚠️ Organización distinta — a confirmar con DevOps |
 | 2 | API REST con OAuth2.0/JWT | ✅ Cumple |
 | 3 | Multitenancy con aislamiento de datos | ✅ Cumple |
 | 4 | Roles y permisos por organización | ✅ Cumple |
@@ -40,7 +50,7 @@ resultado final, no el hallazgo original.
 | 11 | Motor de fórmulas dinámico (tipo mathjs) | ✅ Cumple (adaptado a PHP) |
 | 12 | Formularios dinámicos con banco de preguntas + tags | ⚠️ Parcial — más simple que lo especificado |
 | 13 | Pre-formulario que resuelve tags | ⚠️ Parcial — ligado al punto anterior |
-| 14 | Almacenamiento de formularios + borradores | ⚠️ Parcial — sin borrador en captura de usuario |
+| 14 | Almacenamiento de formularios + borradores | ✅ Cumple (guardado atómico por pregunta, no requiere borrador) |
 | 15 | Generación de reportes (GHG Protocol / ISO 14064) | ✅ Cumple |
 | 16 | Agente LLM (Flowise/n8n) con RAG (Qdrant) | ⚠️ Desviación importante |
 | 17 | Observabilidad del agente (Langfuse) | ✅ Cumple |
@@ -57,16 +67,29 @@ resultado final, no el hallazgo original.
 **Requerido**: repositorios separados para frontend y backend, cada uno
 con Dockerfile propio, desplegados vía Coolify con CI/CD automático por rama.
 
-**Estado real**: ⚠️ **Es un monorepo.** `backend/`, `frontend/` y
-`zia-agent/` viven en un solo repositorio Git (`ZiaMonorepo`,
+**Estado real**: ⚠️ **Es un monorepo, pero la severidad real es
+incierta sin ver la configuración de Coolify.** `backend/`, `frontend/`
+y `zia-agent/` viven en un solo repositorio Git (`ZiaMonorepo`,
 `github.com/ljgarciap/ZiaMonorepo`). Cada carpeta sí tiene su propio
-`Dockerfile` y se construye como imagen independiente, pero no son
-repos separados con historial de versiones propio.
+`Dockerfile` y se construye como imagen independiente — no son repos
+separados con historial de versiones propio, pero eso no
+necesariamente rompe el objetivo funcional del requerimiento.
 
-**Por qué probablemente pasó así**: un monorepo simplifica coordinar
-cambios que tocan frontend y backend a la vez (muy común en este
-proyecto — casi todos los commits de esta sesión tocaron ambos lados),
-a costa de no tener pipelines de CI/CD independientes por servicio.
+**Por qué esto podría no ser un gap real**: Coolify soporta desplegar
+múltiples "recursos" (aplicaciones) desde subcarpetas distintas de un
+mismo repositorio — es un patrón de monorepo habitual, no una
+limitación de la herramienta. Si Coolify está configurado para tratar
+`backend/` y `frontend/` como despliegues independientes (cada uno con
+su propio pipeline, disparado solo cuando cambian archivos de su
+carpeta), el objetivo real del requerimiento — **desplegar cada
+servicio de forma independiente vía CI/CD** — se cumpliría igual,
+aunque el control de versiones no esté separado.
+
+**Lo que falta para saber si esto es un gap real o solo una diferencia
+de organización**: confirmar con Ricardo/DevOps si Coolify está
+configurado así, o si en la práctica un cambio a `frontend/` dispara
+un rebuild/redeploy también del `backend/` (eso sí sería el problema
+real que el requerimiento buscaba evitar).
 
 **Cómo validarlo**:
 ```bash
@@ -287,21 +310,31 @@ permite crear un factor nuevo sin ningún cambio de código.
 múltiples tags jerárquicos (ej. `alcance_1.fuentes_moviles.diesel`), el
 backend arma el JSON del formulario según los tags resueltos.
 
-**Estado real**: ⚠️ **Existe Smart Intake, pero es una versión más
-simple que la especificada.** La tabla real es
-`sector_questionnaire_rules` (`SectorQuestionnaireRule`): cada fila
-mapea directamente `sector_code` + `subsector_code` → una pregunta con
-su `emission_factor_id`. No hay un sistema de tags jerárquicos
-many-to-many (`questions` ↔ `tags` ↔ `question_tags` como describe la
-spec) — la selección de preguntas depende únicamente del sector/subsector
-de la empresa, no de una combinación arbitraria de características
-(¿tiene flota?, ¿usa refrigerantes?, etc. respondidas independientemente).
+**Estado real**: ⚠️ **Cumple el objetivo central, no la flexibilidad
+completa — es un gap funcional real, no solo una diferencia de
+arquitectura.** La tabla real es `sector_questionnaire_rules`
+(`SectorQuestionnaireRule`): cada fila mapea directamente `sector_code`
++ `subsector_code` → una pregunta con su `emission_factor_id`. No hay
+un sistema de tags jerárquicos many-to-many (`questions` ↔ `tags` ↔
+`question_tags` como describe la spec).
 
-**Impacto práctico**: agregar una pregunta nueva para un sector sigue
-siendo "una fila de base de datos, no código" (cumple el espíritu), pero
-el sistema es menos flexible que lo pedido — no puede combinar múltiples
-características de la empresa para afinar qué preguntas mostrar, solo
-usa sector/subsector como único criterio.
+**Lo que sí cumple**: el objetivo explícito del requerimiento —
+"agregar, editar o eliminar preguntas... sin modificar código" — se
+cumple completamente. Una pregunta nueva para un sector es una fila de
+base de datos (`SectorQuestionnaireRuleSeeder` muestra el patrón), no
+un despliegue.
+
+**Lo que no cumple, y es una limitación real no solo cosmética**: el
+propio documento de requerimientos usa como ejemplo que dos
+características independientes del sector (¿tiene flota vehicular?,
+¿usa refrigerantes?) deberían combinarse para afinar qué preguntas
+mostrar. Con solo sector/subsector como criterio, **dos empresas del
+mismo sector reciben exactamente el mismo formulario**, sin importar
+si una tiene flota y la otra no, o si una usa refrigerantes y la otra
+no — no hay forma de que el sistema "sepa" esas diferencias operativas
+sin agregar sector/subsector nuevos artificiales para cada combinación
+(lo cual no escala). Esto sí es una brecha funcional para auditar, no
+una decisión de implementación equivalente.
 
 **Cómo validarlo**: `Administración → Cuestionarios`, o
 `backend/database/seeders/SectorQuestionnaireRuleSeeder.php` para ver
@@ -322,16 +355,30 @@ partes del formulario dinámico de forma independiente del sector.
 
 ## 14. Almacenamiento de formularios + borradores
 
-**Estado real**: ⚠️ **Parcial.** Las respuestas SÍ quedan guardadas
-asociadas a organización y período (`CarbonEmission` con `period_id`).
-Lo que no se encontró: soporte de **borrador** en el flujo de captura
-del usuario final (Smart Intake / Formulario) — no hay un estado
-`draft` que permita guardar a medias y continuar en otra sesión. Cada
-envío parece ser una emisión completa registrada de una vez.
+**Estado real**: ✅ **Cumple el objetivo, con un mecanismo distinto al
+sugerido — no es un gap.** Las respuestas quedan guardadas asociadas a
+organización y período (`CarbonEmission` con `period_id`). No existe un
+estado `draft` explícito, pero tampoco hace falta: en Smart Intake
+(`smart-intake.ts`, método `saveRule()`) **cada pregunta se guarda de
+forma individual e inmediata** al hacer click — no hay un paso de
+"envío final" del formulario completo. El usuario puede responder 2 de
+10 preguntas, cerrar el navegador, y esas 2 ya están persistidas como
+emisiones reales; no se pierde nada.
 
-**Cómo validarlo**: iniciar el formulario de Huella de Carbono, llenar
-parcialmente, y navegar fuera sin enviar — verificar si el progreso se
-conserva al volver (evidencia actual sugiere que no).
+**Por qué esto satisface el objetivo real del requerimiento**: el
+propósito de un "borrador" es que el usuario no pierda trabajo a medio
+hacer entre sesiones. Guardar cada respuesta atómicamente en el momento
+en que se completa logra exactamente eso, sin necesitar un estado
+intermedio "a medias" — porque nunca hay nada "a medias" sin guardar:
+cada pregunta respondida ya es un hecho consumado. Lo único que se
+pierde es un valor tipeado en un campo pero no confirmado con click —
+eso es una limitación normal de casi cualquier formulario con botón de
+guardar, no lo que el requerimiento intentaba resolver.
+
+**Cómo validarlo**: entrar a Smart Intake, responder y guardar una
+pregunta, cerrar el navegador sin tocar las demás, volver a entrar —
+la pregunta ya respondida no vuelve a pedirse con el mismo valor en
+cero; queda reflejada en el histórico de emisiones del período.
 
 ---
 
@@ -357,14 +404,21 @@ curl http://localhost:8000/api/reports/periods/<PERIOD_ID>/pdf \
 automático sobre documentos subidos por organización (Qdrant), el
 agente sugiere fórmulas/tags/preguntas nuevas via structured output.
 
-**Estado real**: ⚠️ **Desviación significativa del enfoque especificado,
-aunque el agente SÍ funciona.**
+**Estado real**: ⚠️ **Desviación significativa en la parte de RAG
+documental; la parte conversacional/operativa cumple e incluso va más
+allá de un chatbot básico.**
 - El agente (`zia-agent/`, servicio FastAPI en Python, puerto 8001) NO
   usa Flowise ni n8n — es un servicio custom con `anthropic` y
-  `mistralai` como SDKs directos, con tool-calling estructurado
-  (`get_company_profile` y otras herramientas que consultan el backend
-  en tiempo real).
-- **No hay RAG.** No se encontró Qdrant ni ningún vector store en las
+  `mistralai` como SDKs directos, con tool-calling estructurado.
+- **Lo que SÍ hace bien**: no es solo un chat pasivo. Tiene herramientas
+  (`calculate_ghg`, `save_emission`, `get_pending_questions`) que le
+  permiten **operar la captura de emisiones conversacionalmente** —
+  calcular, guardar (con confirmación explícita del usuario) y comparar
+  el cuestionario del sector contra lo ya registrado para guiar
+  proactivamente hacia un inventario completo. Esto sí cumple el
+  espíritu de "analizar la data ingresada y generar insights".
+- **No hay RAG — esta parte sí es un gap real, no una diferencia de
+  arquitectura.** No se encontró Qdrant ni ningún vector store en las
   dependencias (`zia-agent/requirements.txt`) ni en el código. El
   agente no puede "consultar documentos de la organización" como
   describe el requerimiento — responde con datos que pide en vivo a la
@@ -459,12 +513,35 @@ el modo actual: `grep THINGSBOARD_MOCK backend/.env`.
 ## Resumen de brechas para decisión de negocio
 
 Si este documento se usa para decidir si un hito de pago se acepta o no,
-estas son las brechas reales que quedan abiertas, ordenadas por
-relevancia contractual (OpenAPI/Swagger ya se cerró, ver punto 9):
+estas son las brechas que **se confirmaron como reales** tras una
+segunda revisión (no solo diferencias de arquitectura), ordenadas por
+relevancia contractual. OpenAPI/Swagger (punto 9) y borradores de
+formulario (punto 14) se cerraron/descartaron como gaps en esa revisión
+y ya no aparecen aquí:
 
-1. **Agente sin Flowise/n8n ni RAG** (punto 16) — desviación arquitectónica mayor del Entregable 2.
-2. **Smart Intake simplificado** (puntos 12-13) — funciona, pero no con la flexibilidad de tags jerárquicos especificada.
-3. **ThingsBoard en modo simulado en este entorno** (punto 18) — el código real existe, pero hoy corre con `THINGSBOARD_MOCK=true`; confirmar si el entorno que verá el auditor debe conectarse a una instancia real.
-4. **Sin borrador de formularios** (punto 14) — gap de UX, no de arquitectura.
-5. **Monorepo en vez de repos separados** (punto 1) — desviación de infraestructura, bajo riesgo funcional.
-6. **Sin Qdrant/RustFS** (punto 6) — consecuencia directa de no tener RAG (punto 16); si se resuelve el punto 16, este también se resuelve.
+1. **Agente sin RAG documental** (punto 16) — gap real confirmado. La
+   parte conversacional/operativa del agente (calcular, guardar,
+   guiar hacia inventario completo) sí cumple e incluso va más allá de
+   lo mínimo pedido; lo que falta es específicamente la capacidad de
+   analizar documentos subidos (facturas, certificados) via RAG/Qdrant.
+2. **Smart Intake sin combinación de características** (puntos 12-13)
+   — gap real confirmado. Agregar preguntas sin tocar código sí
+   funciona; lo que no funciona es diferenciar formularios dentro de un
+   mismo sector según características operativas de cada empresa
+   (flota, refrigerantes, etc.), tal como el propio requerimiento
+   ejemplifica que debería pasar.
+3. **ThingsBoard en modo simulado en este entorno** (punto 18) — el
+   código real existe, pero hoy corre con `THINGSBOARD_MOCK=true`;
+   confirmar si el entorno que verá el auditor debe conectarse a una
+   instancia real.
+4. **Monorepo en vez de repos separados** (punto 1) — pendiente de
+   confirmar con Ricardo/DevOps si Coolify despliega cada carpeta de
+   forma independiente; si es así, este punto deja de ser un gap real
+   y queda solo como una diferencia de organización de repositorios.
+5. **Sin Qdrant/RustFS** (punto 6) — consecuencia directa de no tener
+   RAG (punto 16); si se resuelve el punto 16, este también se resuelve.
+
+**Descartados en la segunda revisión** (implementación distinta, mismo
+objetivo cumplido): borradores de formulario (punto 14, guardado
+atómico por pregunta) y, parcialmente, OpenAPI/Swagger (punto 9, ya
+implementado esta sesión).
