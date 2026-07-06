@@ -42,6 +42,14 @@ en `docs/adr/ADR-002-agente-ia-custom-vs-flowise.md` (adenda al final).
 De paso se encontró y corrigió un problema real: el modelo alucinaba un
 `company_id` inventado cuando se exponía como parámetro de la tool.
 
+**Actualización 2026-07-06 (auditoría de seguridad)**: al revisar ese
+hallazgo del agente junto con otro pendiente, se hizo un barrido
+sistemático de aislamiento multi-tenant (punto 3) que encontró y cerró
+6 endpoints reales sin verificación de acceso cross-empresa — ver
+detalle en el punto 3. No cambia el estado de cumplimiento de ningún
+punto (ya estaban marcados ✅ con la implementación por capa de
+aplicación), pero es evidencia concreta de un proceso de revisión activo.
+
 ## Resumen ejecutivo
 
 | # | Requerimiento | Estado |
@@ -153,10 +161,42 @@ es más común en apps Laravel y es lo que se implementó consistentemente.
 El riesgo real de este enfoque (un endpoint que olvide el check) se
 materializó una vez esta semana y fue corregido — ver más abajo cómo probarlo.
 
+**Actualización 2026-07-06 — auditoría sistemática y 6 hallazgos más**:
+tras el fix puntual anterior, se hizo un barrido de **todos** los
+controllers que reciben `{company}`/`{period}` desde la URL (10 en
+total) para confirmar que cada uno valida pertenencia real, no solo el
+rol del usuario. `ContextAwareMiddleware` no cubre este caso: solo
+actúa cuando el header `X-Company-ID` está presente, nunca cuando el ID
+viene del path de la URL — una asunción incorrecta que varios endpoints
+nuevos heredaron sin que nadie lo notara hasta este barrido.
+
+Se encontraron y corrigieron 6 endpoints reales sin ninguna
+verificación — 4 de severidad alta (cualquier rol no-superadmin podía
+leer o escribir datos de **otra** empresa cambiando el ID en la URL):
+historial y comparación de emisiones, los 4 reportes oficiales de
+cumplimiento (PDF/Excel/avance/IoT), gestión de unidades operativas, y
+configuración de factores por empresa. 2 de severidad baja (catálogo).
+Verificado no solo con tests automatizados sino en vivo contra el
+sistema corriendo (ver comando abajo). La lógica de verificación se
+extrajo a un trait compartido (`AssertsCompanyAccess`) porque ya
+existía duplicada, con variantes, en 4 controllers distintos — reduce
+el riesgo de que un controller nuevo vuelva a omitirla por accidente.
+
+**Lectura para el auditor**: esto no debilita la afirmación de que el
+punto 3 "cumple" — al contrario, es evidencia de que existe un proceso
+de revisión de seguridad activo que encuentra y cierra este tipo de
+brecha antes de que se vuelva un incidente. La alternativa (no buscarlo)
+no habría sido más segura, solo menos visible.
+
 **Cómo validarlo** (requiere 2 usuarios de 2 empresas distintas):
 ```bash
 # Usuario de la Empresa A intenta ver el dashboard de la Empresa B
 curl http://localhost:8000/api/dashboard/summary?company_id=<ID_EMPRESA_B>&period_id=<PERIODO_DE_B> \
+  -H "Authorization: Bearer <token_usuario_empresa_A>"
+# → 403 "Sin permiso."
+
+# Mismo patrón contra el historial de emisiones (hallazgo 2026-07-06)
+curl http://localhost:8000/api/companies/<ID_EMPRESA_B>/emissions/history \
   -H "Authorization: Bearer <token_usuario_empresa_A>"
 # → 403 "Sin permiso."
 ```
