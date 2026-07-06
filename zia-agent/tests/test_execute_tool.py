@@ -251,7 +251,7 @@ async def test_get_pending_questions_returns_pending_list(backend_url, auth_toke
         )
         raw = await execute_tool(
             "get_pending_questions",
-            {"company_id": company_id, "period_id": 10, "sector_code": "servicios"},
+            {"period_id": 10, "sector_code": "servicios"},
             auth_token=auth_token,
             company_id=company_id,
         )
@@ -284,13 +284,39 @@ async def test_get_pending_questions_all_registered(backend_url, auth_token, com
         )
         raw = await execute_tool(
             "get_pending_questions",
-            {"company_id": company_id, "period_id": 10, "sector_code": "servicios"},
+            {"period_id": 10, "sector_code": "servicios"},
             auth_token=auth_token,
             company_id=company_id,
         )
         result = json.loads(raw)
         assert result["pending"] == []
         assert result["remaining"] == 0
+
+
+async def test_get_pending_questions_ignores_a_company_id_hallucinated_by_the_llm(
+    backend_url, auth_token, company_id
+):
+    """Mismo hallazgo que search_company_documents: company_id ya no es un
+    parámetro del schema de la tool, pero por defensa en profundidad el código
+    tampoco debe usarlo si un tool_input viejo/hallucinado lo trae igual."""
+    captured = {}
+
+    def capture_questionnaire(request):
+        captured["params"] = dict(request.url.params)
+        return httpx.Response(200, json=[])
+
+    with respx.mock:
+        respx.get(f"{backend_url}/api/dictionaries/questionnaire").mock(side_effect=capture_questionnaire)
+        respx.get(f"{backend_url}/api/periods/10/emissions").mock(return_value=httpx.Response(200, json=[]))
+
+        await execute_tool(
+            "get_pending_questions",
+            {"company_id": 999999, "period_id": 10, "sector_code": "servicios"},
+            auth_token=auth_token,
+            company_id=company_id,
+        )
+
+    assert captured["params"]["company_id"] == str(company_id)
 
 
 # ─── search_company_documents ─────────────────────────────────────────────────

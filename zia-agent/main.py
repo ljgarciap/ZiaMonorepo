@@ -156,16 +156,16 @@ TOOLS = [
         "description": (
             "Compares the sector questionnaire against already-registered emissions for this period. "
             "Returns which question labels have not been captured yet. "
-            "Use this to guide the user proactively toward a complete GHG inventory."
+            "Use this to guide the user proactively toward a complete GHG inventory. "
+            "Scoped automatically to the current company — do not ask the user for a company ID."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "company_id":  {"type": "integer"},
                 "period_id":   {"type": "integer"},
                 "sector_code": {"type": "string"},
             },
-            "required": ["company_id", "period_id", "sector_code"],
+            "required": ["period_id", "sector_code"],
         },
     },
     {
@@ -312,9 +312,10 @@ async def execute_tool(tool_name: str, tool_input: dict, auth_token: str, compan
                 return json.dumps(r.json() if r.status_code == 201 else {"error": r.text})
 
             elif tool_name == "get_pending_questions":
-                sector     = tool_input["sector_code"]
-                period_id  = tool_input["period_id"]
-                company_id = tool_input.get("company_id")
+                # company_id viene del request autenticado, nunca del modelo —
+                # mismo hallazgo que search_company_documents (ver ADR-002).
+                sector    = tool_input["sector_code"]
+                period_id = tool_input["period_id"]
 
                 q_params: dict = {"sector": sector}
                 if company_id:

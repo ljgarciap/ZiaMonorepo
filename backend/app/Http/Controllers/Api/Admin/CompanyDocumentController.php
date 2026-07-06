@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AssertsCompanyAccess;
 use App\Jobs\ProcessCompanyDocument;
 use App\Models\Company;
 use App\Models\CompanyDocument;
@@ -12,9 +13,11 @@ use Illuminate\Support\Facades\Storage;
 
 class CompanyDocumentController extends Controller
 {
+    use AssertsCompanyAccess;
+
     public function index(Request $request, Company $company): JsonResponse
     {
-        if ($error = $this->assertCompanyAccess($request, $company)) {
+        if ($error = $this->assertAccess($request, $company)) {
             return $error;
         }
 
@@ -25,7 +28,7 @@ class CompanyDocumentController extends Controller
 
     public function store(Request $request, Company $company): JsonResponse
     {
-        if ($error = $this->assertCompanyAccess($request, $company)) {
+        if ($error = $this->assertAccess($request, $company)) {
             return $error;
         }
 
@@ -51,7 +54,7 @@ class CompanyDocumentController extends Controller
 
     public function destroy(Request $request, Company $company, CompanyDocument $document): JsonResponse
     {
-        if ($error = $this->assertCompanyAccess($request, $company)) {
+        if ($error = $this->assertAccess($request, $company)) {
             return $error;
         }
 
@@ -63,25 +66,11 @@ class CompanyDocumentController extends Controller
         return response()->json(null, 204);
     }
 
-    /**
-     * Mismo patrón que DashboardController::assertCompanyPeriodAccess() —
-     * no se confía en ContextAwareMiddleware para esto porque solo valida
-     * cuando el header X-Company-ID está presente, no el {company} de la URL.
-     */
-    private function assertCompanyAccess(Request $request, Company $company): ?JsonResponse
+    private function assertAccess(Request $request, Company $company): ?JsonResponse
     {
         $user = auth()->user();
         $activeRole = $request->header('X-Context-Role') ?: $user->role;
 
-        if ($activeRole === 'superadmin') {
-            return null;
-        }
-
-        $belongs = $user->companies()
-            ->where('companies.id', $company->id)
-            ->wherePivot('is_active', true)
-            ->exists();
-
-        return $belongs ? null : response()->json(['error' => 'Sin permiso.'], 403);
+        return $this->assertCompanyPeriodAccess($user, $activeRole, $company);
     }
 }

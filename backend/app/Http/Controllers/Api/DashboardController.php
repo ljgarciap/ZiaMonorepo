@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AssertsCompanyAccess;
 use Illuminate\Http\Request;
 use App\Models\AuditorAssignment;
 use App\Models\Company;
 use App\Models\Period;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
+    use AssertsCompanyAccess;
+
     public function summary(Request $request)
     {
         $requestCompanyId = $request->query('company_id');
@@ -322,61 +324,4 @@ class DashboardController extends Controller
         ]);
     }
 
-    /**
-     * IDOR fix (fast-follow de H4, diseño finalizado por Cybersecurity):
-     * default-deny para acceso a un company+period desde el dashboard.
-     *
-     * - superadmin: acceso total, sin chequeo adicional.
-     * - admin / user / iot_tech / viewer: requieren fila activa (is_active=true,
-     *   no vencida) en company_user para esa empresa — mismo shape que ya
-     *   valida ContextAwareMiddleware, pero evaluado aquí directamente porque el
-     *   middleware está gateado por header y es saltable.
-     * - auditor: el pivot company_user NO es suficiente — exige además un
-     *   AuditorAssignment activo (scope active()) para ese user_id+company_id
-     *   y, cuando se conoce el período exacto, también period_id. Mismo patrón
-     *   que AuditObservationController::authorizeAccess().
-     *
-     * $period es nullable porque trends() no recibe period_id (agrega todos los
-     * períodos de la empresa); en ese caso el auditor se valida contra
-     * cualquier asignación vigente en la empresa, no contra un período exacto
-     * — ver nota en trends() sobre esta limitación conocida.
-     *
-     * Devuelve null si el acceso está autorizado, o una respuesta 403 lista
-     * para hacer "return" temprano si no lo está.
-     */
-    private function assertCompanyPeriodAccess($user, string $activeRole, Company $company, ?Period $period): ?JsonResponse
-    {
-        if ($activeRole === 'superadmin') {
-            return null;
-        }
-
-        if (in_array($activeRole, ['admin', 'user', 'iot_tech', 'viewer'])) {
-            $belongs = $user->companies()
-                ->where('companies.id', $company->id)
-                ->wherePivot('is_active', true)
-                ->where(function ($q) {
-                    $q->whereNull('company_user.expires_at')
-                        ->orWhere('company_user.expires_at', '>', now());
-                })
-                ->exists();
-
-            return $belongs ? null : response()->json(['error' => 'Sin permiso.'], 403);
-        }
-
-        if ($activeRole === 'auditor') {
-            $query = AuditorAssignment::where('user_id', $user->id)
-                ->where('company_id', $company->id)
-                ->active();
-
-            if ($period) {
-                $query->where('period_id', $period->id);
-            }
-
-            return $query->exists()
-                ? null
-                : response()->json(['error' => 'No tienes autorización de auditoría para este período.'], 403);
-        }
-
-        return response()->json(['error' => 'Sin permiso.'], 403);
-    }
 }

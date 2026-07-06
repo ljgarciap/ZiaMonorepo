@@ -118,4 +118,14 @@ class AdminTagControllerTest extends TestCase
         $this->assertFalse($names->contains('De otro sector'));
         $this->assertFalse($names->contains('Inactiva'));
     }
+
+    public function test_admin_cannot_view_available_tags_of_another_company()
+    {
+        $otherCompany = Company::factory()->create();
+        $admin = User::factory()->create(['role' => 'admin']);
+
+        $this->actingAs($admin, 'api')
+             ->getJson("/api/companies/{$otherCompany->id}/available-tags")
+             ->assertStatus(403);
+    }
 }

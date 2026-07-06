@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AssertsCompanyAccess;
 use App\Models\CarbonEmission;
 use App\Models\Period;
 use App\Models\TelemetryReading;
@@ -11,12 +12,26 @@ use App\Exports\EmissionExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
-    public function pdfSummary(Period $period)
+    use AssertsCompanyAccess;
+
+    private function assertAccess(Request $request, Period $period): ?JsonResponse
     {
+        $user = $request->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
+        return $this->assertCompanyPeriodAccess($user, $activeRole, $period->company, $period);
+    }
+
+    public function pdfSummary(Request $request, Period $period)
+    {
+        if ($error = $this->assertAccess($request, $period)) {
+            return $error;
+        }
+
         $period->load(['company', 'emissions.factor.category.scope', 'emissions.factor.unit']);
 
         // Dashboard summary (scope totals + equivalency). El PDF es un documento de
@@ -92,8 +107,12 @@ class ReportController extends Controller
         return $pdf->download($filename);
     }
 
-    public function excelExport(Period $period)
+    public function excelExport(Request $request, Period $period)
     {
+        if ($error = $this->assertAccess($request, $period)) {
+            return $error;
+        }
+
         $filename = 'zia_datos_'
             . str_replace(' ', '_', strtolower($period->company->name))
             . '_' . $period->year
@@ -104,8 +123,12 @@ class ReportController extends Controller
     }
 
     // A10: Reporte de Avance — evolución respecto al año base
-    public function progressReport(Period $period)
+    public function progressReport(Request $request, Period $period)
     {
+        if ($error = $this->assertAccess($request, $period)) {
+            return $error;
+        }
+
         $period->load('company');
 
         // Todos los períodos de la empresa, en orden cronológico
@@ -162,8 +185,12 @@ class ReportController extends Controller
     }
 
     // A10: Reporte IoT — telemetría del período
-    public function iotReport(Period $period)
+    public function iotReport(Request $request, Period $period)
     {
+        if ($error = $this->assertAccess($request, $period)) {
+            return $error;
+        }
+
         $period->load('company');
 
         $from = $period->year . '-01-01 00:00:00';

@@ -3,12 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AssertsCompanyAccess;
+use App\Models\Company;
 use App\Models\EmissionCategory;
 use App\Models\SectorQuestionnaireRule;
 use Illuminate\Http\Request;
 
 class MasterDataController extends Controller
 {
+    use AssertsCompanyAccess;
+
+
     /**
      * @OA\Get(
      *     path="/api/dictionaries/factors",
@@ -26,6 +31,14 @@ class MasterDataController extends Controller
     public function emissionFactors(Request $request)
     {
         $companyId = $request->query('company_id');
+
+        if ($companyId && ($company = Company::find($companyId))) {
+            $user = $request->user();
+            $activeRole = $request->header('X-Context-Role') ?: $user->role;
+            if ($error = $this->assertCompanyPeriodAccess($user, $activeRole, $company)) {
+                return $error;
+            }
+        }
 
         // Return hierarchy: Scope -> Categories (root only) -> Children (recursive) -> Factors
         $scopes = \App\Models\Scope::with(['categories' => function($query) use ($companyId) {
@@ -88,6 +101,14 @@ class MasterDataController extends Controller
 
         if (!$sectorCode) {
             return response()->json(['error' => 'sector query parameter is required'], 422);
+        }
+
+        if ($companyId && ($company = Company::find($companyId))) {
+            $user = $request->user();
+            $activeRole = $request->header('X-Context-Role') ?: $user->role;
+            if ($error = $this->assertCompanyPeriodAccess($user, $activeRole, $company)) {
+                return $error;
+            }
         }
 
         $rules = SectorQuestionnaireRule::with([

@@ -29,6 +29,7 @@ class CarbonEmissionApiTest extends TestCase
 
         // Setup Data
         $company = Company::factory()->create();
+        $this->user->companies()->attach($company->id, ['role' => 'user', 'is_active' => true]);
         $this->period = Period::factory()->create(['company_id' => $company->id]);
         
         $category = EmissionCategory::factory()->create();
@@ -229,6 +230,34 @@ class CarbonEmissionApiTest extends TestCase
                  ->assertJsonStructure(['data', 'total', 'current_page', 'per_page']);
         $this->assertEquals(2, $response->json('current_page'));
         $this->assertCount(2, $response->json('data'));
+    }
+
+    // ─── IDOR: history/comparison no deben ser accesibles cross-tenant ──────
+
+    public function test_history_of_another_company_returns_403()
+    {
+        $otherCompany = Company::factory()->create();
+
+        $this->getJson("/api/companies/{$otherCompany->id}/emissions/history")
+             ->assertStatus(403);
+    }
+
+    public function test_comparison_of_another_company_returns_403()
+    {
+        $otherCompany = Company::factory()->create();
+
+        $this->getJson("/api/companies/{$otherCompany->id}/emissions/comparison")
+             ->assertStatus(403);
+    }
+
+    public function test_superadmin_can_access_history_of_any_company()
+    {
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+        $otherCompany = Company::factory()->create();
+
+        $this->actingAs($superadmin, 'api')
+             ->getJson("/api/companies/{$otherCompany->id}/emissions/history")
+             ->assertStatus(200);
     }
 
     // ─── 10-3: closed period validation ──────────────────────────────────────

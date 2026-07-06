@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AssertsCompanyAccess;
 use App\Models\CarbonEmission;
 use App\Models\EmissionFactor;
 use App\Models\Period;
@@ -12,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 
 class CarbonEmissionController extends Controller
 {
+    use AssertsCompanyAccess;
+
     protected $carbonService;
 
     public function __construct(CarbonFootprintService $carbonService)
@@ -242,6 +245,12 @@ class CarbonEmissionController extends Controller
      */
     public function history(Request $request, \App\Models\Company $company)
     {
+        $user = $request->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
+        if ($error = $this->assertCompanyPeriodAccess($user, $activeRole, $company)) {
+            return $error;
+        }
+
         $query = CarbonEmission::query()
             ->select('carbon_emissions.*')
             ->join('periods', 'carbon_emissions.period_id', '=', 'periods.id')
@@ -290,6 +299,12 @@ class CarbonEmissionController extends Controller
      */
     public function comparison(Request $request, \App\Models\Company $company)
     {
+        $user = $request->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
+        if ($error = $this->assertCompanyPeriodAccess($user, $activeRole, $company)) {
+            return $error;
+        }
+
         $years  = $request->input('years', []);
         $scopes = $request->input('scopes', [1, 2, 3]);
 

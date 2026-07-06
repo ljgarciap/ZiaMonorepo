@@ -12,12 +12,14 @@ class MasterDataControllerTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $user;
+
     protected function setUp(): void
     {
         parent::setUp();
 
-        $user = User::factory()->create(['role' => 'admin']);
-        $this->actingAs($user, 'api');
+        $this->user = User::factory()->create(['role' => 'admin']);
+        $this->actingAs($this->user, 'api');
     }
 
     public function test_questionnaire_returns_rules_for_sector()
@@ -83,6 +85,7 @@ class MasterDataControllerTest extends TestCase
         $scope    = \App\Models\Scope::firstOrCreate(['name' => 'Alcance 1'], ['description' => 'Scope 1']);
         $category = \App\Models\EmissionCategory::factory()->create(['scope_id' => $scope->id, 'parent_id' => null]);
         $company  = \App\Models\Company::factory()->create();
+        $this->user->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
 
         $enabled  = EmissionFactor::factory()->create(['emission_category_id' => $category->id, 'name' => 'Habilitado']);
         $disabled = EmissionFactor::factory()->create(['emission_category_id' => $category->id, 'name' => 'Deshabilitado']);
@@ -128,6 +131,7 @@ class MasterDataControllerTest extends TestCase
     public function test_questionnaire_hides_disabled_factor_for_company()
     {
         $company = \App\Models\Company::factory()->create();
+        $this->user->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
 
         $enabled  = EmissionFactor::factory()->create(['name' => 'FactorActivo']);
         $disabled = EmissionFactor::factory()->create(['name' => 'FactorInactivo']);
@@ -157,6 +161,7 @@ class MasterDataControllerTest extends TestCase
     public function test_questionnaire_shows_factor_with_no_pivot_record_as_enabled()
     {
         $company = \App\Models\Company::factory()->create();
+        $this->user->companies()->attach($company->id, ['role' => 'admin', 'is_active' => true]);
         $factor  = EmissionFactor::factory()->create(['name' => 'FactorSinPivot']);
 
         // No company_emission_factor record → default enabled
@@ -198,5 +203,23 @@ class MasterDataControllerTest extends TestCase
         $response->assertStatus(200);
         $labels = collect($response->json())->pluck('questionnaire_label');
         $this->assertContains('Pregunta global', $labels->all());
+    }
+
+    // ─── IDOR: pasar el company_id de otra empresa no debe revelar su config ──
+
+    public function test_emission_factors_of_another_company_returns_403()
+    {
+        $otherCompany = \App\Models\Company::factory()->create();
+
+        $this->getJson("/api/dictionaries/factors?company_id={$otherCompany->id}")
+             ->assertStatus(403);
+    }
+
+    public function test_questionnaire_of_another_company_returns_403()
+    {
+        $otherCompany = \App\Models\Company::factory()->create();
+
+        $this->getJson("/api/dictionaries/questionnaire?sector=servicios&company_id={$otherCompany->id}")
+             ->assertStatus(403);
     }
 }

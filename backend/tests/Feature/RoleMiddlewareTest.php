@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\AuditorAssignment;
 use App\Models\Company;
 use App\Models\CompanySector;
+use App\Models\Period;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -101,6 +103,13 @@ class RoleMiddlewareTest extends TestCase
         $auditor->companies()->attach($company->id, [
             'role' => 'auditor',
             'is_active' => true,
+            'expires_at' => now()->addDay(),
+        ]);
+        $period = Period::factory()->create(['company_id' => $company->id]);
+        AuditorAssignment::factory()->create([
+            'user_id'    => $auditor->id,
+            'company_id' => $company->id,
+            'period_id'  => $period->id,
             'expires_at' => now()->addDay(),
         ]);
 

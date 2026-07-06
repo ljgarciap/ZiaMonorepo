@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\AssertsCompanyAccess;
 use App\Models\Company;
 use App\Models\Tag;
 use Illuminate\Http\Request;
 
 class AdminTagController extends Controller
 {
+    use AssertsCompanyAccess;
+
+
     /**
      * GET /admin/tags — catálogo global (Superadmin).
      */
@@ -58,8 +62,14 @@ class AdminTagController extends Controller
      * Grupo de tags preconfigurados que el Admin puede asignar a su empresa:
      * los globales (sin sector) + los específicos del sector de la empresa.
      */
-    public function availableForCompany(Company $company)
+    public function availableForCompany(Request $request, Company $company)
     {
+        $user = $request->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
+        if ($error = $this->assertCompanyPeriodAccess($user, $activeRole, $company)) {
+            return $error;
+        }
+
         $tags = Tag::where('is_active', true)
             ->where(function ($query) use ($company) {
                 $query->whereNull('company_sector_id')

@@ -334,4 +334,95 @@ class ReportControllerTest extends TestCase
         // comparisonData is a Collection; no rows if period has no emissions — count >= 0
         $this->assertInstanceOf(\Illuminate\Support\Collection::class, $capturedData['comparisonData']);
     }
+
+    // ─── IDOR: los 4 reportes no deben ser accesibles cross-tenant ───────────
+
+    private function otherCompanyPeriod(): Period
+    {
+        $otherCompany = Company::factory()->create();
+        return Period::factory()->create(['company_id' => $otherCompany->id, 'year' => 2024]);
+    }
+
+    public function test_pdf_of_another_companys_period_returns_403()
+    {
+        $period = $this->otherCompanyPeriod();
+
+        $this->actingAs($this->user, 'api')
+             ->get("/api/reports/periods/{$period->id}/pdf")
+             ->assertStatus(403);
+    }
+
+    public function test_excel_of_another_companys_period_returns_403()
+    {
+        $period = $this->otherCompanyPeriod();
+
+        $this->actingAs($this->user, 'api')
+             ->get("/api/reports/periods/{$period->id}/excel")
+             ->assertStatus(403);
+    }
+
+    public function test_progress_report_of_another_companys_period_returns_403()
+    {
+        $period = $this->otherCompanyPeriod();
+
+        $this->actingAs($this->user, 'api')
+             ->get("/api/reports/periods/{$period->id}/progress")
+             ->assertStatus(403);
+    }
+
+    public function test_iot_report_of_another_companys_period_returns_403()
+    {
+        $period = $this->otherCompanyPeriod();
+
+        $this->actingAs($this->user, 'api')
+             ->get("/api/reports/periods/{$period->id}/iot")
+             ->assertStatus(403);
+    }
+
+    public function test_superadmin_can_access_reports_of_any_company()
+    {
+        $superadmin = User::factory()->create(['role' => 'superadmin']);
+        $period = $this->otherCompanyPeriod();
+
+        Pdf::shouldReceive('loadView')->andReturnSelf();
+        Pdf::shouldReceive('download')->andReturn(response()->make('', 200, ['Content-Type' => 'application/pdf']));
+
+        $this->actingAs($superadmin, 'api')
+             ->get("/api/reports/periods/{$period->id}/pdf")
+             ->assertOk();
+    }
+
+    // ─── A10: reportes de avance e IoT — cobertura básica que no existía ─────
+
+    public function test_progress_report_downloads_successfully()
+    {
+        Pdf::shouldReceive('loadView')
+           ->once()
+           ->with('reports.progress', Mockery::any())
+           ->andReturnSelf();
+        Pdf::shouldReceive('download')
+           ->once()
+           ->andReturn(response()->make('PDF_CONTENT', 200, ['Content-Type' => 'application/pdf']));
+
+        $this->actingAs($this->user, 'api')
+             ->get("/api/reports/periods/{$this->period->id}/progress")
+             ->assertOk()
+             ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_iot_report_downloads_successfully()
+    {
+        Pdf::shouldReceive('loadView')
+           ->once()
+           ->with('reports.iot', Mockery::any())
+           ->andReturnSelf();
+        Pdf::shouldReceive('download')
+           ->once()
+           ->andReturn(response()->make('PDF_CONTENT', 200, ['Content-Type' => 'application/pdf']));
+
+        $this->actingAs($this->user, 'api')
+             ->get("/api/reports/periods/{$this->period->id}/iot")
+             ->assertOk()
+             ->assertHeader('Content-Type', 'application/pdf');
+    }
 }

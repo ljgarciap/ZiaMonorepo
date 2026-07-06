@@ -31,6 +31,7 @@ class AdminCompanyFactorControllerTest extends TestCase
         $this->factorA  = EmissionFactor::factory()->create(['emission_category_id' => $category->id]);
         $this->factorB  = EmissionFactor::factory()->create(['emission_category_id' => $category->id]);
         $this->company  = Company::factory()->create();
+        $this->admin->companies()->attach($this->company->id, ['role' => 'admin', 'is_active' => true]);
     }
 
     // ─── index ────────────────────────────────────────────────────────────────
@@ -131,5 +132,41 @@ class AdminCompanyFactorControllerTest extends TestCase
         $this->actingAs($user, 'api')
              ->getJson("/api/admin/companies/{$this->company->id}/factors")
              ->assertForbidden();
+    }
+
+    // ─── IDOR: un admin no debe ver/editar factores de otra empresa ─────────
+
+    public function test_admin_cannot_view_factors_of_another_company()
+    {
+        $otherCompany = Company::factory()->create();
+
+        $this->actingAs($this->admin, 'api')
+             ->getJson("/api/admin/companies/{$otherCompany->id}/factors")
+             ->assertStatus(403);
+    }
+
+    public function test_admin_cannot_update_factors_of_another_company()
+    {
+        $otherCompany = Company::factory()->create();
+
+        $this->actingAs($this->admin, 'api')
+             ->putJson("/api/admin/companies/{$otherCompany->id}/factors", [
+                 'factors' => [['id' => $this->factorA->id, 'is_enabled' => true]],
+             ])
+             ->assertStatus(403);
+
+        $this->assertDatabaseMissing('company_emission_factor', [
+            'company_id' => $otherCompany->id,
+            'emission_factor_id' => $this->factorA->id,
+        ]);
+    }
+
+    public function test_superadmin_can_view_factors_of_any_company()
+    {
+        $otherCompany = Company::factory()->create();
+
+        $this->actingAs($this->superadmin, 'api')
+             ->getJson("/api/admin/companies/{$otherCompany->id}/factors")
+             ->assertOk();
     }
 }
