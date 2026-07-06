@@ -9,9 +9,12 @@ usuario (ver `docs/manuals/manual-usuario-consolidado.md`). Aquí el
 objetivo es: entrar, hacer clic, y confirmar que lo que el sistema
 calcula y muestra es correcto y consistente.
 
-Incluye un **anexo técnico** (Anexo A) que explica cómo funciona el
+Incluye dos anexos técnicos: el **Anexo A** explica cómo funciona el
 motor de cálculo de emisiones por dentro, con un ejemplo numérico real
-que el auditor puede reproducir a mano y contrastar contra el sistema.
+que el auditor puede reproducir a mano y contrastar contra el sistema;
+el **Anexo B** explica el ciclo de vida de los datos — cómo se crean
+empresas y períodos nuevos, qué pasa al agregar datos a un período que
+ya existe, y cómo se corrige un dato mal ingresado.
 
 ---
 
@@ -408,3 +411,80 @@ técnicas que un auditor riguroso debe conocer:
 - `backend/tests/Unit/CarbonFootprintServiceTest.php` y
   `backend/tests/Unit/FormulaEvaluationServiceTest.php` — tests que
   confirman el comportamiento descrito en este anexo
+
+---
+
+## Anexo B — Ciclo de vida de datos: empresas, períodos y correcciones
+
+Esta es la columna vertebral operativa del sistema — cómo entra un dato
+nuevo, qué pasa cuando ya existe un período con datos, y cómo se
+corrige un error. El motor de cálculo (Anexo A) no depende en absoluto
+de qué tan nueva sea la empresa o el período: solo necesita un factor
+de emisión válido. Lo que sí importa es el **estado** del período.
+
+### B.1 — Empresa y período nuevos
+
+Crear una empresa **no crea automáticamente un período** — son dos
+pasos separados:
+
+1. `Administración → Empresas → Nueva Empresa` (nombre, sector, año
+   base, metodología)
+2. Desde esa empresa, crear un **período** (año + estado). Sin esto,
+   no se puede registrar ninguna emisión — toda emisión se ata a un
+   `period_id` que debe existir de antemano.
+
+Una vez existe el período, el motor de cálculo funciona exactamente
+igual que en una empresa con años de historial — no hay ninguna
+diferencia de comportamiento por antigüedad.
+
+### B.2 — Añadir datos a un período que ya existe
+
+- **Período abierto/activo** (`open` / `active`): sin límite. Cada
+  emisión nueva es simplemente otra fila — el Dashboard y los reportes
+  suman todo lo que exista para ese período automáticamente, no hay
+  tope ni bloqueo por cantidad de registros.
+- **Período cerrado, en revisión, o archivado** (`closed` /
+  `in_review` / `archived`): el sistema **rechaza** el registro nuevo
+  con `422`.
+- Un superadmin puede **reabrir** un período cerrado
+  (`Administración → Períodos → Reabrir`) para volver a agregar datos.
+
+**Hallazgo corregido 2026-07-06**: hasta esta fecha, la validación de
+"período no editable" solo revisaba explícitamente el estado `closed`
+— los otros dos estados de solo-lectura del ciclo de vida
+(`in_review`, `archived`) no estaban bloqueados en ese mismo punto del
+código, aunque la UI normal no permitía llegar a esa situación. Se
+corrigió cambiando de una lista negra ("bloquea solo lo que reconozcas
+explícitamente") a una lista blanca ("permite escribir solo en los
+estados abiertos; cualquier otro estado queda bloqueado por diseño,
+incluso uno que se agregue en el futuro y nadie recuerde sumar a la
+lista de bloqueo"). Verificado con tests que reproducen los 3 estados
+no-abiertos contra el endpoint real.
+
+### B.3 — No existe "editar" una emisión — solo crear y borrar
+
+El sistema no tiene una operación de actualización sobre un registro
+de emisión ya guardado. Si un dato se ingresó mal, el patrón de
+corrección es siempre el mismo: **borrar el registro** y **volver a
+registrarlo correcto** — nunca un "edit" silencioso sobre el valor
+existente.
+
+- Un `admin` solo puede borrar emisiones de un período **abierto**.
+- Un `superadmin` puede borrar incluso en un período **cerrado**, y esa
+  acción queda registrada en la bitácora de actividad (auditable).
+
+Esto es una decisión intencional de trazabilidad, no una limitación
+accidental: nunca hay un cambio de valor sin dejar rastro de que el
+dato anterior existió y fue eliminado.
+
+### Cómo validarlo
+
+1. Crea una empresa nueva **sin** crear un período todavía — intenta
+   registrar una emisión: debe fallar (no existe período al cual atarla).
+2. Crea el período y registra una emisión — confirma que aparece en el
+   Dashboard de inmediato.
+3. **Administración → Períodos → Cerrar** ese período, e intenta
+   registrar otra emisión — debe devolver `422`.
+4. **Reabre** el período — la misma operación ahora debe funcionar.
+5. Confirma que no existe ningún botón "editar" sobre una emisión ya
+   guardada en el histórico de emisiones — solo "eliminar".
