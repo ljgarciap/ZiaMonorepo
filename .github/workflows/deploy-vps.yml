@@ -107,6 +107,21 @@ jobs:
     needs: [build-backend, build-agent, build-frontend]
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Coolify guarda su propia copia del compose (no lee el repo en cada
+      # deploy) — hay que sincronizarla antes de disparar el deploy o los
+      # cambios a docker-compose.prod.yml nunca se aplican.
+      - name: Sync docker-compose.prod.yml to Coolify
+        run: |
+          COMPOSE_B64=$(base64 -w0 docker-compose.prod.yml)
+          curl -fsS -X PATCH "${{ secrets.COOLIFY_URL }}/api/v1/services/${{ secrets.COOLIFY_SERVICE_UUID }}" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"docker_compose_raw\": \"$COMPOSE_B64\"}"
+
       - name: Trigger Coolify deploy
         run: |
           curl -fsS -X GET "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_SERVICE_UUID }}" \
