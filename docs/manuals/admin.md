@@ -134,6 +134,21 @@ Consultar el estado de los dispositivos IoT de tu empresa: lecturas, alertas pen
   resolver alertas — esas acciones son del Técnico IoT o el
   Superadministrador. Tu pantalla no muestra esos botones
 
+## Documentos (base de conocimiento del Asistente ZIA)
+### Para qué sirve
+Subir documentos de tu empresa (facturas, certificados, reportes
+previos) para que el **Asistente ZIA** pueda responder preguntas sobre
+su contenido.
+
+### Paso a paso
+1. **Administración → Documentos**
+2. Sube el archivo (PDF, TXT o Markdown, máx. 20 MB) y espera a que
+   pase a estado **Listo**
+3. Pregúntale al chat algo que solo esté en ese documento
+
+### Qué vas a ver
+Solo los documentos de tu propia empresa.
+
 ## Lo que no puedes hacer
 - No tienes acceso a los catálogos globales (tags maestros, factores
   maestros, sectores, unidades de medida, cuestionarios)

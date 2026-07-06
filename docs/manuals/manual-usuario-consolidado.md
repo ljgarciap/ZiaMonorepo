@@ -1,6 +1,6 @@
 # Manual de Usuario — ZIA Carbon Control
 
-**Última actualización**: 2026-07-05
+**Última actualización**: 2026-07-06 (agrega Documentos / base de conocimiento del Asistente ZIA para Superadministrador y Administrador)
 **Alcance**: ZIA Carbon Control
 **Audiencia**: usuarios de la plataforma, por rol. La sección de
 Superadministrador es de uso interno del equipo y no se distribuye a
@@ -194,6 +194,31 @@ unidad — sin mezclar sus datos individuales de forma permanente.
 - Un grupo sin empresas asignadas, o sin datos en el año seleccionado,
   muestra el resumen en cero — no es un error
 
+### Gestión de Documentos (base de conocimiento del Asistente ZIA)
+**Para qué sirve**: Subir documentos de una empresa (facturas,
+certificados, reportes previos) para que el **Asistente ZIA** (el chat)
+pueda responder preguntas sobre su contenido — no solo sobre los datos
+ya registrados en el sistema.
+
+**Paso a paso**:
+1. Selecciona la empresa en el selector de contexto
+2. **Administración → Documentos** (`/admin/company-documents`)
+3. **Subir documento**: acepta PDF, TXT o Markdown (máx. 20 MB)
+4. El documento pasa por 3 estados: **En cola** → **Procesando** →
+   **Listo** (o **Error** si el archivo no se pudo leer, ej. un PDF
+   escaneado sin texto real)
+5. Una vez en estado **Listo**, pregúntale al Asistente ZIA algo que
+   solo esté en ese documento — el chat lo va a encontrar y citar
+
+**Qué vas a ver**: Solo los documentos de la empresa seleccionada en el
+selector de contexto — nunca de otra empresa.
+
+**Errores comunes**:
+- Un documento se queda en "Procesando" más de unos segundos: revisa
+  que el archivo tenga texto real (no una imagen escaneada sin OCR)
+- Borrar un documento es definitivo — el archivo y su contenido
+  indexado para el Asistente se eliminan por completo, no hay papelera
+
 ---
 
 ## Administrador de Empresa
@@ -321,6 +346,19 @@ empresa: lecturas, alertas pendientes, última calibración.
 - No puedes registrar, editar, calibrar ni eliminar dispositivos, ni
   resolver alertas — esas acciones son del Técnico IoT o el
   Superadministrador. Tu pantalla no muestra esos botones
+
+### Documentos (base de conocimiento del Asistente ZIA)
+**Para qué sirve**: Subir documentos de tu empresa (facturas,
+certificados, reportes previos) para que el **Asistente ZIA** pueda
+responder preguntas sobre su contenido.
+
+**Paso a paso**:
+1. **Administración → Documentos**
+2. Sube el archivo (PDF, TXT o Markdown, máx. 20 MB) y espera a que
+   pase a estado **Listo**
+3. Pregúntale al chat algo que solo esté en ese documento
+
+**Qué vas a ver**: Solo los documentos de tu propia empresa.
 
 ### Lo que no puedes hacer
 - No tienes acceso a los catálogos globales (tags maestros, factores

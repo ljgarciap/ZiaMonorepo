@@ -185,3 +185,30 @@ datos individuales de forma permanente.
   nombre/descripción/empresas) y crea uno nuevo
 - Un grupo sin empresas asignadas, o sin datos en el año seleccionado,
   muestra el resumen en cero — no es un error
+
+## Gestión de Documentos (base de conocimiento del Asistente ZIA)
+### Para qué sirve
+Subir documentos de una empresa (facturas, certificados, reportes
+previos) para que el **Asistente ZIA** (el chat) pueda responder
+preguntas sobre su contenido — no solo sobre los datos ya registrados
+en el sistema.
+
+### Paso a paso
+1. Selecciona la empresa en el selector de contexto
+2. **Administración → Documentos** (`/admin/company-documents`)
+3. **Subir documento**: acepta PDF, TXT o Markdown (máx. 20 MB)
+4. El documento pasa por 3 estados: **En cola** → **Procesando** →
+   **Listo** (o **Error** si el archivo no se pudo leer, ej. un PDF
+   escaneado sin texto real)
+5. Una vez en estado **Listo**, pregúntale al Asistente ZIA algo que
+   solo esté en ese documento — el chat lo va a encontrar y citar
+
+### Qué vas a ver
+Solo los documentos de la empresa seleccionada en el selector de
+contexto — nunca de otra empresa.
+
+### Errores comunes
+- Un documento se queda en "Procesando" más de unos segundos: revisa
+  que el archivo tenga texto real (no una imagen escaneada sin OCR)
+- Borrar un documento es definitivo — el archivo y su contenido
+  indexado para el Asistente se eliminan por completo, no hay papelera
