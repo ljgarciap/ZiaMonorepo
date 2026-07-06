@@ -31,6 +31,34 @@ El resto de los usuarios (admin, user, auditor, iot_tech, viewer) se
 crean durante el walkthrough, o pueden solicitarse ya creados si el
 entorno de validación es compartido.
 
+**Datos reales ya cargados (alternativa a crear datos desde cero)**:
+además de crear tu propia empresa de prueba (paso 1.2), el sistema ya
+tiene empresas con historial real de varios períodos, por si prefieres
+validar cálculos y reportes sobre datos existentes en vez de datos que
+tú mismo generes en el momento:
+
+| Empresa | Períodos | Emisiones registradas |
+|---|---|---|
+| Bucarretes S.A.S. | 4 | 18 |
+| EcoTech Solutions S.A.S. | 2 | 13 |
+| Industrias Verdes Ltda. | 5 | 40 |
+| ECONOVA | 2 | 13 |
+
+Como superadmin, selecciona cualquiera de estas empresas desde el
+selector de contexto y entra directo a su Dashboard, Histórico de
+Emisiones o Reportes — el superadmin ve el Dashboard de cualquier
+empresa igual que lo vería su propio Admin, sin necesitar crear un
+usuario nuevo para eso.
+
+**Validación cruzada sugerida**: toma cualquier registro del histórico
+de emisiones de una de estas empresas (`GET
+/api/companies/<ID>/emissions/history`) y reproduce el cálculo a mano
+con la fórmula del **Anexo A**, usando el factor de emisión y la
+cantidad de ese registro — debe coincidir exactamente con
+`calculated_co2e`. De hecho, el ejemplo trabajado del Anexo A (50
+galones de "Gasolina E10", empresa EcoTech Solutions, período 2024) es
+precisamente uno de estos registros reales, no un cálculo teórico.
+
 ---
 
 ## Parte 1 — Walkthrough funcional (qué hacer, qué debe pasar)

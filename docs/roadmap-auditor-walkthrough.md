@@ -585,6 +585,13 @@ el modo actual: `grep THINGSBOARD_MOCK backend/.env`.
 
 ## Walkthrough end-to-end (para validar el flujo completo en vivo)
 
+**Guía paso a paso con resultado esperado en cada punto, datos reales
+ya cargados para validar sin crear nada desde cero, y anexo del motor
+de cálculo con un ejemplo numérico verificable a mano**: ver
+"Guía de Validación Funcional para Auditor — Plataforma ZIA"
+(`docs/guia-validacion-auditor.md`, también en Drive). Lo que sigue es
+la versión resumida:
+
 1. **Login** como `superadmin@zia.com` / `password` en `http://localhost:8080`
 2. **Crear una empresa** (Administración → Empresas) con sector/subsector definidos
 3. **Crear un usuario `admin`** para esa empresa (Administración → Usuarios)
