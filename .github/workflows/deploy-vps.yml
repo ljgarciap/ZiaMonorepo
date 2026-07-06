@@ -1,0 +1,128 @@
+# Deploy automático al VPS de pruebas (Hostinger) vía Coolify.
+#
+# Flujo: CI (ci.yml) en verde sobre master → build de las 3 imágenes →
+# push a GHCR → trigger de deploy en Coolify (API, no SSH) → poll de
+# /api/health hasta que responda 200.
+#
+# Secrets requeridos en GitHub → Settings → Secrets and variables → Actions:
+#   COOLIFY_API_TOKEN — Bearer token de Coolify (Keys & Tokens en el dashboard,
+#                        usar uno dedicado a CI, no el token de administración manual)
+#
+# Variables requeridas en GitHub → Settings → Secrets and variables → Variables:
+#   COOLIFY_URL           — ej. http://2.25.79.64:8000
+#   COOLIFY_SERVICE_UUID  — UUID del servicio docker-compose en Coolify
+#   BACKEND_HEALTH_URL    — ej. https://apiziaccb.softclass.co/api/health
+
+name: Deploy to VPS (Coolify)
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [master]
+    types: [completed]
+
+env:
+  IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+
+jobs:
+  build-backend:
+    name: Build & push — Backend (Laravel)
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/zia-backend"
+          docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" ./backend
+          docker push "$IMAGE:$IMAGE_TAG"
+          docker push "$IMAGE:latest"
+
+  build-agent:
+    name: Build & push — ZIA Agent (Python)
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/zia-agent"
+          docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" ./zia-agent
+          docker push "$IMAGE:$IMAGE_TAG"
+          docker push "$IMAGE:latest"
+
+  build-frontend:
+    name: Build & push — Frontend (Angular + Nginx)
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push image
+        run: |
+          IMAGE="ghcr.io/${{ github.repository_owner }}/zia-frontend"
+          docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" ./frontend
+          docker push "$IMAGE:$IMAGE_TAG"
+          docker push "$IMAGE:latest"
+
+  deploy:
+    name: Deploy via Coolify
+    needs: [build-backend, build-agent, build-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Coolify deploy
+        run: |
+          curl -fsS -X GET "${{ vars.COOLIFY_URL }}/api/v1/deploy?uuid=${{ vars.COOLIFY_SERVICE_UUID }}" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
+
+      - name: Wait for health check
+        run: |
+          for i in $(seq 1 20); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "${{ vars.BACKEND_HEALTH_URL }}")
+            if [ "$code" = "200" ]; then
+              echo "✅ Deploy exitoso — /api/health respondió 200"
+              exit 0
+            fi
+            echo "Intento $i: health check respondió $code, reintentando en 10s..."
+            sleep 10
+          done
+          echo "🚨 Deploy falló — /api/health no respondió 200 tras varios intentos"
+          exit 1

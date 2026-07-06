@@ -17,10 +17,18 @@ Route::middleware(\App\Http\Middleware\InternalOnly::class)
     ->get('/internal/credentials', [App\Http\Controllers\Api\InternalCredentialController::class, 'index']);
 
 Route::get('/health', function () {
+    try {
+        \Illuminate\Support\Facades\DB::connection()->getPdo();
+        $dbStatus = 'ok';
+    } catch (\Throwable $e) {
+        $dbStatus = 'error';
+    }
+
     return response()->json([
-        'status' => 'ok',
+        'status' => $dbStatus === 'ok' ? 'ok' : 'error',
+        'db' => $dbStatus,
         'timestamp' => now()->toIso8601String(),
-    ]);
+    ], $dbStatus === 'ok' ? 200 : 503);
 });
 
 Route::middleware('auth:api')->group(function () {

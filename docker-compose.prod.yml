@@ -1,0 +1,101 @@
+services:
+  # Database Service (PostgreSQL 16 + pgvector, para embeddings del RAG del agente)
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: zia_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${DB_DATABASE}
+      POSTGRES_USER: ${DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Service (Caching & Queue)
+  redis:
+    image: redis:7-alpine
+    container_name: zia_redis
+    restart: always
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Backend API Service (Laravel 11)
+  backend:
+    image: ghcr.io/ljgarciap/zia-backend:${IMAGE_TAG:-latest}
+    container_name: zia_backend
+    restart: always
+    environment:
+      APP_ENV: production
+      APP_DEBUG: false
+      APP_KEY: ${APP_KEY}
+      DB_CONNECTION: pgsql
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USERNAME: ${DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ZIA Agent — Python FastAPI + Anthropic tool_use MCP
+  zia-agent:
+    image: ghcr.io/ljgarciap/zia-agent:${IMAGE_TAG:-latest}
+    container_name: zia_agent
+    restart: always
+    environment:
+      ZIA_BACKEND_URL: http://backend:8000
+      MISTRAL_API_KEY: ${MISTRAL_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-https://cloud.langfuse.com}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # Frontend SPA Service (Angular 21 + Nginx)
+  frontend:
+    image: ghcr.io/ljgarciap/zia-frontend:${IMAGE_TAG:-latest}
+    container_name: zia_frontend
+    restart: always
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+volumes:
+  postgres_data:
+  redis_data:
