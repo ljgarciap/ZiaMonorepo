@@ -290,6 +290,33 @@ credenciales hardcodeadas en el código fuente durante esta sesión.
 **Cómo validarlo**: `cat backend/.env.example` — lista todas las
 variables esperadas sin valores reales.
 
+**Actualización 2026-07-06 — gestión de credenciales desde UI**: se
+agregó una capa opcional sobre `.env` para las integraciones externas
+más sensibles a rotar (Mistral, Anthropic, Langfuse, ThingsBoard):
+tabla `system_settings` (valor encriptado en reposo, cast `encrypted`
+de Laravel) + UI en `Administración → API Keys` (solo superadmin, ver
+`docs/manuals/superadmin.md`). No reemplaza `.env` — es un override:
+si no hay valor guardado en BD, el sistema sigue usando `.env` como
+antes. `zia-agent` (proveedores de IA, servicio Python separado que no
+puede leer la BD de Laravel directamente) consulta un endpoint interno
+nuevo (`GET /api/internal/credentials`, protegido por
+`X-Internal-Secret`) cada 60 segundos para refrescar sus credenciales
+sin reiniciar el contenedor.
+
+**Hallazgo real corregido durante la implementación**: la primera
+versión hacía que "borrar un override" devolviera al agente una key
+vacía en vez de la real de su propio `.env` — Laravel no tiene
+visibilidad del `.env` de zia-agent, así que un fallback ingenuo a
+`env()` desde Laravel reportaba vacío. Se corrigió para que "sin
+override" siempre signifique que cada servicio decida su propio
+fallback con su propio entorno, nunca que Laravel imponga el suyo
+(vacío) a otro servicio. Verificado en vivo: guardar una key falsa
+rompe el chat con error de autenticación (prueba de que se usa), y
+borrarla restaura el funcionamiento sin reiniciar nada.
+
+**Cómo validarlo**: `Administración → API Keys` como superadmin, o
+`GET /api/admin/api-credentials` con un token de superadmin.
+
 ---
 
 ## 9. Documentación OpenAPI/Swagger

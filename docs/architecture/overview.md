@@ -181,4 +181,5 @@ Ver [`data-model.md`](data-model.md) para el diagrama ER completo.
 | `company_groups` + `company_group_members` | Grupos de empresas para análisis agregado (ej. edificio) — solo superadmin |
 | `telemetry_readings` + `telemetry_alerts` | Lecturas IoT y alertas automáticas de consumo |
 | `company_documents` + `document_chunks` | Documentos subidos por empresa (facturas, certificados) y sus chunks con embedding para el RAG del agente |
+| `system_settings` | Override de credenciales de integraciones externas (Mistral, Anthropic, Langfuse, ThingsBoard), valor encriptado en reposo — gestionable desde `Administración → API Keys` |
 | `activity_logs` | Auditoría de acciones de usuario |

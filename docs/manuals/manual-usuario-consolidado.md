@@ -1,6 +1,6 @@
 # Manual de Usuario — ZIA Carbon Control
 
-**Última actualización**: 2026-07-06 (agrega Documentos / base de conocimiento del Asistente ZIA para Superadministrador y Administrador)
+**Última actualización**: 2026-07-06 (agrega Documentos / base de conocimiento del Asistente ZIA para Superadministrador y Administrador; agrega API Keys para Superadministrador)
 **Alcance**: ZIA Carbon Control
 **Audiencia**: usuarios de la plataforma, por rol. La sección de
 Superadministrador es de uso interno del equipo y no se distribuye a
@@ -218,6 +218,34 @@ selector de contexto — nunca de otra empresa.
   que el archivo tenga texto real (no una imagen escaneada sin OCR)
 - Borrar un documento es definitivo — el archivo y su contenido
   indexado para el Asistente se eliminan por completo, no hay papelera
+
+### API Keys (credenciales de integraciones externas)
+**Para qué sirve**: Configurar o rotar las credenciales que usan las
+integraciones externas — proveedores de IA del Asistente ZIA (Mistral,
+Anthropic), observabilidad (Langfuse) y telemetría IoT (ThingsBoard) —
+sin editar archivos de configuración del servidor ni pedir un redeploy.
+
+**Paso a paso**:
+1. **Administración → API Keys** (`/admin/api-credentials`)
+2. Una tarjeta por cada credencial gestionable: Mistral, Anthropic,
+   Langfuse (pública/secreta) y ThingsBoard (host, usuario, contraseña)
+3. Escribe el nuevo valor y guarda — si ya estaba configurada, verás su
+   valor actual enmascarado (solo los últimos 4 caracteres) antes de
+   reemplazarla
+4. El Asistente ZIA recoge el cambio automáticamente en menos de un
+   minuto — no hace falta reiniciar nada
+
+**Qué vas a ver**: Estado "Configurada" o "No configurada" por cada
+key, y quién la actualizó por última vez. El valor completo **nunca**
+se muestra, ni siquiera después de guardarla — solo los últimos 4
+caracteres.
+
+**Errores comunes**:
+- **Quitar** borra el override guardado aquí — el sistema vuelve a
+  usar el valor que tenga configurado el servidor por su cuenta (si
+  existe), no lo deja vacío a propósito
+- Guardar una credencial aquí no valida que funcione hasta que el
+  Asistente la use — solo gestiona cuál credencial usa el sistema
 
 ---
 

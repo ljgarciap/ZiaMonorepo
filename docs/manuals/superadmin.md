@@ -212,3 +212,40 @@ contexto — nunca de otra empresa.
   que el archivo tenga texto real (no una imagen escaneada sin OCR)
 - Borrar un documento es definitivo — el archivo y su contenido
   indexado para el Asistente se eliminan por completo, no hay papelera
+
+## API Keys (credenciales de integraciones externas)
+### Para qué sirve
+Configurar o rotar las credenciales que usan las integraciones
+externas de la plataforma — proveedores de IA del Asistente ZIA
+(Mistral, Anthropic), observabilidad (Langfuse) y telemetría IoT
+(ThingsBoard) — sin editar archivos de configuración del servidor ni
+pedir un redeploy.
+
+### Paso a paso
+1. **Administración → API Keys** (`/admin/api-credentials`)
+2. Verás una tarjeta por cada credencial gestionable: Mistral,
+   Anthropic, Langfuse (pública/secreta) y ThingsBoard (host, usuario,
+   contraseña)
+3. Escribe el nuevo valor en el campo y presiona el botón de guardar
+   (ícono de disco). Si la key ya estaba configurada, verás su valor
+   actual enmascarado (solo los últimos 4 caracteres) antes de
+   reemplazarla
+4. El Asistente ZIA (Mistral/Anthropic/Langfuse) recoge el cambio
+   automáticamente en menos de un minuto — no hace falta reiniciar
+   nada. ThingsBoard se aplica de inmediato en la próxima sincronización
+
+### Qué vas a ver
+Un estado "Configurada" o "No configurada" por cada key, y quién la
+actualizó por última vez. El valor completo de una key **nunca** se
+muestra, ni siquiera a ti mismo después de guardarla — solo los
+últimos 4 caracteres, para poder confirmar que guardaste la correcta
+sin exponer el secreto completo en pantalla.
+
+### Errores comunes
+- **Quitar (ícono de basura)** borra el override guardado aquí — el
+  sistema entonces vuelve a usar el valor que tenga configurado el
+  servidor por su cuenta (si existe), no lo deja "vacío" a propósito
+- Guardar aquí las credenciales de Mistral/Anthropic no reemplaza la
+  necesidad de que existan cuentas activas y con saldo en esos
+  proveedores — esto solo gestiona **cuál** credencial usa el sistema,
+  no valida que funcione hasta que el Asistente intente usarla
