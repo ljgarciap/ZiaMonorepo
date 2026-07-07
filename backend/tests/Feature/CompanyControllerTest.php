@@ -78,6 +78,20 @@ class CompanyControllerTest extends TestCase
         $this->assertNotContains($otherCompany->id, $ids->all());
     }
 
+    public function test_superadmin_in_restricted_context_only_sees_their_own_companies(): void
+    {
+        // Bug real: superadmin cambia a un contexto restringido (X-Context-Role)
+        // sin empresas asignadas — el dropdown no debe mostrarle todas las
+        // empresas solo porque su rol global sigue siendo superadmin.
+        Company::factory()->create(['company_sector_id' => $this->sector->id]);
+
+        $this->actingAs($this->superadmin, 'api')
+             ->withHeaders(['X-Context-Role' => 'admin'])
+             ->getJson('/api/companies')
+             ->assertOk()
+             ->assertJsonCount(0);
+    }
+
     public function test_company_list_includes_sector_relation(): void
     {
         $this->user->companies()->attach($this->company->id, ['role' => 'user', 'is_active' => true]);
@@ -136,5 +150,15 @@ class CompanyControllerTest extends TestCase
              ->getJson("/api/companies/{$this->company->id}/periods")
              ->assertOk()
              ->assertJsonCount(1);
+    }
+
+    public function test_superadmin_in_restricted_context_without_company_access_gets_403_on_periods(): void
+    {
+        Period::factory()->create(['company_id' => $this->company->id, 'year' => 2024]);
+
+        $this->actingAs($this->superadmin, 'api')
+             ->withHeaders(['X-Context-Role' => 'admin'])
+             ->getJson("/api/companies/{$this->company->id}/periods")
+             ->assertStatus(403);
     }
 }

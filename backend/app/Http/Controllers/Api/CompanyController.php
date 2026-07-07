@@ -12,8 +12,9 @@ class CompanyController extends Controller
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
 
-        $companies = $user->role === 'superadmin'
+        $companies = $activeRole === 'superadmin'
             ? Company::with('sector')->get()
             : $user->companies()->with('sector')->wherePivot('is_active', true)->get();
 
@@ -23,8 +24,9 @@ class CompanyController extends Controller
     public function periods(Request $request, Company $company): JsonResponse
     {
         $user = $request->user();
+        $activeRole = $request->header('X-Context-Role') ?: $user->role;
 
-        $hasAccess = $user->role === 'superadmin'
+        $hasAccess = $activeRole === 'superadmin'
             || $user->companies()->where('companies.id', $company->id)->exists();
 
         if (!$hasAccess) {
