@@ -123,6 +123,18 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"docker_compose_raw\": \"$COMPOSE_B64\"}"
 
+      # docker-compose.prod.yml usa ${IMAGE_TAG:-latest}. Coolify no siempre
+      # vuelve a hacer pull de una imagen ya conocida por tag ":latest" al
+      # redesplegar (visto en vivo: un deploy "exitoso" seguía sirviendo una
+      # imagen de horas antes) — apuntar al SHA exacto de este build fuerza
+      # un pull real porque Docker nunca ha visto ese tag localmente.
+      - name: Pin IMAGE_TAG en Coolify al SHA de este build
+        run: |
+          curl -fsS -X PATCH "${{ secrets.COOLIFY_URL }}/api/v1/services/${{ secrets.COOLIFY_SERVICE_UUID }}/envs" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"key\": \"IMAGE_TAG\", \"value\": \"$IMAGE_TAG\"}"
+
       - name: Trigger Coolify deploy
         run: |
           curl -fsS -X GET "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_SERVICE_UUID }}" \

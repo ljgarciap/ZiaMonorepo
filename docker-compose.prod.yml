@@ -32,6 +32,7 @@ services:
   # Backend API Service (Laravel 11)
   backend:
     image: ghcr.io/ljgarciap/zia-backend:${IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: zia_backend
     restart: always
     environment:
@@ -62,6 +63,7 @@ services:
   # ZIA Agent — Python FastAPI + Anthropic tool_use MCP
   zia-agent:
     image: ghcr.io/ljgarciap/zia-agent:${IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: zia_agent
     restart: always
     environment:
@@ -85,6 +87,7 @@ services:
   # Frontend SPA Service (Angular 21 + Nginx)
   frontend:
     image: ghcr.io/ljgarciap/zia-frontend:${IMAGE_TAG:-latest}
+    pull_policy: always
     container_name: zia_frontend
     restart: always
     depends_on:
