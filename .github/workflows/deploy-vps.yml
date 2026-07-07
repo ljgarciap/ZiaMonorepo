@@ -8,7 +8,8 @@
 #   COOLIFY_API_TOKEN — Bearer token de Coolify (Keys & Tokens en el dashboard,
 #                        usar uno dedicado a CI, no el token de administración manual)
 #
-#   COOLIFY_URL           — ej. http://2.25.79.64:8000
+#   COOLIFY_URL           — ej. https://coolify.softclass.co (dominio del dashboard;
+#                            el puerto 8000/IP directa está cerrado por firewall)
 #   COOLIFY_SERVICE_UUID  — UUID del servicio docker-compose en Coolify
 #   BACKEND_HEALTH_URL    — ej. https://apiziaccb.softclass.co/api/health
 

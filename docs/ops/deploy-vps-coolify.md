@@ -71,7 +71,7 @@ variables → Actions del repo:
 | Nombre | Qué es |
 |---|---|
 | `COOLIFY_API_TOKEN` | Bearer token de Coolify, generado en el dashboard → Keys & Tokens. Usar uno dedicado a CI (`github-actions-deploy`), permisos `read` + `deploy` (no admin completo) |
-| `COOLIFY_URL` | Base URL de la API de Coolify — hoy `http://2.25.79.64:8000` (¡ojo! esta URL es la interna/directa a la API, distinta del dashboard público `https://coolify.softclass.co`; como el puerto 8000 está cerrado a internet, este valor solo sirve si el runner de GitHub Actions puede alcanzar la IP directamente — verificar que siga siendo así o exponer la API por el dominio si Actions deja de poder llegar) |
+| `COOLIFY_URL` | Base URL de la API de Coolify — `https://coolify.softclass.co` (el mismo dominio del dashboard; Traefik enruta `/api/v1/*` al contenedor de Coolify). **No** usar `http://2.25.79.64:8000` — ese puerto quedó cerrado por firewall tras el hardening de seguridad, y de hecho causó un deploy fallido real hasta corregirlo (ver commit del 2026-07-07) |
 | `COOLIFY_SERVICE_UUID` | UUID del servicio docker-compose en Coolify (`nfzjonvadjqzshta8jzx5ayz` en el VPS de pruebas) |
 | `BACKEND_HEALTH_URL` | `https://apiziaccb.softclass.co/api/health` |
 
