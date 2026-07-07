@@ -3,5 +3,5 @@ const isLocalhost = typeof window !== 'undefined' &&
 
 export const environment = {
     production: true,
-    apiUrl: isLocalhost ? 'http://localhost:8000/api' : 'https://ziaapi.softclass.co/api'
+    apiUrl: isLocalhost ? 'http://localhost:8000/api' : 'https://apiziaccb.softclass.co/api'
 };

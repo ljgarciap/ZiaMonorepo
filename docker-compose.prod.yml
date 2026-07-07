@@ -46,6 +46,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       REDIS_HOST: redis
       INTERNAL_API_SECRET: ${INTERNAL_API_SECRET}
+      FRONTEND_URL: ${FRONTEND_URL:-https://ziaccb.softclass.co}
     depends_on:
       db:
         condition: service_healthy

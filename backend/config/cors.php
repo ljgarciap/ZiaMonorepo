@@ -24,7 +24,7 @@ return [
         'http://127.0.0.1:4200',
         'http://localhost:8080',
         'http://127.0.0.1:8080',
-        'https://zia.softclass.co',
+        'https://ziaccb.softclass.co',
         env('FRONTEND_URL', 'http://localhost:4200')
     ],
 
