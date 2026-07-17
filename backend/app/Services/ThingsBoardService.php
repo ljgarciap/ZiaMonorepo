@@ -49,19 +49,25 @@ class ThingsBoardService
      *
      * @param string $deviceId ThingsBoard UUID of the device
      * @param string $metricName Metric name to retrieve
-     * @return array Contains 'value', 'timestamp'
+     * @return array{value: float, timestamp: string, is_fallback: bool} `is_fallback`
+     *   is true only when a REAL API call failed and this is a simulated
+     *   substitute (not when THINGSBOARD_MOCK=true is simply doing its job).
+     *   Callers that persist a value as a running baseline (e.g. a cumulative
+     *   meter's last-known reading) must skip the cycle instead of trusting a
+     *   fallback value — an intentional mock reading and an emergency
+     *   substitute for a real one are not the same thing.
      */
     public function getLatestTelemetry(string $deviceId, string $metricName): array
     {
         if ($this->mockMode) {
-            return $this->generateMockTelemetry($deviceId, $metricName);
+            return $this->generateMockTelemetry($deviceId, $metricName) + ['is_fallback' => false];
         }
 
         try {
             $token = $this->getAuthToken();
             if (!$token) {
                 Log::error('ThingsBoard auth failed. Falling back to mock data.');
-                return $this->generateMockTelemetry($deviceId, $metricName);
+                return $this->generateMockTelemetry($deviceId, $metricName) + ['is_fallback' => true];
             }
 
             // Get latest values from ThingsBoard API
@@ -76,15 +82,16 @@ class ThingsBoardService
                 return [
                     'value' => floatval($data['value']),
                     // ThingsBoard timestamps are in milliseconds
-                    'timestamp' => now()->setTimestamp(intval($data['ts'] / 1000))->toDateTimeString()
+                    'timestamp' => now()->setTimestamp(intval($data['ts'] / 1000))->toDateTimeString(),
+                    'is_fallback' => false,
                 ];
             }
 
             Log::warning("No telemetry found for device {$deviceId} and key {$metricName} in ThingsBoard. Using simulated fallback.");
-            return $this->generateMockTelemetry($deviceId, $metricName);
+            return $this->generateMockTelemetry($deviceId, $metricName) + ['is_fallback' => true];
         } catch (\Exception $e) {
             Log::error("ThingsBoard API error: " . $e->getMessage() . ". Using simulated fallback.");
-            return $this->generateMockTelemetry($deviceId, $metricName);
+            return $this->generateMockTelemetry($deviceId, $metricName) + ['is_fallback' => true];
         }
     }
 

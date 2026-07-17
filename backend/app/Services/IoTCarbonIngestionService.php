@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CarbonEmission;
+use App\Models\IotDevice;
 use App\Models\Period;
 use App\Models\TelemetryReading;
 use Illuminate\Support\Facades\Log;
@@ -13,8 +14,13 @@ class IoTCarbonIngestionService
      * Convert a telemetry reading into a CarbonEmission record.
      *
      * The operation is idempotent: it recomputes the total quantity from ALL
-     * readings stored for this device within the active period's year, so
-     * running the cron multiple times never double-counts.
+     * readings of EVERY IotDevice that shares this device's company and
+     * emission_factor_id (not just this one device) within the active
+     * period's year, so running the cron multiple times — from any of those
+     * devices, in any order — never double-counts and never has one
+     * device's contribution overwrite another's. The CarbonEmission row is
+     * still one per [period_id, emission_factor_id], matching how manual
+     * entries and reports already expect it.
      *
      * Returns null when the device is not fully configured (missing company_id
      * or emission_factor_id) or when no open period exists.
@@ -43,8 +49,16 @@ class IoTCarbonIngestionService
             return null;
         }
 
-        // Sum ALL readings for this device in the period's year (idempotent across cron runs)
-        $totalQuantity = TelemetryReading::where('device_id', $device->id)
+        // Sum readings from EVERY device sharing this company+factor, not just
+        // this one — two devices mapped to the same emission_factor_id both
+        // write to the same CarbonEmission row; summing only this device's
+        // readings would make whichever device ingests last silently discard
+        // the other's contribution instead of combining them.
+        $sharedDeviceIds = IotDevice::where('company_id', $device->company_id)
+            ->where('emission_factor_id', $device->emission_factor_id)
+            ->pluck('id');
+
+        $totalQuantity = TelemetryReading::whereIn('device_id', $sharedDeviceIds)
             ->whereYear('timestamp', $period->year)
             ->sum('value');
 

@@ -8,6 +8,7 @@ use App\Models\TelemetryReading;
 use App\Services\ThingsBoardService;
 use App\Services\TelemetryAlertService;
 use App\Services\IoTCarbonIngestionService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class SyncTelemetryCommand extends Command
@@ -87,12 +88,19 @@ class SyncTelemetryCommand extends Command
         foreach ($devices as $device) {
             $this->info("Consultando telemetría para dispositivo: {$device->name} (Tipo: {$device->type})...");
 
-            match ($device->type) {
-                'energy' => $this->syncCumulativeEnergyDevice($device),
-                'waste'  => $this->syncEventBasedDevice($device, 'weight_kg'),
-                // 'water' y cualquier tipo no reconocido: comportamiento original sin cambios.
-                default  => $this->syncIntervalDevice($device, 'water_m3'),
-            };
+            try {
+                match ($device->type) {
+                    'energy' => $this->syncCumulativeEnergyDevice($device),
+                    'waste'  => $this->syncEventBasedDevice($device, 'weight_kg'),
+                    // 'water' y cualquier tipo no reconocido: comportamiento original sin cambios.
+                    default  => $this->syncIntervalDevice($device, 'water_m3'),
+                };
+            } catch (\Throwable $e) {
+                // Un dispositivo con problemas no debe abortar el resto del
+                // cron — se registra y se sigue con el siguiente.
+                Log::error("Fallo sincronizando dispositivo {$device->name} (#{$device->id}): " . $e->getMessage());
+                $this->error("-> Fallo sincronizando {$device->name}, se continúa con el resto: " . $e->getMessage());
+            }
         }
 
         $this->info('Sincronización de telemetría completada con éxito.');
@@ -135,26 +143,44 @@ class SyncTelemetryCommand extends Command
             $device->thingsboard_id ?? 'default_id',
             $metricName
         );
+
+        if ($telemetry['is_fallback']) {
+            // Un valor de respaldo (falla real de la API, no modo mock
+            // intencional) no es una lectura confiable del contador
+            // acumulado — guardarlo como línea base corrompería el próximo
+            // delta real. Se omite este ciclo; el próximo intento calcula el
+            // delta contra la última línea base real conocida, sin perder
+            // precisión (solo se pierde granularidad de este intervalo).
+            $this->warn("-> {$device->name}: lectura de respaldo (falla de API real), se omite este ciclo para no corromper el contador.");
+            return;
+        }
+
         $currentRaw = $telemetry['value'];
 
-        // Primera lectura tras conectar el dispositivo: no hay línea base para
-        // calcular un delta real. Se descarta (delta 0) en vez de contar de
-        // golpe todo el histórico acumulado del medidor desde su instalación.
-        $deltaKwh = $device->last_raw_value === null
-            ? 0.0
-            : max(0.0, ($currentRaw - $device->last_raw_value) / 1000);
+        // Transacción: last_raw_value solo debe avanzar si la lectura y su
+        // ingesta también tienen éxito — si no, el consumo de este intervalo
+        // se pierde del total anual sin dejar rastro.
+        DB::transaction(function () use ($device, $metricName, $telemetry, $currentRaw) {
+            // Primera lectura tras conectar el dispositivo: no hay línea base
+            // para calcular un delta real. Se descarta (delta 0) en vez de
+            // contar de golpe todo el histórico acumulado del medidor desde
+            // su instalación.
+            $deltaKwh = $device->last_raw_value === null
+                ? 0.0
+                : max(0.0, ($currentRaw - $device->last_raw_value) / 1000);
 
-        $device->update(['last_raw_value' => $currentRaw]);
+            $device->update(['last_raw_value' => $currentRaw]);
 
-        $reading = TelemetryReading::create([
-            'device_id' => $device->id,
-            'metric_name' => $metricName,
-            'value' => $deltaKwh,
-            'timestamp' => $telemetry['timestamp'],
-        ]);
+            $reading = TelemetryReading::create([
+                'device_id' => $device->id,
+                'metric_name' => $metricName,
+                'value' => $deltaKwh,
+                'timestamp' => $telemetry['timestamp'],
+            ]);
 
-        $this->line("-> Lectura guardada: {$reading->value} kWh (delta del intervalo) a las {$reading->timestamp}");
-        $this->processReading($reading);
+            $this->line("-> Lectura guardada: {$reading->value} {$device->unit} (delta del intervalo) a las {$reading->timestamp}");
+            $this->processReading($reading);
+        });
     }
 
     /**
@@ -187,18 +213,28 @@ class SyncTelemetryCommand extends Command
             return;
         }
 
+        // El chequeo de alertas es por evento (compara cada lectura contra su
+        // propio horario/umbral), pero la ingesta a huella de carbono
+        // re-suma TODAS las TelemetryReading del año sin importar cuál se le
+        // pase — ingerir una vez tras el loop, no N veces, evita N re-escaneos
+        // completos del año y N upserts donde solo el último sobrevive.
+        $lastReading = null;
         foreach ($events as $event) {
-            $reading = TelemetryReading::create([
+            $lastReading = TelemetryReading::create([
                 'device_id' => $device->id,
                 'metric_name' => $metricName,
                 'value' => $event['value'],
                 'timestamp' => $event['timestamp'],
             ]);
-            $this->processReading($reading);
+            $this->alertService->checkReading($lastReading);
         }
 
         $this->line("-> {$device->name}: " . count($events) . ' evento(s) procesados.');
         $device->update(['last_synced_at' => $endTs]);
+
+        if ($lastReading) {
+            $this->ingestEmission($lastReading);
+        }
     }
 
     /**
@@ -208,7 +244,11 @@ class SyncTelemetryCommand extends Command
     private function processReading(TelemetryReading $reading): void
     {
         $this->alertService->checkReading($reading);
+        $this->ingestEmission($reading);
+    }
 
+    private function ingestEmission(TelemetryReading $reading): void
+    {
         $emission = $this->ingestionService->ingestReading($reading);
         if ($emission) {
             $year = $emission->period->year ?? '?';

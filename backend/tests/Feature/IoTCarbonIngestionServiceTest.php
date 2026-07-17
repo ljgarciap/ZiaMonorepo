@@ -195,4 +195,63 @@ class IoTCarbonIngestionServiceTest extends TestCase
         $this->assertEqualsWithDelta(999.0, $manual->quantity, 0.01);
         $this->assertEquals('manual', $manual->source);
     }
+
+    // ─── múltiples dispositivos sobre el mismo factor ─────────────────────────
+
+    public function test_ingest_combines_totals_from_multiple_devices_sharing_the_same_factor()
+    {
+        $device2 = IotDevice::create([
+            'thingsboard_id'     => 'test-device-002',
+            'name'               => 'Segundo Medidor',
+            'type'               => 'energy',
+            'unit'               => 'kWh',
+            'company_id'         => $this->company->id,
+            'emission_factor_id' => $this->factor->id, // mismo factor que $this->device
+        ]);
+
+        $readingDevice1 = $this->makeReading(100.0);
+        $readingDevice2 = TelemetryReading::create([
+            'device_id'   => $device2->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 40.0,
+            'timestamp'   => now()->toDateTimeString(),
+        ]);
+
+        // Procesar primero el dispositivo 1, luego el 2 — como haría el cron
+        // corriendo ambos dispositivos en la misma corrida.
+        $this->service->ingestReading($readingDevice1);
+        $emission = $this->service->ingestReading($readingDevice2);
+
+        // Debe seguir habiendo UNA sola fila para [period, factor] — pero con
+        // el total COMBINADO de ambos dispositivos, no solo el del último en
+        // procesarse.
+        $this->assertEquals(1, CarbonEmission::count());
+        $this->assertEqualsWithDelta(140.0, $emission->quantity, 0.01);
+    }
+
+    public function test_ingest_from_one_device_does_not_discard_another_devices_prior_contribution()
+    {
+        $device2 = IotDevice::create([
+            'thingsboard_id'     => 'test-device-003',
+            'name'               => 'Tercer Medidor',
+            'type'               => 'energy',
+            'unit'               => 'kWh',
+            'company_id'         => $this->company->id,
+            'emission_factor_id' => $this->factor->id,
+        ]);
+
+        $this->service->ingestReading($this->makeReading(100.0));
+
+        $readingDevice2 = TelemetryReading::create([
+            'device_id'   => $device2->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 25.0,
+            'timestamp'   => now()->toDateTimeString(),
+        ]);
+        $emission = $this->service->ingestReading($readingDevice2);
+
+        // Si device 2 sobreescribiera con solo su propio total, quantity
+        // sería 25.0 — la contribución de device 1 se habría perdido.
+        $this->assertEqualsWithDelta(125.0, $emission->quantity, 0.01);
+    }
 }
