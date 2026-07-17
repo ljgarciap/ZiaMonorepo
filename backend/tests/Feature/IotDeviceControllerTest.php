@@ -96,6 +96,29 @@ class IotDeviceControllerTest extends TestCase
         ]);
     }
 
+    public function test_store_rejects_unrecognized_device_type(): void
+    {
+        $this->actingAs($this->tech, 'api')
+             ->postJson("/api/companies/{$this->company->id}/iot-devices", [
+                 'name' => 'Medidor Raro',
+                 'type' => 'energyy', // typo — no debe caer en silencio al branch de agua
+             ])
+             ->assertStatus(422)
+             ->assertJsonValidationErrors(['type']);
+    }
+
+    public function test_store_accepts_waste_device_type(): void
+    {
+        $this->actingAs($this->tech, 'api')
+             ->postJson("/api/companies/{$this->company->id}/iot-devices", [
+                 'name' => 'Báscula de Papel',
+                 'type' => 'waste',
+                 'unit' => 'kg',
+             ])
+             ->assertCreated()
+             ->assertJsonPath('type', 'waste');
+    }
+
     public function test_iot_tech_cannot_register_device_in_unassigned_company(): void
     {
         $this->actingAs($this->tech, 'api')

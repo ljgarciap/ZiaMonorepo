@@ -3,6 +3,37 @@
 **Última actualización:** 2026-07-17 | **Responsable:** Backend Dev / Emanuel (líder IoT)
 **Servicio:** `ThingsBoardService` + comando `zia:sync-telemetry` (Laravel)
 
+## Segunda pasada — 6 hallazgos de Senior Reviewer corregidos (2026-07-17)
+
+Un code-review del primer commit de esta integración (delta de energía +
+eventos de residuos) confirmó 6 problemas reales, todos corregidos en un
+commit posterior:
+
+1. Un fallback a datos simulados por falla real de la API se guardaba
+   como si fuera una lectura real del contador de energía, corrompiendo
+   el próximo delta. `getLatestTelemetry()` ahora marca `is_fallback`;
+   el sync de energía salta el ciclo en vez de confiar en ese valor.
+2. La migración de la columna `source` backfillea `'manual'` en TODAS
+   las filas existentes de `carbon_emissions` — incluidas las creadas
+   antes por IoT. Una migración posterior reclasifica a `source=iot`
+   las filas cuyo `notes` coincide con el patrón de auto-ingesta.
+3. `last_raw_value` se persistía antes de guardar la lectura/ingesta,
+   sin transacción — una excepción entre medio perdía el consumo de
+   ese intervalo para siempre. Ahora todo el ciclo de energía corre
+   dentro de `DB::transaction()`, y el loop principal de `handle()`
+   tiene un try/catch por dispositivo para que uno con problemas no
+   aborte el resto del cron.
+4. El guard manual/IoT no distinguía dispositivos: dos `IotDevice` con
+   el mismo `emission_factor_id` se pisaban el total en vez de
+   sumarse. `ingestReading()` ahora suma lecturas de todos los
+   dispositivos que comparten `company_id`+`emission_factor_id`.
+5. La ingesta de residuos corría una vez **por evento** en vez de una
+   vez por corrida. Ahora ingiere una sola vez tras procesar todos los
+   eventos del ciclo (las alertas sí se siguen chequeando por evento).
+6. El log de energía hardcodeaba `kWh` en vez de usar `device->unit`.
+
+Ver las secciones actualizadas abajo para el detalle de cada uno.
+
 ## Validado contra un tenant de prueba real (2026-07-17)
 
 Se probó la conexión contra un tenant real de Meeldavlab
@@ -67,27 +98,39 @@ sequenceDiagram
     participant DB as PostgreSQL
 
     Cron->>Cmd: zia:sync-telemetry
-    loop por cada IotDevice
+    loop por cada IotDevice (try/catch: uno fallando no aborta el resto)
         alt type = energy (contador acumulado)
             Cmd->>TBS: getLatestTelemetry(id, 'energy_active_import_wh')
             TBS->>TB: GET .../values/timeseries?keys=energy_active_import_wh
-            TB-->>TBS: valor acumulado actual (Wh)
-            Cmd->>Cmd: delta = (actual - last_raw_value) / 1000
-            Cmd->>DB: update IotDevice.last_raw_value = actual
+            TB-->>TBS: valor acumulado actual (Wh) o fallback simulado (is_fallback)
+            alt is_fallback = true
+                Cmd->>Cmd: se omite el ciclo — no toca last_raw_value ni crea lectura
+            else is_fallback = false
+                Note over Cmd,DB: DB::transaction — todo o nada
+                Cmd->>Cmd: delta = (actual - last_raw_value) / 1000
+                Cmd->>DB: update IotDevice.last_raw_value = actual
+                Cmd->>DB: crea TelemetryReading
+                Cmd->>Cmd: TelemetryAlertService.checkReading()
+                Cmd->>Cmd: IoTCarbonIngestionService.ingestReading()
+            end
         else type = waste (evento discreto)
             Cmd->>TBS: getTimeseriesRange(id, 'weight_kg', last_synced_at, now)
             TBS->>TB: GET .../values/timeseries?keys=weight_kg&startTs&endTs
-            TB-->>TBS: lista de eventos en el rango
+            TB-->>TBS: lista de eventos en el rango (o null si falló)
+            loop por cada evento
+                Cmd->>DB: crea TelemetryReading
+                Cmd->>Cmd: TelemetryAlertService.checkReading()
+            end
             Cmd->>DB: update IotDevice.last_synced_at = now (solo si la lectura fue exitosa)
+            Cmd->>Cmd: IoTCarbonIngestionService.ingestReading() — UNA vez, no por evento
         else type = water (u otro no reconocido)
             Cmd->>TBS: getLatestTelemetry(id, 'water_m3')
             TBS->>TB: GET .../values/timeseries?keys=water_m3
+            Cmd->>DB: crea TelemetryReading
+            Cmd->>Cmd: TelemetryAlertService.checkReading()
+            Cmd->>Cmd: IoTCarbonIngestionService.ingestReading()
         end
-        Cmd->>DB: crea TelemetryReading (uno por lectura o por evento)
-        Cmd->>Cmd: TelemetryAlertService.checkReading()
-        Cmd->>DB: crea TelemetryAlert si aplica
-        Cmd->>Cmd: IoTCarbonIngestionService.ingestReading()
-        Cmd->>DB: updateOrCreate CarbonEmission (idempotente, respeta source=manual)
+        Cmd->>DB: updateOrCreate CarbonEmission (idempotente, respeta source=manual, suma todos los dispositivos del mismo factor)
     end
 ```
 
@@ -104,15 +147,38 @@ siendo correcta.
 
 | `type` | Qué expone el sensor real | Qué guarda `SyncTelemetryCommand` en `TelemetryReading.value` |
 |---|---|---|
-| `energy` | Contador acumulado de por vida (`energy_active_import_wh`, Wh) | El **delta** contra `IotDevice.last_raw_value` (en kWh). Primera lectura tras conectar el dispositivo: delta = 0 (no hay línea base, se descarta en vez de contar de golpe todo el histórico del medidor) |
+| `energy` | Contador acumulado de por vida (`energy_active_import_wh`, Wh) | El **delta** contra `IotDevice.last_raw_value` (en kWh). Primera lectura tras conectar el dispositivo: delta = 0 (no hay línea base, se descarta en vez de contar de golpe todo el histórico del medidor). Si la lectura es un fallback simulado (falla real de la API), se omite el ciclo entero — nunca se persiste un valor no confiable como línea base |
 | `waste` | Evento discreto que resetea a 0 entre pesajes (`weight_kg`) | El valor de **cada evento** en el rango `[last_synced_at, now]` — un `TelemetryReading` por evento. "Última lectura" no sirve acá: puede caer justo entre dos eventos y perderlos |
 | `water` (y cualquier tipo no reconocido) | Se asume que ya es el consumo del intervalo | El valor tal cual — comportamiento original, sin cambios. **No confirmado contra un dispositivo real** (el tenant de prueba no tenía sensor de agua) — si se conecta uno real, confirmar esta suposición antes de confiar en el total |
+
+`IotDevice::TYPES` (`energy`, `water`, `waste`) es la única fuente de
+verdad de los tipos válidos — `IotDeviceController` valida `type` contra
+esa constante (`Rule::in`), así que un typo no puede caer en silencio en
+el branch de `water`.
 
 `CarbonEmission` tiene una columna `source` (`manual` | `iot`).
 `IoTCarbonIngestionService` nunca sobreescribe una fila `source=manual`
 — si una empresa ya tiene una emisión cargada a mano para el mismo
 `[period_id, emission_factor_id]`, la lectura IoT se omite (con
-`Log::warning`) en vez de pisarla en silencio.
+`Log::warning`) en vez de pisarla en silencio. La suma tampoco se limita
+al dispositivo que disparó la corrida: `ingestReading()` suma las
+lecturas de **todos** los `IotDevice` que comparten `company_id` +
+`emission_factor_id`, así que dos medidores mapeados al mismo factor se
+combinan en vez de pisarse el total entre sí (y `notes` lista los
+nombres de todos los dispositivos que contribuyeron, no solo el último).
+
+## Confiabilidad del cron
+
+- **Un dispositivo con problemas no aborta el resto**: `handle()` envuelve
+  el procesamiento de cada `IotDevice` en un `try/catch` — la excepción
+  se loguea y el cron sigue con el siguiente dispositivo.
+- **El ciclo de energía es transaccional**: `syncCumulativeEnergyDevice()`
+  envuelve el cálculo del delta, la actualización de `last_raw_value`, la
+  creación de la `TelemetryReading` y la ingesta a `CarbonEmission` en un
+  único `DB::transaction()` — si cualquier paso falla, todo se revierte,
+  incluida la línea base. Sin esto, una excepción a mitad de camino
+  dejaría `last_raw_value` avanzado pero sin la lectura correspondiente,
+  perdiendo ese consumo del total anual sin dejar rastro.
 
 ---
 
@@ -137,7 +203,13 @@ El token se cachea 55 segundos (`Cache::remember('thingsboard_jwt_token', 55, ..
 para no re-autenticar en cada lectura. Si la autenticación falla
 (credenciales inválidas, host inalcanzable), el servicio **cae
 automáticamente a datos simulados** para esa lectura puntual y registra
-un `Log::error` — no interrumpe el resto del cron.
+un `Log::error` — no interrumpe el resto del cron. Ese valor simulado
+viene marcado `is_fallback=true` en la respuesta de `getLatestTelemetry()`;
+para `type='water'` se guarda igual (comportamiento original, un dato
+plausible es mejor que ninguno), pero para `type='energy'`
+`syncCumulativeEnergyDevice()` lo detecta y **omite el ciclo entero** en
+vez de tratarlo como una lectura real del contador — ver "Semántica de
+cada tipo de dispositivo" abajo.
 
 ## Endpoint 2 — Última lectura de telemetría (energía, agua)
 
@@ -250,13 +322,19 @@ perderse.
      guarda pero no genera emisión (`return null`)
    - Busca el período `open`/`active` más reciente de esa empresa; sin
      período activo, no genera emisión
-   - **Es idempotente**: re-suma TODAS las lecturas del dispositivo en
-     el año del período (`TelemetryReading::where('device_id', ...)
-     ->whereYear('timestamp', $period->year)->sum('value')`) y hace
-     `updateOrCreate` sobre la emisión — correr el cron 100 veces no
-     duplica ni infla el total, siempre recalcula desde cero
+   - **Es idempotente y multi-dispositivo**: re-suma TODAS las lecturas
+     del año de **todos** los `IotDevice` que comparten
+     `company_id`+`emission_factor_id` con el dispositivo de esta
+     lectura (no solo ese dispositivo) y hace `updateOrCreate` sobre la
+     emisión — correr el cron 100 veces, desde cualquier dispositivo y
+     en cualquier orden, no duplica ni infla el total ni pisa la
+     contribución de otro dispositivo
+   - **Respeta `source=manual`**: si ya existe una emisión cargada a
+     mano para ese `[period_id, emission_factor_id]`, la lectura IoT se
+     omite (`Log::warning`) en vez de sobreescribirla
    - El resultado (`quantity × factor_total_co2e`) se guarda como
-     `CarbonEmission` con nota `"Auto-ingested from IoT: {nombre del dispositivo}"`
+     `CarbonEmission` con `source='iot'` y nota
+     `"Auto-ingested from IoT: {nombres de todos los dispositivos que contribuyeron}"`
 
 ---
 
@@ -283,5 +361,8 @@ depender de una instancia de ThingsBoard real.
 - `backend/database/migrations/2026_06_01_000000_create_telemetry_tables.php` — esquema de `iot_devices`, `telemetry_readings`, `telemetry_alerts`
 - `backend/database/migrations/2026_07_17_120000_add_sync_tracking_fields_to_iot_devices_table.php` — `last_raw_value`, `last_synced_at`
 - `backend/database/migrations/2026_07_17_120100_add_source_to_carbon_emissions_table.php` — `source` (`manual`/`iot`)
-- `backend/tests/Feature/SyncTelemetryCommandTest.php` — cobertura del delta de energía y el rango de eventos de residuos
+- `backend/database/migrations/2026_07_17_130000_reclassify_preexisting_iot_carbon_emissions.php` — reclasifica a `source=iot` las filas preexistentes creadas por IoT
+- `backend/app/Models/IotDevice.php` — constante `TYPES`, única fuente de verdad de los tipos válidos
+- `backend/tests/Feature/SyncTelemetryCommandTest.php` — cobertura del delta de energía, el fallback, la transacción, la continuidad tras fallo, y el rango de eventos de residuos
+- `backend/tests/Feature/ReclassifyPreexistingIotCarbonEmissionsMigrationTest.php` — cobertura de la migración de reclasificación
 - [Documentación oficial de la API de telemetría de ThingsBoard](https://thingsboard.io/docs/reference/rest-api/) — para verificar cambios de formato si se actualiza la versión de ThingsBoard

@@ -11,6 +11,14 @@ class IotDevice extends Model
 {
     use HasFactory, SoftDeletes, LogsActivity;
 
+    /**
+     * Tipos reconocidos por SyncTelemetryCommand — cada uno dispara una
+     * estrategia de sincronización distinta (contador acumulado, evento
+     * discreto, o valor de intervalo). Único lugar de verdad, referenciado
+     * también por la validación en IotDeviceController.
+     */
+    public const TYPES = ['energy', 'water', 'waste'];
+
     protected $fillable = [
         'thingsboard_id',
         'name',

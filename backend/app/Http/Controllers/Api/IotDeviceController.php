@@ -41,7 +41,7 @@ class IotDeviceController extends Controller
 
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|string|max:100',
+            'type' => ['required', 'string', Rule::in(IotDevice::TYPES)],
             'location' => 'nullable|string|max:255',
             'unit' => 'nullable|string|max:50',
             'thingsboard_id' => 'nullable|string|max:255|unique:iot_devices,thingsboard_id',
@@ -70,7 +70,7 @@ class IotDeviceController extends Controller
 
         $data = $request->validate([
             'name' => 'sometimes|required|string|max:255',
-            'type' => 'sometimes|required|string|max:100',
+            'type' => ['sometimes', 'required', 'string', Rule::in(IotDevice::TYPES)],
             'location' => 'nullable|string|max:255',
             'unit' => 'nullable|string|max:50',
             'thingsboard_id' => 'nullable|string|max:255|unique:iot_devices,thingsboard_id,' . $device->id,

@@ -54,11 +54,11 @@ class IoTCarbonIngestionService
         // write to the same CarbonEmission row; summing only this device's
         // readings would make whichever device ingests last silently discard
         // the other's contribution instead of combining them.
-        $sharedDeviceIds = IotDevice::where('company_id', $device->company_id)
+        $sharedDevices = IotDevice::where('company_id', $device->company_id)
             ->where('emission_factor_id', $device->emission_factor_id)
-            ->pluck('id');
+            ->get(['id', 'name']);
 
-        $totalQuantity = TelemetryReading::whereIn('device_id', $sharedDeviceIds)
+        $totalQuantity = TelemetryReading::whereIn('device_id', $sharedDevices->pluck('id'))
             ->whereYear('timestamp', $period->year)
             ->sum('value');
 
@@ -85,7 +85,7 @@ class IoTCarbonIngestionService
                 'source'          => 'iot',
                 'quantity'        => round($totalQuantity, 4),
                 'calculated_co2e' => $calculatedCo2e,
-                'notes'           => "Auto-ingested from IoT: {$device->name}",
+                'notes'           => 'Auto-ingested from IoT: ' . $sharedDevices->pluck('name')->implode(', '),
             ]
         );
     }

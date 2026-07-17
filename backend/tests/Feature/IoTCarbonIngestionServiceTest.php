@@ -254,4 +254,29 @@ class IoTCarbonIngestionServiceTest extends TestCase
         // sería 25.0 — la contribución de device 1 se habría perdido.
         $this->assertEqualsWithDelta(125.0, $emission->quantity, 0.01);
     }
+
+    public function test_ingest_notes_list_every_contributing_device_name()
+    {
+        $device2 = IotDevice::create([
+            'thingsboard_id'     => 'test-device-004',
+            'name'               => 'Cuarto Medidor',
+            'type'               => 'energy',
+            'unit'               => 'kWh',
+            'company_id'         => $this->company->id,
+            'emission_factor_id' => $this->factor->id,
+        ]);
+
+        $this->service->ingestReading($this->makeReading(10.0));
+        $emission = $this->service->ingestReading(TelemetryReading::create([
+            'device_id'   => $device2->id,
+            'metric_name' => 'electricity_kwh',
+            'value'       => 5.0,
+            'timestamp'   => now()->toDateTimeString(),
+        ]));
+
+        // No debe quedar solo el nombre del último dispositivo en ingerir —
+        // el total es combinado, la nota debe reflejar ambas fuentes.
+        $this->assertStringContainsString('Medidor Test', $emission->notes);
+        $this->assertStringContainsString('Cuarto Medidor', $emission->notes);
+    }
 }
