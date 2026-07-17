@@ -101,6 +101,7 @@ class CarbonEmissionController extends Controller
             'user_id'             => auth()->id(),
             'unit_id'             => $unitId,
             'emission_factor_id'  => $factor->id,
+            'source'              => 'manual',
             'quantity'            => $results['activity_data_total'],
             'emissions_co2'       => $results['emissions_co2'],
             'emissions_ch4'       => $results['emissions_ch4'],

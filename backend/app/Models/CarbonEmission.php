@@ -17,6 +17,7 @@ class CarbonEmission extends Model
         'user_id',
         'unit_id',
         'emission_factor_id',
+        'source',
         'quantity',
         'emissions_co2',
         'emissions_ch4',

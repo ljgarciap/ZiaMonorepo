@@ -164,4 +164,35 @@ class IoTCarbonIngestionServiceTest extends TestCase
         // Only the current-year reading should be included
         $this->assertEqualsWithDelta(100.0, $emission->quantity, 0.01);
     }
+
+    // ─── origen manual vs IoT ────────────────────────────────────────────────
+
+    public function test_ingest_marks_created_emission_with_source_iot()
+    {
+        $reading  = $this->makeReading(100.0);
+        $emission = $this->service->ingestReading($reading);
+
+        $this->assertEquals('iot', $emission->source);
+    }
+
+    public function test_ingest_does_not_overwrite_an_existing_manual_emission()
+    {
+        $manual = CarbonEmission::create([
+            'period_id'          => $this->period->id,
+            'emission_factor_id' => $this->factor->id,
+            'source'             => 'manual',
+            'quantity'           => 999.0,
+            'calculated_co2e'    => 0.125874,
+            'notes'              => 'Cargado a mano por el usuario',
+        ]);
+
+        $reading = $this->makeReading(100.0);
+        $result  = $this->service->ingestReading($reading);
+
+        $this->assertNull($result);
+        $this->assertEquals(1, CarbonEmission::count());
+        $manual->refresh();
+        $this->assertEqualsWithDelta(999.0, $manual->quantity, 0.01);
+        $this->assertEquals('manual', $manual->source);
+    }
 }

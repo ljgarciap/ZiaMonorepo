@@ -50,12 +50,25 @@ class IoTCarbonIngestionService
 
         $calculatedCo2e = round($totalQuantity * $factor->factor_total_co2e, 6);
 
+        // No pisar una emisión cargada a mano para el mismo [period_id,
+        // emission_factor_id] — sin esto, conectar IoT a una empresa que ya
+        // tenía datos manuales borraría silenciosamente ese valor manual.
+        $existing = CarbonEmission::where('period_id', $period->id)
+            ->where('emission_factor_id', $device->emission_factor_id)
+            ->first();
+
+        if ($existing && $existing->source === 'manual') {
+            Log::warning("[IoT] Emisión manual existente para período {$period->id} / factor {$device->emission_factor_id} — lectura de {$device->name} omitida para no sobreescribirla.");
+            return null;
+        }
+
         return CarbonEmission::updateOrCreate(
             [
                 'period_id'          => $period->id,
                 'emission_factor_id' => $device->emission_factor_id,
             ],
             [
+                'source'          => 'iot',
                 'quantity'        => round($totalQuantity, 4),
                 'calculated_co2e' => $calculatedCo2e,
                 'notes'           => "Auto-ingested from IoT: {$device->name}",

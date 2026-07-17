@@ -85,35 +85,134 @@ class SyncTelemetryCommand extends Command
         }
 
         foreach ($devices as $device) {
-            $metricName = $device->type === 'energy' ? 'electricity_kwh' : 'water_m3';
             $this->info("Consultando telemetría para dispositivo: {$device->name} (Tipo: {$device->type})...");
 
-            $telemetry = $this->thingsBoardService->getLatestTelemetry(
-                $device->thingsboard_id ?? 'default_id', 
-                $metricName
-            );
-
-            // 3. Save telemetry reading
-            $reading = \App\Models\TelemetryReading::create([
-                'device_id' => $device->id,
-                'metric_name' => $metricName,
-                'value' => $telemetry['value'],
-                'timestamp' => $telemetry['timestamp']
-            ]);
-
-            $this->line("-> Lectura guardada: {$reading->value} {$device->unit} a las {$reading->timestamp}");
-
-            // 4. Evaluate alerts
-            $this->alertService->checkReading($reading);
-
-            // 5. Ingest into carbon emissions (idempotent accumulation for the active period)
-            $emission = $this->ingestionService->ingestReading($reading);
-            if ($emission) {
-                $this->line("-> Emisión actualizada: {$emission->calculated_co2e} tCO2e (período {$emission->period->year ?? '?'})");
-            }
+            match ($device->type) {
+                'energy' => $this->syncCumulativeEnergyDevice($device),
+                'waste'  => $this->syncEventBasedDevice($device, 'weight_kg'),
+                // 'water' y cualquier tipo no reconocido: comportamiento original sin cambios.
+                default  => $this->syncIntervalDevice($device, 'water_m3'),
+            };
         }
 
         $this->info('Sincronización de telemetría completada con éxito.');
         return 0;
+    }
+
+    /**
+     * Dispositivos cuyo valor de telemetría YA representa el consumo del
+     * intervalo (no un contador acumulado) — comportamiento original, sin
+     * cambios. Hoy aplica a 'water' y a cualquier tipo no reconocido.
+     */
+    private function syncIntervalDevice(IotDevice $device, string $metricName): void
+    {
+        $telemetry = $this->thingsBoardService->getLatestTelemetry(
+            $device->thingsboard_id ?? 'default_id',
+            $metricName
+        );
+
+        $reading = TelemetryReading::create([
+            'device_id' => $device->id,
+            'metric_name' => $metricName,
+            'value' => $telemetry['value'],
+            'timestamp' => $telemetry['timestamp'],
+        ]);
+
+        $this->line("-> Lectura guardada: {$reading->value} {$device->unit} a las {$reading->timestamp}");
+        $this->processReading($reading);
+    }
+
+    /**
+     * Medidores que exponen un contador acumulado (ej. energy_active_import_wh
+     * del medidor real, en Wh de por vida). Se guarda el delta contra la última
+     * lectura cruda conocida, no el valor crudo — así el resto del pipeline
+     * (que suma TelemetryReading.value del año) sigue siendo correcto.
+     */
+    private function syncCumulativeEnergyDevice(IotDevice $device): void
+    {
+        $metricName = 'energy_active_import_wh';
+        $telemetry = $this->thingsBoardService->getLatestTelemetry(
+            $device->thingsboard_id ?? 'default_id',
+            $metricName
+        );
+        $currentRaw = $telemetry['value'];
+
+        // Primera lectura tras conectar el dispositivo: no hay línea base para
+        // calcular un delta real. Se descarta (delta 0) en vez de contar de
+        // golpe todo el histórico acumulado del medidor desde su instalación.
+        $deltaKwh = $device->last_raw_value === null
+            ? 0.0
+            : max(0.0, ($currentRaw - $device->last_raw_value) / 1000);
+
+        $device->update(['last_raw_value' => $currentRaw]);
+
+        $reading = TelemetryReading::create([
+            'device_id' => $device->id,
+            'metric_name' => $metricName,
+            'value' => $deltaKwh,
+            'timestamp' => $telemetry['timestamp'],
+        ]);
+
+        $this->line("-> Lectura guardada: {$reading->value} kWh (delta del intervalo) a las {$reading->timestamp}");
+        $this->processReading($reading);
+    }
+
+    /**
+     * Sensores que reportan por evento discreto y resetean entre eventos (ej.
+     * báscula de peso). "Última lectura" puede caer justo entre dos eventos y
+     * perderlos, así que se pide el rango completo desde la última sync
+     * exitosa. El watermark (last_synced_at) solo avanza si el rango se pudo
+     * leer con éxito — si ThingsBoard falla, se reintenta ese mismo rango en
+     * la próxima corrida en vez de saltárselo.
+     */
+    private function syncEventBasedDevice(IotDevice $device, string $metricName): void
+    {
+        $endTs = now();
+
+        if ($device->last_synced_at === null) {
+            $device->update(['last_synced_at' => $endTs]);
+            $this->line("-> {$device->name}: primera sincronización, sin ventana previa — no se procesan eventos retroactivos.");
+            return;
+        }
+
+        $events = $this->thingsBoardService->getTimeseriesRange(
+            $device->thingsboard_id ?? 'default_id',
+            $metricName,
+            (int) ($device->last_synced_at->timestamp * 1000),
+            (int) ($endTs->timestamp * 1000)
+        );
+
+        if ($events === null) {
+            $this->warn("-> {$device->name}: no se pudo leer el rango de eventos, se reintentará en la próxima corrida.");
+            return;
+        }
+
+        foreach ($events as $event) {
+            $reading = TelemetryReading::create([
+                'device_id' => $device->id,
+                'metric_name' => $metricName,
+                'value' => $event['value'],
+                'timestamp' => $event['timestamp'],
+            ]);
+            $this->processReading($reading);
+        }
+
+        $this->line("-> {$device->name}: " . count($events) . ' evento(s) procesados.');
+        $device->update(['last_synced_at' => $endTs]);
+    }
+
+    /**
+     * Pasos comunes tras guardar una TelemetryReading: evaluar alertas e
+     * ingerir a huella de carbono.
+     */
+    private function processReading(TelemetryReading $reading): void
+    {
+        $this->alertService->checkReading($reading);
+
+        $emission = $this->ingestionService->ingestReading($reading);
+        if ($emission) {
+            $year = $emission->period->year ?? '?';
+            $this->line("-> Emisión actualizada: {$emission->calculated_co2e} tCO2e (período {$year})");
+        }
     }
 }

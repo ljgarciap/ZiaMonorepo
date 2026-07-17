@@ -1,7 +1,32 @@
 # Integración IoT vía ThingsBoard
 
-**Última actualización:** 2026-07-05 | **Responsable:** Backend Dev / Emanuel (líder IoT)
+**Última actualización:** 2026-07-17 | **Responsable:** Backend Dev / Emanuel (líder IoT)
 **Servicio:** `ThingsBoardService` + comando `zia:sync-telemetry` (Laravel)
+
+## Validado contra un tenant de prueba real (2026-07-17)
+
+Se probó la conexión contra un tenant real de Meeldavlab
+(`https://thingsboard.meeldavlab.xyz`, ThingsBoard **3.7.0 open-source**,
+no PE). Hallazgos que corrigen supuestos anteriores de este documento:
+
+- **JWT sigue siendo el mecanismo correcto.** La doc de ThingsBoard PE
+  marca el login JWT como deprecated en favor de "API Keys" (desde 4.3),
+  pero esta instancia es 3.7.0 y **no expone ningún endpoint de gestión
+  de API Keys** (verificado contra su spec OpenAPI real en `/v3/api-docs`).
+  No migrar el mecanismo de auth — no aplica acá.
+- **El dispositivo de energía real no publica `electricity_kwh`.** Su key
+  real es `energy_active_import_wh`: un **contador acumulado de por vida**
+  (Wh desde la instalación del medidor), confirmado con el equipo de IoT.
+  Por eso `SyncTelemetryCommand` ya no guarda el valor crudo de esa key —
+  calcula el delta contra la última lectura conocida (ver sección
+  "Semántica de cada tipo de dispositivo" abajo).
+- El tenant de prueba también tenía un sensor de peso (`weight_kg`,
+  pensado para papel/residuos) y una cámara — ninguno de los dos
+  correspondía al modelo `energy`/`water` original. El sensor de peso
+  **reporta por evento y resetea a 0 entre pesajes** (confirmado con el
+  equipo de IoT), lo que llevó a agregar el tipo `waste` con una
+  estrategia de sincronización distinta (rango de eventos, no "última
+  lectura").
 
 ---
 
@@ -43,19 +68,51 @@ sequenceDiagram
 
     Cron->>Cmd: zia:sync-telemetry
     loop por cada IotDevice
-        Cmd->>TBS: getLatestTelemetry(thingsboard_id, metricName)
-        TBS->>TB: POST /api/auth/login (si no hay token cacheado)
-        TB-->>TBS: { "token": "eyJ..." }
-        TBS->>TB: GET /api/plugins/telemetry/DEVICE/{id}/values/timeseries?keys={metricName}
-        TB-->>TBS: { "{metricName}": [{ "ts": ms, "value": "..." }] }
-        TBS-->>Cmd: { value, timestamp }
-        Cmd->>DB: crea TelemetryReading
+        alt type = energy (contador acumulado)
+            Cmd->>TBS: getLatestTelemetry(id, 'energy_active_import_wh')
+            TBS->>TB: GET .../values/timeseries?keys=energy_active_import_wh
+            TB-->>TBS: valor acumulado actual (Wh)
+            Cmd->>Cmd: delta = (actual - last_raw_value) / 1000
+            Cmd->>DB: update IotDevice.last_raw_value = actual
+        else type = waste (evento discreto)
+            Cmd->>TBS: getTimeseriesRange(id, 'weight_kg', last_synced_at, now)
+            TBS->>TB: GET .../values/timeseries?keys=weight_kg&startTs&endTs
+            TB-->>TBS: lista de eventos en el rango
+            Cmd->>DB: update IotDevice.last_synced_at = now (solo si la lectura fue exitosa)
+        else type = water (u otro no reconocido)
+            Cmd->>TBS: getLatestTelemetry(id, 'water_m3')
+            TBS->>TB: GET .../values/timeseries?keys=water_m3
+        end
+        Cmd->>DB: crea TelemetryReading (uno por lectura o por evento)
         Cmd->>Cmd: TelemetryAlertService.checkReading()
         Cmd->>DB: crea TelemetryAlert si aplica
         Cmd->>Cmd: IoTCarbonIngestionService.ingestReading()
-        Cmd->>DB: updateOrCreate CarbonEmission (idempotente)
+        Cmd->>DB: updateOrCreate CarbonEmission (idempotente, respeta source=manual)
     end
 ```
+
+---
+
+## Semántica de cada tipo de dispositivo
+
+El valor crudo que expone un sensor real no siempre es directamente "lo
+que se consumió en este intervalo" — asumir eso sin confirmarlo fue la
+causa de los dos ajustes de esta sección. `IoTCarbonIngestionService`
+sigue sumando `TelemetryReading.value` de todo el año sin cambios; lo que
+cambió es qué se guarda en `value` para cada tipo, para que esa suma siga
+siendo correcta.
+
+| `type` | Qué expone el sensor real | Qué guarda `SyncTelemetryCommand` en `TelemetryReading.value` |
+|---|---|---|
+| `energy` | Contador acumulado de por vida (`energy_active_import_wh`, Wh) | El **delta** contra `IotDevice.last_raw_value` (en kWh). Primera lectura tras conectar el dispositivo: delta = 0 (no hay línea base, se descarta en vez de contar de golpe todo el histórico del medidor) |
+| `waste` | Evento discreto que resetea a 0 entre pesajes (`weight_kg`) | El valor de **cada evento** en el rango `[last_synced_at, now]` — un `TelemetryReading` por evento. "Última lectura" no sirve acá: puede caer justo entre dos eventos y perderlos |
+| `water` (y cualquier tipo no reconocido) | Se asume que ya es el consumo del intervalo | El valor tal cual — comportamiento original, sin cambios. **No confirmado contra un dispositivo real** (el tenant de prueba no tenía sensor de agua) — si se conecta uno real, confirmar esta suposición antes de confiar en el total |
+
+`CarbonEmission` tiene una columna `source` (`manual` | `iot`).
+`IoTCarbonIngestionService` nunca sobreescribe una fila `source=manual`
+— si una empresa ya tiene una emisión cargada a mano para el mismo
+`[period_id, emission_factor_id]`, la lectura IoT se omite (con
+`Log::warning`) en vez de pisarla en silencio.
 
 ---
 
@@ -82,7 +139,7 @@ para no re-autenticar en cada lectura. Si la autenticación falla
 automáticamente a datos simulados** para esa lectura puntual y registra
 un `Log::error` — no interrumpe el resto del cron.
 
-## Endpoint 2 — Última lectura de telemetría
+## Endpoint 2 — Última lectura de telemetría (energía, agua)
 
 ```
 GET {THINGSBOARD_HOST}/api/plugins/telemetry/DEVICE/{deviceId}/values/timeseries?keys={metricName}
@@ -93,14 +150,15 @@ X-Authorization: Bearer {token}
   ThingsBoard** — debe coincidir exactamente con el campo
   `iot_devices.thingsboard_id` en la base de datos de Zia
 - `{metricName}` = el nombre de la key de telemetría en ThingsBoard.
-  **Hoy está hardcodeado en `SyncTelemetryCommand`**: `electricity_kwh`
-  para dispositivos `type='energy'`, `water_m3` para `type='water'`
+  **Hardcodeado en `SyncTelemetryCommand`**: `energy_active_import_wh`
+  para `type='energy'` (confirmado contra un medidor real), `water_m3`
+  para `type='water'` (sin confirmar contra un dispositivo real)
 
 **Respuesta esperada (200)** — formato estándar de ThingsBoard:
 ```json
 {
-  "electricity_kwh": [
-    { "ts": 1783267200000, "value": "67.4" }
+  "energy_active_import_wh": [
+    { "ts": 1783267200000, "value": "4125.6" }
   ]
 }
 ```
@@ -112,6 +170,25 @@ Si la respuesta no trae la key esperada, o la request falla por
 cualquier razón (timeout, 401, 500), el servicio registra un
 `Log::warning`/`Log::error` y **cae a datos simulados** para esa
 lectura — el cron nunca se detiene por un dispositivo con problemas.
+
+## Endpoint 3 — Rango de telemetría (residuos, sensores por evento)
+
+```
+GET {THINGSBOARD_HOST}/api/plugins/telemetry/DEVICE/{deviceId}/values/timeseries?keys={metricName}&startTs={ms}&endTs={ms}&limit=1000
+X-Authorization: Bearer {token}
+```
+
+Usado solo para `type='waste'` (`metricName = 'weight_kg'`), vía
+`ThingsBoardService::getTimeseriesRange()`. A diferencia del endpoint 2,
+trae **todos** los puntos del rango `[last_synced_at, now]`, no solo el
+último — necesario porque el sensor resetea a 0 entre eventos y "última
+lectura" puede perderse un pesaje que ya ocurrió y volvió a 0.
+
+**No cae a datos simulados en caso de falla real** (fabricar eventos de
+peso inventaría kg de residuos que no existieron). En su lugar devuelve
+`null`, y `SyncTelemetryCommand` **no avanza** `IotDevice.last_synced_at`
+— el mismo rango se reintenta en la siguiente corrida del cron en vez de
+perderse.
 
 ---
 
@@ -130,19 +207,28 @@ lectura — el cron nunca se detiene por un dispositivo con problemas.
    ThingsBoard (`Administración → Dispositivos IoT`, o directo en BD).
 
 3. **El dispositivo en ThingsBoard debe estar publicando telemetría
-   bajo exactamente las keys `electricity_kwh` o `water_m3`** (según el
-   `type` del dispositivo en Zia). Si el dispositivo real de
-   ThingsBoard usa otro nombre de key (ej. `power_consumption`), hay
-   que ajustar el mapeo en `SyncTelemetryCommand::handle()` (línea
-   ~88: `$metricName = $device->type === 'energy' ? 'electricity_kwh' : 'water_m3';`)
-   — esto es lo único que requeriría un cambio de código, y es
-   deliberadamente simple de ajustar (una línea).
+   bajo exactamente las keys que espera cada tipo**: `energy_active_import_wh`
+   para `type='energy'`, `water_m3` para `type='water'`, `weight_kg` para
+   `type='waste'`. Si un dispositivo real usa otro nombre de key, hay que
+   ajustar el mapeo correspondiente en `SyncTelemetryCommand` (los métodos
+   `syncCumulativeEnergyDevice`, `syncEventBasedDevice`,
+   `syncIntervalDevice`) — y confirmar con el equipo IoT si esa key es un
+   contador acumulado, un evento discreto, o ya un valor de intervalo,
+   porque de eso depende cuál de los tres métodos aplica (ver "Semántica
+   de cada tipo de dispositivo" arriba).
 
 4. **El usuario de ThingsBoard usado en `THINGSBOARD_USERNAME`
    necesita permiso de lectura sobre esos dispositivos específicos**
    (scope de tenant o customer, según cómo esté organizado el
    ThingsBoard real — esto lo define el equipo IoT/Emanuel, dueño de
    la instancia según el SLA).
+
+> Nota de implementación: `ThingsBoardService` resuelve host/usuario/
+> contraseña de forma perezosa (recién al hacer una llamada real), no en
+> su constructor — el constructor se puede resolver durante el bootstrap
+> de artisan de *cualquier* comando (via `Schedule::command` en
+> `routes/console.php`), incluso antes de que exista la tabla
+> `system_settings` en una base de datos recién creada.
 
 ---
 
@@ -190,9 +276,12 @@ depender de una instancia de ThingsBoard real.
 
 ## Referencias
 
-- `backend/app/Services/ThingsBoardService.php` — cliente HTTP
-- `backend/app/Console/Commands/SyncTelemetryCommand.php` — orquestación del cron (cada 5 min, `routes/console.php`)
+- `backend/app/Services/ThingsBoardService.php` — cliente HTTP (`getLatestTelemetry`, `getTimeseriesRange`)
+- `backend/app/Console/Commands/SyncTelemetryCommand.php` — orquestación del cron (cada 5 min, `routes/console.php`), lógica diferenciada por tipo
 - `backend/app/Services/TelemetryAlertService.php` — lógica de alertas
-- `backend/app/Services/IoTCarbonIngestionService.php` — conversión a `CarbonEmission`
+- `backend/app/Services/IoTCarbonIngestionService.php` — conversión a `CarbonEmission`, guard de `source=manual`
 - `backend/database/migrations/2026_06_01_000000_create_telemetry_tables.php` — esquema de `iot_devices`, `telemetry_readings`, `telemetry_alerts`
+- `backend/database/migrations/2026_07_17_120000_add_sync_tracking_fields_to_iot_devices_table.php` — `last_raw_value`, `last_synced_at`
+- `backend/database/migrations/2026_07_17_120100_add_source_to_carbon_emissions_table.php` — `source` (`manual`/`iot`)
+- `backend/tests/Feature/SyncTelemetryCommandTest.php` — cobertura del delta de energía y el rango de eventos de residuos
 - [Documentación oficial de la API de telemetría de ThingsBoard](https://thingsboard.io/docs/reference/rest-api/) — para verificar cambios de formato si se actualiza la versión de ThingsBoard

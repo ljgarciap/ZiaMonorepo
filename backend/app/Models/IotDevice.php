@@ -26,10 +26,13 @@ class IotDevice extends Model
         'calibration_notes',
         'registered_by',
         'operational_unit_id',
+        'last_raw_value',
+        'last_synced_at',
     ];
 
     protected $casts = [
         'last_calibrated_at' => 'datetime',
+        'last_synced_at' => 'datetime',
     ];
 
     public function readings()
