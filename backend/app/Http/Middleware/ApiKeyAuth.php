@@ -24,11 +24,17 @@ class ApiKeyAuth
             return response()->json(['error' => 'Falta el header X-Api-Key.'], 401);
         }
 
-        $apiKey = ApiKey::where('key_hash', ApiKey::hash($plainKey))
+        $apiKey = ApiKey::with('company')
+            ->where('key_hash', ApiKey::hash($plainKey))
             ->whereNull('revoked_at')
             ->first();
 
-        if (!$apiKey) {
+        // company() es un belongsTo — Eloquent ya excluye empresas
+        // soft-deleted por el scope global de SoftDeletes, así que si la
+        // empresa fue borrada, $apiKey->company viene null acá sin
+        // necesidad de un chequeo explícito de trashed(). Sin esto, borrar
+        // una empresa no revocaba las keys que ya había emitido.
+        if (!$apiKey || !$apiKey->company) {
             return response()->json(['error' => 'API key inválida o revocada.'], 401);
         }
 

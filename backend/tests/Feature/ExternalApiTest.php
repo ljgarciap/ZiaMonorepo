@@ -63,6 +63,16 @@ class ExternalApiTest extends TestCase
              ->assertStatus(401);
     }
 
+    public function test_request_with_key_of_a_soft_deleted_company_is_rejected(): void
+    {
+        $result = ApiKey::generateFor($this->company, 'Empresa que se va a borrar');
+        $this->company->delete(); // soft delete
+
+        $this->withKey($result['key'])
+             ->getJson('/api/external/v1/telemetry-readings')
+             ->assertStatus(401);
+    }
+
     public function test_valid_key_authenticates_and_updates_last_used_at(): void
     {
         $apiKeyModel = ApiKey::where('key_hash', ApiKey::hash($this->plainKey))->first();

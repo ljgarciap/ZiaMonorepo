@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Http\Controllers\Concerns\AuthorizesCompanyAccess;
 use App\Http\Controllers\Controller;
 use App\Models\ApiKey;
 use App\Models\Company;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Auth;
 
 class ApiKeyController extends Controller
 {
+    use AuthorizesCompanyAccess;
+
     /**
      * GET /admin/companies/{company}/api-keys
      * Nunca expone key_hash (oculto en el modelo) ni la key en texto plano —
@@ -59,28 +62,5 @@ class ApiKeyController extends Controller
         $apiKey->update(['revoked_at' => now()]);
 
         return response()->json(null, 204);
-    }
-
-    /**
-     * Mismo criterio que IotDeviceController::authorizeCompanyAccess — el
-     * Admin solo administra empresas a las que está asignado, el Superadmin
-     * no tiene esa restricción.
-     */
-    private function authorizeCompanyAccess(?Company $company): void
-    {
-        abort_if(!$company, 404);
-
-        $user = Auth::user();
-
-        if ($user->role === 'superadmin') {
-            return;
-        }
-
-        $belongs = $user->companies()
-            ->where('companies.id', $company->id)
-            ->wherePivot('is_active', true)
-            ->exists();
-
-        abort_unless($belongs, 403, 'No tienes acceso a esta empresa.');
     }
 }

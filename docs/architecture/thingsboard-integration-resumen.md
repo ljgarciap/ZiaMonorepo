@@ -65,43 +65,153 @@ extensión futura, no algo que exista ahora.
 
 ---
 
-## Alternativas de uso
+## Los tres caminos para obtener este dato — consolidado
 
-### Uso manual (sin sensores)
+Hay tres formas de que un consumo/emisión termine en Zia (o de que alguien
+consuma ese dato), cada una con su propio protocolo. Esta sección junta las
+tres con su forma de uso y un ejemplo real de payload/response — el detalle
+exhaustivo de cada una sigue viviendo en su documento propio (linkeado en
+cada sección).
 
-Una empresa **no necesita tener sensores conectados** para usar Zia. La
-carga manual de consumo/emisiones ya existe de forma independiente (mismo
-lugar donde termina el dato del sensor — la tabla de emisiones), así que
-ambos caminos conviven: una empresa puede tener parte de sus emisiones
-cargadas a mano y otra parte automatizada por IoT, sin conflicto (Zia
-distingue el origen de cada dato y nunca deja que un sensor sobreescriba
-algo que alguien cargó a mano).
+### Camino 1 — Carga manual (dentro de Zia, sin sensores)
 
-### Uso externo (fuera de Zia)
+Una empresa **no necesita tener sensores conectados** para usar Zia. Un
+usuario autenticado carga el consumo directamente, y ese dato termina en la
+misma tabla que alimenta el IoT (`CarbonEmission`) — ambos caminos conviven:
+una empresa puede tener parte de sus emisiones a mano y otra parte
+automatizada, sin conflicto (Zia nunca deja que una lectura de sensor
+sobreescriba algo cargado a mano — ver `source` en
+[`thingsboard-integration.md`](thingsboard-integration.md)).
 
-**Actualización 2026-07-18: el tercer camino ya está implementado.**
+**Cómo se usa:**
 
-Zia ahora expone una **API externa de solo lectura**
-(`/api/external/v1/...`) para que un tercero consuma lecturas de
-telemetría y emisiones de carbono de su empresa **sin necesitar una
-cuenta de usuario en Zia** — solo una API key emitida por un Admin/
-Superadmin desde la propia Zia. Aislamiento estricto por empresa: la key
-determina qué empresa puede ver, nunca un parámetro del request.
+- Requiere sesión de usuario Zia normal (login con Passport,
+  `Authorization: Bearer {token}`) con un rol operativo asignado a la
+  empresa (no Auditor, no Técnico IoT).
+- Endpoint: `POST /api/periods/{period}/emissions`.
 
-Detalle completo del protocolo, la estructura JSON de cada endpoint, y
-cómo generar/revocar una key, en
+**Payload de ejemplo:**
+
+```json
+{
+  "emission_factor_id": 14,
+  "quantity": 500,
+  "notes": "Consumo eléctrico de julio (factura del proveedor)"
+}
+```
+
+**Response de ejemplo (201):**
+
+```json
+{
+  "id": 301,
+  "period_id": 7,
+  "user_id": 22,
+  "unit_id": 3,
+  "emission_factor_id": 14,
+  "source": "manual",
+  "quantity": "500.0000",
+  "emissions_co2": "0.0605",
+  "emissions_ch4": "0.0000012",
+  "emissions_n2o": "0.0000006",
+  "calculated_co2e": "0.063000",
+  "biogenic_co2e": "0.000000",
+  "uncertainty_result": "0.0031",
+  "activity_data_total": "500.0000",
+  "notes": "Consumo eléctrico de julio (factura del proveedor)",
+  "created_at": "2026-07-17T00:05:00.000000Z"
+}
+```
+
+### Camino 2 — Consultar ThingsBoard directamente (sin pasar por Zia)
+
+Válido cuando lo que se necesita es el dato **crudo** tal como lo ve
+ThingsBoard (el contador del medidor sin el delta que calcula Zia, o
+cualquier telemetry key que Zia no esté sincronizando). Zia no es dueña de
+este dato, solo lo replica — un tercero puede pedirle acceso al equipo de
+IoT y consultarlo sin que Zia esté en el medio.
+
+**Cómo se usa** (protocolo de ThingsBoard, no de Zia — detalle completo y
+semántica por tipo de sensor en
+[`thingsboard-integration.md`](thingsboard-integration.md)):
+
+1. Login para obtener un JWT:
+
+```bash
+curl -X POST "https://{tu-instancia}.thingsboard.cloud/api/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"usuario@empresa.com","password":"********"}'
+```
+
+```json
+{ "token": "eyJhbGciOiJIUzI1NiJ9...", "refreshToken": "eyJhbGciOiJIUzI1NiJ9..." }
+```
+
+2. Consultar telemetría con ese token:
+
+```bash
+curl "https://{tu-instancia}.thingsboard.cloud/api/plugins/telemetry/DEVICE/{deviceId}/values/timeseries?keys=energy_active_import_wh" \
+  -H "X-Authorization: Bearer eyJhbGciOiJIUzI1NiJ9..."
+```
+
+```json
+{
+  "energy_active_import_wh": [
+    { "ts": 1784293321168, "value": "4125.6" }
+  ]
+}
+```
+
+- El token expira a las ~2.5 horas (estándar de ThingsBoard); hay que
+  volver a loguearse o usar el `refreshToken`.
+- No hay aislamiento por "empresa Zia" acá — el aislamiento lo maneja
+  ThingsBoard con su propio modelo de tenant/customer, ajeno a Zia.
+
+### Camino 3 — API externa de Zia (nuevo, 2026-07-18)
+
+La opción recomendada cuando lo que se necesita es el dato **ya procesado**
+por Zia (el delta de energía en kWh, la huella de carbono calculada) sin
+pasar por ThingsBoard ni tener una cuenta de usuario en Zia — solo una API
+key emitida por un Admin/Superadmin de esa empresa. Aislamiento estricto:
+la key determina la empresa, nunca un parámetro del request. Protocolo
+completo, todos los filtros y ambos endpoints en
 [`docs/api/external-api.md`](../api/external-api.md).
 
-Las tres opciones para un tercero, entonces:
+**Cómo se usa:**
 
-1. **API externa de Zia (nuevo)** — la opción recomendada si lo que se
-   necesita es telemetría o huella de carbono ya procesada por Zia
-   (ej. el delta de energía calculado, no el contador crudo del medidor).
-2. **Consultar ThingsBoard directamente** — sigue siendo válido si lo que
-   se necesita es el dato crudo del sensor tal como lo ve ThingsBoard,
-   sin pasar por la interpretación de Zia (delta, agregación por empresa,
-   etc.). Zia no es dueña de ese dato, solo lo replica.
-3. **Pedir acceso a un usuario de Zia** con el rol correspondiente
-   (Técnico IoT, Admin, Auditor) y usar los mismos endpoints autenticados
-   que usa el frontend — sigue siendo la opción si se necesita algo que la
-   API externa no expone (ej. gestión de dispositivos, no solo lectura).
+```bash
+curl "https://zia.example.com/api/external/v1/emissions?year=2026" \
+  -H "X-Api-Key: zia_live_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+```
+
+**Response de ejemplo:**
+
+```json
+{
+  "data": [
+    {
+      "id": 301,
+      "period_id": 7,
+      "emission_factor_id": 14,
+      "source": "iot",
+      "quantity": 1540.25,
+      "calculated_co2e": 0.194,
+      "notes": "Auto-ingested from IoT: Medidor Eléctrico General",
+      "period": { "id": 7, "year": 2026, "status": "open" },
+      "factor": { "id": 14, "name": "Energía Interconectada" }
+    }
+  ],
+  "links": { "first": "...", "last": "...", "prev": null, "next": null },
+  "meta": { "current_page": 1, "per_page": 50, "total": 1 }
+}
+```
+
+### Resumen comparativo
+
+| | Camino 1 — Manual | Camino 2 — ThingsBoard directo | Camino 3 — API externa Zia |
+|---|---|---|---|
+| Quién lo usa | Usuario de la empresa, dentro de Zia | Equipo de IoT / terceros con acceso a ThingsBoard | Terceros sin cuenta Zia |
+| Auth | Login Zia (Passport) | Login ThingsBoard (JWT, expira ~2.5h) | API key por empresa (no expira, revocable) |
+| Qué dato da | El que el usuario cargue | Crudo, tal como lo ve el sensor | Procesado por Zia (delta, huella de carbono) |
+| Escribe datos | Sí | N/A (fuera del alcance de Zia) | No — solo lectura |
+| Aislamiento por empresa | Por rol/pertenencia a la empresa | Lo maneja ThingsBoard, no Zia | Por la API key misma |

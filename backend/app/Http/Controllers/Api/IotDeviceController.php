@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Controllers\Concerns\AuthorizesCompanyAccess;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\IotDevice;
@@ -12,6 +13,8 @@ use Illuminate\Validation\Rule;
 
 class IotDeviceController extends Controller
 {
+    use AuthorizesCompanyAccess;
+
     /**
      * GET /companies/{company}/iot-devices
      * Registro y estado de configuración de los dispositivos de una empresa
@@ -136,27 +139,5 @@ class IotDeviceController extends Controller
         ]);
 
         return response()->json($alert);
-    }
-
-    /**
-     * El Técnico IoT solo debe operar sobre empresas/proyectos a los que está
-     * asignado (company_user); el Superadmin no tiene esa restricción.
-     */
-    private function authorizeCompanyAccess(?Company $company): void
-    {
-        abort_if(!$company, 404);
-
-        $user = Auth::user();
-
-        if ($user->role === 'superadmin') {
-            return;
-        }
-
-        $belongs = $user->companies()
-            ->where('companies.id', $company->id)
-            ->wherePivot('is_active', true)
-            ->exists();
-
-        abort_unless($belongs, 403, 'No tienes acceso a esta empresa.');
     }
 }
