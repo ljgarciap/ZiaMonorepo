@@ -55,6 +55,11 @@ class Company extends Model
         return $this->hasMany(IotDevice::class);
     }
 
+    public function apiKeys()
+    {
+        return $this->hasMany(ApiKey::class);
+    }
+
     public function companyDocuments()
     {
         return $this->hasMany(CompanyDocument::class);

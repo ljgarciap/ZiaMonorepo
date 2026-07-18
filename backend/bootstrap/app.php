@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'context.aware' => \App\Http\Middleware\ContextAwareMiddleware::class,
+            'api.key' => \App\Http\Middleware\ApiKeyAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

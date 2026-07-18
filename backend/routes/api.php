@@ -16,6 +16,17 @@ Route::middleware(\App\Http\Middleware\InternalOnly::class)
 Route::middleware(\App\Http\Middleware\InternalOnly::class)
     ->get('/internal/credentials', [App\Http\Controllers\Api\InternalCredentialController::class, 'index']);
 
+// API externa para terceros con API key (sin cuenta de usuario Zia) — ver
+// docs/api/external-api.md para el protocolo completo. api.key resuelve la
+// empresa desde la key misma, nunca de un parámetro del request; throttle
+// aplica DESPUÉS de api.key para poder limitar por api_key_id, no por IP.
+Route::middleware(['api.key', 'throttle:external-api'])
+    ->prefix('external/v1')
+    ->group(function () {
+        Route::get('/telemetry-readings', [App\Http\Controllers\Api\External\TelemetryReadingController::class, 'index']);
+        Route::get('/emissions', [App\Http\Controllers\Api\External\EmissionController::class, 'index']);
+    });
+
 Route::get('/health', function () {
     try {
         \Illuminate\Support\Facades\DB::connection()->getPdo();
@@ -148,6 +159,16 @@ Route::middleware('auth:api')->group(function () {
             Route::put('/api-credentials/{key}', [\App\Http\Controllers\Api\Admin\AdminApiCredentialController::class, 'update']);
             Route::delete('/api-credentials/{key}', [\App\Http\Controllers\Api\Admin\AdminApiCredentialController::class, 'destroy']);
         });
+
+        // API keys que Zia EMITE para que terceros externos consuman
+        // /api/external/v1/* — lo inverso de api-credentials de arriba (esas
+        // son credenciales que Zia usa para llamar afuera). A diferencia de
+        // api-credentials (globales, solo superadmin), estas son por empresa
+        // — el admin de esa empresa también puede gestionarlas (mismo
+        // criterio que IotDeviceController::authorizeCompanyAccess).
+        Route::get('/companies/{company}/api-keys', [\App\Http\Controllers\Api\Admin\ApiKeyController::class, 'index']);
+        Route::post('/companies/{company}/api-keys', [\App\Http\Controllers\Api\Admin\ApiKeyController::class, 'store']);
+        Route::delete('/api-keys/{apiKey}', [\App\Http\Controllers\Api\Admin\ApiKeyController::class, 'destroy']);
     });
 
     // Context-Aware Routes — segmentadas por rol según Matriz de Permisos v2
