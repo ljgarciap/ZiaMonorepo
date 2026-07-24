@@ -47,6 +47,12 @@ export const routes: Routes = [
                 loadComponent: () => import('./components/zia-live/zia-live').then(m => m.ZiaLiveComponent)
             },
             {
+                // TEMPORAL — demo ThingsBoard para presentación de Ricardo (2026-07-25).
+                // Remover esta ruta junto con el componente y el link de sidebar tras la demo.
+                path: 'dashboards-t',
+                loadComponent: () => import('./components/dashboards-t/dashboards-t').then(m => m.DashboardsTComponent)
+            },
+            {
                 path: 'simulator',
                 loadComponent: () => import('./components/simulator/simulator').then(m => m.SimulatorComponent)
             },

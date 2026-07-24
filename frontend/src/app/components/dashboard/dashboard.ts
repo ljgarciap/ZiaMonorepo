@@ -20,6 +20,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/form':                       'Huella de Carbono',
   '/smart-intake':               'Smart Intake',
   '/live':                       'Zia Live',
+  '/dashboards-t':               'Dashboards T',
   '/simulator':                  'Simulador',
   '/history':                    'Historial',
   '/admin/platform':             'Plataforma Global',

@@ -22,6 +22,11 @@
                 <mat-icon matListItemIcon>sensors</mat-icon>
                 <div matListItemTitle>Zia Live</div>
             </a>
+            <!-- TEMPORAL: demo ThingsBoard para presentación de Ricardo (2026-07-25). Remover tras la demo. -->
+            <a mat-list-item routerLink="/dashboards-t" routerLinkActive="active-link">
+                <mat-icon matListItemIcon>dashboard_customize</mat-icon>
+                <div matListItemTitle>Dashboards T</div>
+            </a>
             <!-- Simulador de IA: solo admin/user/superadmin lo tienen habilitado en el backend -->
             <a *ngIf="['superadmin','admin','user'].includes(authService.currentContext()?.role || '')"
                 mat-list-item routerLink="/simulator" routerLinkActive="active-link">
