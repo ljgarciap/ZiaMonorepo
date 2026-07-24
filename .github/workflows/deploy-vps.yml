@@ -135,9 +135,14 @@ jobs:
             -H "Content-Type: application/json" \
             -d "{\"key\": \"IMAGE_TAG\", \"value\": \"$IMAGE_TAG\"}"
 
+      # force=true: visto en vivo (2026-07-24) que un deploy sin este flag puede
+      # reportar éxito mientras el contenedor de frontend sigue sirviendo una
+      # imagen de días antes — el health check del paso siguiente solo valida
+      # el backend, así que ese caso pasaba desapercibido. force=true le pide
+      # a Coolify que ignore su detección de cambios y rebuildee/recree igual.
       - name: Trigger Coolify deploy
         run: |
-          curl -fsS -X GET "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_SERVICE_UUID }}" \
+          curl -fsS -X GET "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_SERVICE_UUID }}&force=true" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
 
       - name: Wait for health check
