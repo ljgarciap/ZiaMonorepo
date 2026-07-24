@@ -59,25 +59,30 @@ interface EmbeddedDashboard {
   `]
 })
 export class DashboardsTComponent {
-  constructor(private sanitizer: DomSanitizer) {}
+  dashboards: EmbeddedDashboard[];
 
-  dashboards: EmbeddedDashboard[] = [
-    {
-      title: 'Energía',
-      icon: 'bolt',
-      url: this.trust('https://thingsboard.meeldavlab.xyz/dashboard/d1e602a0-746f-11f1-910d-f136ed7a87e0?publicId=306ecd50-86b0-11f1-8769-27a77cf6584f')
-    },
-    {
-      title: 'Imagen',
-      icon: 'photo_camera',
-      url: this.trust('https://thingsboard.meeldavlab.xyz/dashboard/ae5b2000-7496-11f1-910d-f136ed7a87e0?publicId=306ecd50-86b0-11f1-8769-27a77cf6584f')
-    },
-    {
-      title: 'Peso',
-      icon: 'scale',
-      url: this.trust('https://thingsboard.meeldavlab.xyz/dashboard/a4fb30a0-74a4-11f1-910d-f136ed7a87e0?publicId=306ecd50-86b0-11f1-8769-27a77cf6584f')
-    }
-  ];
+  constructor(private sanitizer: DomSanitizer) {
+    // Asignado en el cuerpo del constructor (no como inicializador de campo):
+    // con useDefineForClassFields los inicializadores de campo corren antes que
+    // esta asignación de parámetro, y this.sanitizer llegaba undefined a trust().
+    this.dashboards = [
+      {
+        title: 'Energía',
+        icon: 'bolt',
+        url: this.trust('https://thingsboard.meeldavlab.xyz/dashboard/d1e602a0-746f-11f1-910d-f136ed7a87e0?publicId=306ecd50-86b0-11f1-8769-27a77cf6584f')
+      },
+      {
+        title: 'Imagen',
+        icon: 'photo_camera',
+        url: this.trust('https://thingsboard.meeldavlab.xyz/dashboard/ae5b2000-7496-11f1-910d-f136ed7a87e0?publicId=306ecd50-86b0-11f1-8769-27a77cf6584f')
+      },
+      {
+        title: 'Peso',
+        icon: 'scale',
+        url: this.trust('https://thingsboard.meeldavlab.xyz/dashboard/a4fb30a0-74a4-11f1-910d-f136ed7a87e0?publicId=306ecd50-86b0-11f1-8769-27a77cf6584f')
+      }
+    ];
+  }
 
   private trust(url: string): SafeResourceUrl {
     return this.sanitizer.bypassSecurityTrustResourceUrl(url);
