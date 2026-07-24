@@ -1,5 +1,11 @@
 FROM php:8.4-fpm-alpine
 
+# SHA del build (pasado por CI vía --build-arg), expuesto en /api/health para
+# que el pipeline pueda confirmar que el deploy sirve el commit esperado en
+# vez de asumirlo por un healthcheck que solo mide "responde", no "es nuevo".
+ARG IMAGE_TAG=unknown
+ENV IMAGE_TAG=$IMAGE_TAG
+
 # Install system dependencies
 RUN apk update && apk add --no-cache \
     nginx \

@@ -1,8 +1,12 @@
 # Deploy automático al VPS de pruebas (Hostinger) vía Coolify.
 #
-# Flujo: CI (ci.yml) en verde sobre master → build de las 3 imágenes →
-# push a GHCR → trigger de deploy en Coolify (API, no SSH) → poll de
-# /api/health hasta que responda 200.
+# Flujo: CI (ci.yml) en verde sobre master → build de las 3 imágenes (con
+# IMAGE_TAG horneado como build-arg) → push a GHCR → trigger de deploy en
+# Coolify (API, no SSH) → poll de versión real en backend (/api/health) y
+# frontend (/version.txt) hasta que ambos confirmen el IMAGE_TAG esperado —
+# no alcanza con "responde 200", hay que confirmar que sea el commit nuevo
+# (ver comentario en "Wait for backend/frontend deploy" para el incidente
+# 2026-07-24 que motivó este chequeo).
 #
 # Secrets requeridos en GitHub → Settings → Secrets and variables → Actions:
 #   COOLIFY_API_TOKEN — Bearer token de Coolify (Keys & Tokens en el dashboard,
@@ -12,6 +16,7 @@
 #                            el puerto 8000/IP directa está cerrado por firewall)
 #   COOLIFY_SERVICE_UUID  — UUID del servicio docker-compose en Coolify
 #   BACKEND_HEALTH_URL    — ej. https://apiziaccb.softclass.co/api/health
+#   FRONTEND_URL          — ej. https://ziaccb.softclass.co (sin barra final)
 
 name: Deploy to VPS (Coolify)
 
@@ -47,7 +52,7 @@ jobs:
       - name: Build & push image
         run: |
           IMAGE="ghcr.io/${{ github.repository_owner }}/zia-backend"
-          docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" ./backend
+          docker build --build-arg IMAGE_TAG="$IMAGE_TAG" -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" ./backend
           docker push "$IMAGE:$IMAGE_TAG"
           docker push "$IMAGE:latest"
 
@@ -99,7 +104,7 @@ jobs:
       - name: Build & push image
         run: |
           IMAGE="ghcr.io/${{ github.repository_owner }}/zia-frontend"
-          docker build -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" ./frontend
+          docker build --build-arg IMAGE_TAG="$IMAGE_TAG" -t "$IMAGE:$IMAGE_TAG" -t "$IMAGE:latest" ./frontend
           docker push "$IMAGE:$IMAGE_TAG"
           docker push "$IMAGE:latest"
 
@@ -145,16 +150,43 @@ jobs:
           curl -fsS -X GET "${{ secrets.COOLIFY_URL }}/api/v1/deploy?uuid=${{ secrets.COOLIFY_SERVICE_UUID }}&force=true" \
             -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
 
-      - name: Wait for health check
+      # 2026-07-24: un deploy "exitoso" sirvió una imagen de 6 días antes en
+      # los 3 servicios (backend, agent, frontend) — causa real: la credencial
+      # de GHCR del VPS estaba vencida, `docker compose pull` fallaba en
+      # silencio y Coolify seguía sirviendo los contenedores viejos. Ni el
+      # código 200 de /api/health ni el mensaje de Coolify lo detectaban,
+      # porque ninguno de los dos confirma que la imagen sea la nueva. Por
+      # eso este check ya no mide "responde", mide "responde con el commit
+      # que acabamos de buildear" — /api/health expone `version` (IMAGE_TAG
+      # horneado en el build, backend/Dockerfile) y se compara contra $IMAGE_TAG.
+      - name: Wait for backend deploy (versión correcta)
         run: |
           for i in $(seq 1 20); do
             code=$(curl -s -o /dev/null -w "%{http_code}" "${{ secrets.BACKEND_HEALTH_URL }}" || echo "000")
-            if [ "$code" = "200" ]; then
-              echo "✅ Deploy exitoso — /api/health respondió 200"
+            version=$(curl -fsS "${{ secrets.BACKEND_HEALTH_URL }}" 2>/dev/null | jq -r '.version // empty')
+            if [ "$code" = "200" ] && [ "$version" = "$IMAGE_TAG" ]; then
+              echo "✅ Backend sirviendo la versión esperada ($IMAGE_TAG)"
               exit 0
             fi
-            echo "Intento $i: health check respondió $code, reintentando en 10s..."
+            echo "Intento $i: code=$code version=$version (esperando $IMAGE_TAG), reintentando en 10s..."
             sleep 10
           done
-          echo "🚨 Deploy falló — /api/health no respondió 200 tras varios intentos"
+          echo "🚨 Backend no llegó a servir $IMAGE_TAG tras varios intentos — probable falla de pull/credenciales GHCR en el VPS, revisar docker login ahí antes de reintentar"
+          exit 1
+
+      # Mismo problema, mismo fix, del lado frontend: version.txt se genera en
+      # build time (frontend/Dockerfile) con el IMAGE_TAG horneado y se sirve
+      # como archivo estático — nginx no necesita saber nada de esto.
+      - name: Wait for frontend deploy (versión correcta)
+        run: |
+          for i in $(seq 1 20); do
+            version=$(curl -fsS "${{ secrets.FRONTEND_URL }}/version.txt" 2>/dev/null || echo "")
+            if [ "$version" = "$IMAGE_TAG" ]; then
+              echo "✅ Frontend sirviendo la versión esperada ($IMAGE_TAG)"
+              exit 0
+            fi
+            echo "Intento $i: frontend en versión '$version' (esperando $IMAGE_TAG), reintentando en 10s..."
+            sleep 10
+          done
+          echo "🚨 Frontend no llegó a servir $IMAGE_TAG tras varios intentos — probable falla de pull/credenciales GHCR en el VPS, revisar docker login ahí antes de reintentar"
           exit 1

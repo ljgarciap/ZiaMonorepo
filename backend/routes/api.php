@@ -38,6 +38,7 @@ Route::get('/health', function () {
     return response()->json([
         'status' => $dbStatus === 'ok' ? 'ok' : 'error',
         'db' => $dbStatus,
+        'version' => env('IMAGE_TAG', 'unknown'),
         'timestamp' => now()->toIso8601String(),
     ], $dbStatus === 'ok' ? 200 : 503);
 });
